@@ -1,7 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton as WalletMultiButtonUnstyled } from '@solana/wallet-adapter-react-ui'
 import { DISTRICTS } from '../../lib/contracts'
+import { createContract } from '@/lib/api'
+import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+
+const WalletMultiButton = WalletMultiButtonUnstyled as any
 
 interface MilestoneInput {
   desc: string
@@ -39,15 +45,78 @@ export default function AdminPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [activeSection, setActiveSection] = useState<'general' | 'milestones'>('general')
+  const [error, setError] = useState<string | null>(null)
+  const [submitStep, setSubmitStep] = useState<'db' | 'blockchain' | null>(null)
+
+  const wallet = useWallet()
+  const { registerContract: registerContractOnChain } = useContractRegistry()
 
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
 
   const handleSubmit = async () => {
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 1800))
-    setSubmitting(false)
-    setSubmitted(true)
+    setError(null)
+    setSubmitStep('db')
+
+    try {
+      // 1. Save to database
+      const contractData = {
+        title: form.title,
+        contractorName: form.contractor,
+        totalAmount: Number(form.amount_usdc),
+        deadline: form.deadline,
+        district: form.district,
+        lat: parseFloat(form.lat),
+        lng: parseFloat(form.lng),
+        milestones: form.milestones.map((m) => ({
+          description: m.desc,
+          deadlineDays: m.deadline_days,
+          tranchePct: m.tranche_pct,
+        })),
+      }
+
+      const created = await createContract(contractData)
+
+      // 2. Register on blockchain if wallet connected
+      if (wallet.publicKey) {
+        setSubmitStep('blockchain')
+        try {
+          const result = await registerContractOnChain(
+            form.title,
+            form.district,
+            Number(form.amount_usdc),
+            new Date(form.deadline).getTime() / 1000,
+            form.milestones.map((m) => ({
+              description: m.desc,
+              deadlineDays: m.deadline_days,
+              tranchePct: m.tranche_pct,
+            })),
+            parseFloat(form.lat),
+            parseFloat(form.lng),
+            wallet.publicKey
+          )
+
+          // Update DB record with on-chain pubkey
+          if (result?.pda) {
+            await fetch(`/api/contracts/${created.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ onChainPubkey: result.pda }),
+            })
+          }
+        } catch (blockchainErr: any) {
+          console.warn('Blockchain registration failed, contract saved to DB only:', blockchainErr)
+        }
+      }
+
+      setSubmitted(true)
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при создании контракта')
+    } finally {
+      setSubmitting(false)
+      setSubmitStep(null)
+    }
   }
 
   const addMilestone = () => {
@@ -103,7 +172,7 @@ export default function AdminPage() {
               Смотреть реестр
             </a>
             <button
-              onClick={() => { setForm(INITIAL_FORM); setSubmitted(false); }}
+              onClick={() => { setForm(INITIAL_FORM); setSubmitted(false); setError(null); }}
               className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               Добавить ещё
@@ -119,19 +188,40 @@ export default function AdminPage() {
       {/* Header */}
       <div className="bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center">
-              <svg width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M12 4v16m8-8H4" />
-              </svg>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center">
+                <svg width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Регистрация контракта</h1>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Регистрация контракта</h1>
+            <WalletMultiButton />
           </div>
           <p className="text-gray-500 dark:text-gray-400 ml-14">Добавьте новый государственный контракт в систему мониторинга</p>
+          {!wallet.publicKey && (
+            <p className="text-yellow-600 dark:text-yellow-400/80 text-xs ml-14 mt-1">
+              Подключите кошелек для регистрации контракта в блокчейне
+            </p>
+          )}
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        {/* Error display */}
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <svg width="20" height="20" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24" className="flex-shrink-0 mt-0.5">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-red-600 dark:text-red-400 text-sm font-medium">Ошибка</p>
+              <p className="text-red-500 dark:text-red-400/80 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Tab nav */}
         <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1 mb-6">
           {[
@@ -346,7 +436,7 @@ export default function AdminPage() {
               {submitting ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Регистрация в блокчейн...
+                  {submitStep === 'db' ? 'Сохранение в базу...' : submitStep === 'blockchain' ? 'Регистрация в блокчейн...' : 'Обработка...'}
                 </>
               ) : (
                 <>

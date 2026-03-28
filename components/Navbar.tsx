@@ -21,6 +21,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/', label: 'Карта' },
     { href: '/contracts', label: 'Контракты' },
+    { href: '/crowdfunding', label: 'Краудфандинг' },
     { href: '/treasury/Ауэзовский', label: 'Казна' },
     { href: '/profile', label: 'Профиль' },
     { href: '/register', label: 'Регистрация' },

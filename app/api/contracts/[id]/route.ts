@@ -44,6 +44,7 @@ export async function PATCH(
     data: {
       ...(body.status && { status: body.status }),
       ...(body.penaltyAmount !== undefined && { penaltyAmount: BigInt(body.penaltyAmount) }),
+      ...(body.onChainPubkey && { onChainPubkey: body.onChainPubkey }),
     },
   })
 
