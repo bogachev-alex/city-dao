@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -28,25 +28,29 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: root
-          key: ${{ secrets.DEPLOY_KEY }}
-          source: ".,!node_modules,!.git"
-          target: /var/www/amanat
-          rm: false
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Restart on server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: root
-          key: ${{ secrets.DEPLOY_KEY }}
-          script: |
-            cd /var/www/amanat
-            npm install --production=false --silent
-            pm2 restart amanat --update-env
-            pm2 save
-            echo "✅ Deployed $(date)"
+      - name: Sync files to server
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.next/cache' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            . root@${{ secrets.DEPLOY_HOST }}:/var/www/amanat/
+
+      - name: Restart app
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            root@${{ secrets.DEPLOY_HOST }} \
+            "cd /var/www/amanat \
+              && echo 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}' > .env.local \
+              && npm install --production=false --silent \
+              && pm2 restart amanat --update-env \
+              && pm2 save \
+              && echo '✅ Deployed at' \$(date)"
