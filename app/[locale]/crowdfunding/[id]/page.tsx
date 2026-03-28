@@ -79,20 +79,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
 
     setDonated(true)
 
-    // Try on-chain contribution if wallet connected
-    if (walletConnected) {
-      try {
-        // Note: in production, creator PublicKey would come from campaign data
-        // For demo, we skip on-chain if we don't have the creator's wallet
-        const result = await contributeOnChain(
-          // Placeholder — real app would derive from campaign.onChainPubkey
-          {} as any, campaign.title, amount, false
-        )
-        setTxInfo(result.tx)
-      } catch (err: any) {
-        console.log('On-chain contribution failed (continuing with DB):', err.message)
-      }
-    }
+    // On-chain contribution disabled until programs deployed to devnet
 
     // Record in database
     try {
