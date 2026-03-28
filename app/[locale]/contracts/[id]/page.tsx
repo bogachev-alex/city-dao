@@ -2,23 +2,25 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, normalizeContract } from '../../../lib/contracts'
-import { fetchContract } from '../../../lib/api'
-import MilestoneTracker from '../../../components/MilestoneTracker'
-import PenaltyCalculator from '../../../components/PenaltyCalculator'
-
-const statusConfig = {
-  active: { label: 'Активный', color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
-  penalized: { label: 'Штраф', color: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30' },
-  completed: { label: 'Завершён', color: 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
-  disputed: { label: 'Спор', color: 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/30' },
-}
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/routing'
+import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, normalizeContract } from '@/lib/contracts'
+import { fetchContract } from '@/lib/api'
+import MilestoneTracker from '@/components/MilestoneTracker'
+import PenaltyCalculator from '@/components/PenaltyCalculator'
 
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
+  const t = useTranslations('contractDetail')
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const statusConfig = {
+    active: { label: t('statusActive'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
+    penalized: { label: t('statusPenalized'), color: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30' },
+    completed: { label: t('statusCompleted'), color: 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
+    disputed: { label: t('statusDisputed'), color: 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/30' },
+  }
 
   useEffect(() => {
     if (!params.id) return
@@ -51,8 +53,8 @@ export default function ContractDetailPage() {
     return (
       <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-500 dark:text-gray-400 text-lg mb-2">Контракт не найден</div>
-          <Link href="/contracts" className="text-emerald-600 dark:text-emerald-400 text-sm hover:underline">Вернуться к реестру</Link>
+          <div className="text-gray-500 dark:text-gray-400 text-lg mb-2">{t('notFound')}</div>
+          <Link href="/contracts" className="text-emerald-600 dark:text-emerald-400 text-sm hover:underline">{t('backToRegistry')}</Link>
         </div>
       </div>
     )
@@ -65,9 +67,9 @@ export default function ContractDetailPage() {
   const status = statusConfig[contract.status]
 
   const PHOTO_EVIDENCE = [
-    { label: 'Начало работ', date: '10.03.2026' },
-    { label: 'Промежуточный этап', date: '18.03.2026' },
-    { label: 'Текущее состояние', date: '25.03.2026' },
+    { label: t('photoStart'), date: '10.03.2026' },
+    { label: t('photoMid'), date: '18.03.2026' },
+    { label: t('photoCurrent'), date: '25.03.2026' },
   ]
 
   const activeReviewMilestone = contract.milestones.find((m) => m.status === 'under_review')
@@ -81,7 +83,7 @@ export default function ContractDetailPage() {
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M15 19l-7-7 7-7" />
             </svg>
-            Реестр контрактов
+            {t('registryTitle')}
           </Link>
           <span className="text-gray-300 dark:text-gray-700">/</span>
           <span className="text-gray-500 dark:text-gray-400 text-sm truncate">{contract.title}</span>
@@ -105,25 +107,25 @@ export default function ContractDetailPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Подрядчик</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('contractor')}</div>
                   <div className="text-gray-900 dark:text-white text-sm font-medium">{contract.contractor}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Район</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('district')}</div>
                   <div className="text-gray-900 dark:text-white text-sm font-medium">{contract.district}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Сумма</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('amount')}</div>
                   <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatAmount(contract.amount_usdc)} USDC</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Дедлайн</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('deadline')}</div>
                   <div className={`text-sm font-medium ${
                     daysLeft < 0 ? 'text-red-500 dark:text-red-400' : daysLeft < 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-white'
                   }`}>
                     {daysLeft < 0
-                      ? `Просрочен ${Math.abs(daysLeft)} дн.`
-                      : `${daysLeft} дн. осталось`}
+                      ? t('overdueDays', { days: Math.abs(daysLeft) })
+                      : t('daysLeft', { days: daysLeft })}
                   </div>
                 </div>
               </div>
@@ -131,8 +133,8 @@ export default function ContractDetailPage() {
               {/* Progress */}
               <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-500 dark:text-gray-400">Общий прогресс</span>
-                  <span className="text-gray-900 dark:text-white font-medium">{completed}/{total} этапов • {progressPct}%</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t('overallProgress')}</span>
+                  <span className="text-gray-900 dark:text-white font-medium">{completed}/{total} {t('milestones')} • {progressPct}%</span>
                 </div>
                 <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
@@ -149,7 +151,7 @@ export default function ContractDetailPage() {
                 <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
-                Этапы выполнения
+                {t('executionStages')}
               </h2>
               <MilestoneTracker milestones={contract.milestones} contractId={contract.id} />
             </div>
@@ -160,7 +162,7 @@ export default function ContractDetailPage() {
                 <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                Фотодоказательства
+                {t('photoEvidence')}
               </h2>
               <div className="grid grid-cols-3 gap-3">
                 {PHOTO_EVIDENCE.map((photo, i) => (
@@ -178,7 +180,7 @@ export default function ContractDetailPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">Фото хранятся в IPFS. Хэш подтверждён подрядчиком и присяжными.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t('photoIpfs')}</p>
             </div>
           </div>
 
@@ -193,15 +195,15 @@ export default function ContractDetailPage() {
                 <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Жюри
+                {t('jury')}
               </h3>
               {activeReviewMilestone ? (
                 <div className="space-y-3">
-                  <div className="bg-yellow-50 dark:bg-yellow-500/20 border border-yellow-200 dark:border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-700">
-                    Активная проверка этапа
+                  <div className="bg-yellow-50 dark:bg-yellow-500/20 border border-yellow-200 dark:border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-700 dark:text-yellow-300">
+                    {t('activeReview')}
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Проголосовало</span>
+                    <span className="text-gray-500 dark:text-gray-400">{t('voted')}</span>
                     <span className="text-gray-900 dark:text-white font-medium">7 / 9</span>
                   </div>
                   <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
@@ -211,23 +213,23 @@ export default function ContractDetailPage() {
                     href={`/jury/${contract.id}-${activeReviewMilestone.id}`}
                     className="block w-full text-center py-2.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
                   >
-                    Участвовать в голосовании
+                    {t('participateVoting')}
                   </Link>
                 </div>
               ) : (
-                <div className="text-sm text-gray-400 dark:text-gray-500">Активных сессий нет</div>
+                <div className="text-sm text-gray-400 dark:text-gray-500">{t('noActiveSessions')}</div>
               )}
             </div>
 
             {/* Contract meta */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-              <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Метаданные</h3>
+              <h3 className="text-gray-900 dark:text-white font-semibold mb-4">{t('metadata')}</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { label: 'ID контракта', value: `#${contract.id.slice(0, 8)}` },
-                  { label: 'Координаты', value: `${contract.lat}, ${contract.lng}` },
-                  { label: 'Эскроу (20%)', value: `${formatAmount(contract.escrow_amount)} USDC` },
-                  { label: 'Статус', value: statusConfig[contract.status].label },
+                  { label: t('contractId'), value: `#${contract.id.slice(0, 8)}` },
+                  { label: t('coordinates'), value: `${contract.lat}, ${contract.lng}` },
+                  { label: t('escrow20'), value: `${formatAmount(contract.escrow_amount)} USDC` },
+                  { label: t('status'), value: statusConfig[contract.status].label },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between">
                     <span className="text-gray-400 dark:text-gray-500">{item.label}</span>

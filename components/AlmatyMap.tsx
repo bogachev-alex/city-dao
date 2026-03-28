@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS } from '../lib/contracts'
-import { fetchContracts } from '../lib/api'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
+import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS } from '@/lib/contracts'
+import { fetchContracts } from '@/lib/api'
 import { useTheme } from './ThemeProvider'
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
@@ -21,13 +22,6 @@ const PIN_COLORS = {
   yellow: '#f59e0b',
   red: '#ef4444',
   checkmark: '#3b82f6',
-}
-
-const PIN_LABELS = {
-  green: 'В срок',
-  yellow: 'Риск',
-  red: 'Просрочен',
-  checkmark: 'Завершён',
 }
 
 function createColoredIcon(color: string, isOverdue: boolean = false) {
@@ -62,9 +56,18 @@ function MapController() {
 }
 
 export default function AlmatyMap() {
+  const t = useTranslations('components.almatyMap')
+  const locale = useLocale()
   const [contracts, setContracts] = useState<Contract[]>([])
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+
+  const PIN_LABELS = {
+    green: t('onTime'),
+    yellow: t('risk'),
+    red: t('overdue'),
+    checkmark: t('completed'),
+  }
 
   useEffect(() => {
     fetchContracts()
@@ -144,12 +147,12 @@ export default function AlmatyMap() {
                 </div>
                 <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '12px', marginBottom: '12px' }}>
                   {daysLeft < 0
-                    ? <span style={{ color: isDark ? '#f87171' : '#ef4444' }}>Просрочен на {Math.abs(daysLeft)} дн.</span>
-                    : <span style={{ color: daysLeft < 7 ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#9ca3af' : '#6b7280') }}>{daysLeft} дн. до дедлайна</span>
+                    ? <span style={{ color: isDark ? '#f87171' : '#ef4444' }}>{t('overdueBy', { days: Math.abs(daysLeft) })}</span>
+                    : <span style={{ color: daysLeft < 7 ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#9ca3af' : '#6b7280') }}>{t('daysUntilDeadline', { days: daysLeft })}</span>
                   }
                 </div>
                 <a
-                  href={`/contracts/${contract.id}`}
+                  href={`/${locale}/contracts/${contract.id}`}
                   style={{
                     display: 'block',
                     textAlign: 'center',
@@ -162,7 +165,7 @@ export default function AlmatyMap() {
                     textDecoration: 'none',
                   }}
                 >
-                  Подробнее →
+                  {t('details')}
                 </a>
               </div>
             </Popup>

@@ -1,6 +1,11 @@
-import CitizenRegistration from '../../components/CitizenRegistration'
+'use client'
+
+import { useTranslations } from 'next-intl'
+import CitizenRegistration from '@/components/CitizenRegistration'
 
 export default function RegisterPage() {
+  const t = useTranslations('register')
+
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Hero */}
@@ -12,18 +17,18 @@ export default function RegisterPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-            Стать гражданином <span className="text-emerald-600 dark:text-emerald-400">Amanat</span>
+            {t('title')} <span className="text-emerald-600 dark:text-emerald-400">{t('titleAccent')}</span>
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Зарегистрируйтесь как присяжный гражданин и участвуйте в контроле за государственными контрактами вашего района
+            {t('subtitle')}
           </p>
 
           {/* Benefits */}
           <div className="grid grid-cols-3 gap-3 mt-6">
             {[
-              { icon: '⚖️', title: 'Голосование', desc: 'Оцениваете качество работ' },
-              { icon: '💎', title: 'Репутация', desc: 'Бронза → Серебро → Золото' },
-              { icon: '💰', title: 'Награды', desc: 'USDC за точные голоса' },
+              { icon: '⚖️', title: t('votingTitle'), desc: t('votingDesc') },
+              { icon: '💎', title: t('reputationTitle'), desc: t('reputationDesc') },
+              { icon: '💰', title: t('rewardsTitle'), desc: t('rewardsDesc') },
             ].map((b) => (
               <div key={b.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3">
                 <div className="text-2xl mb-1.5">{b.icon}</div>

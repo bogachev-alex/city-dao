@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 const MOCK_PROFILE = {
   address: '0xA3f2...9D2b',
@@ -30,6 +30,7 @@ const TIER_CONFIG = {
 }
 
 export default function ProfilePage() {
+  const t = useTranslations('profile')
   const [activeTab, setActiveTab] = useState<'votes' | 'jury'>('votes')
   const tier = TIER_CONFIG[MOCK_PROFILE.tier]
   const nextTier = MOCK_PROFILE.tier === 'Bronze' ? 'Silver' : MOCK_PROFILE.tier === 'Silver' ? 'Gold' : null
@@ -52,7 +53,7 @@ export default function ProfilePage() {
 
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Гражданин Алматы</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('citizenAlmaty')}</h1>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border bg-gradient-to-r ${tier.bg} ${tier.color} ${tier.border}`}>
                   {MOCK_PROFILE.tier}
                 </span>
@@ -63,18 +64,18 @@ export default function ProfilePage() {
                   <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {MOCK_PROFILE.district} район
+                {MOCK_PROFILE.district} {t('district')}
               </div>
             </div>
 
             {/* Reputation */}
             <div className="sm:text-right">
               <div className={`text-5xl font-black ${tier.color} mb-1`}>{MOCK_PROFILE.reputation}</div>
-              <div className="text-gray-500 dark:text-gray-400 text-sm">очков репутации</div>
+              <div className="text-gray-500 dark:text-gray-400 text-sm">{t('reputationPoints')}</div>
               {nextTier && (
                 <div className="mt-2">
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">До {nextTier}: {tier.max - MOCK_PROFILE.reputation} очков</div>
-                  <div className="w-32 h-1.5 bg-gray-200 rounded-full ml-auto">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">{t('until')} {nextTier}: {tier.max - MOCK_PROFILE.reputation} {t('points')}</div>
+                  <div className="w-32 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full ml-auto">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${
                         MOCK_PROFILE.tier === 'Bronze' ? 'from-orange-500 to-orange-400' : 'from-gray-400 to-gray-300'
@@ -93,10 +94,10 @@ export default function ProfilePage() {
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Голосов подано', value: MOCK_PROFILE.stats.votesCast, color: 'text-blue-600 dark:text-blue-400', icon: '🗳️' },
-            { label: 'Точность', value: `${MOCK_PROFILE.stats.accuracy}%`, color: 'text-emerald-600 dark:text-emerald-400', icon: '🎯' },
-            { label: 'Наград получено', value: `${MOCK_PROFILE.stats.rewardsEarned} USDC`, color: 'text-yellow-600 dark:text-yellow-400', icon: '💰' },
-            { label: 'Сессий жюри', value: MOCK_PROFILE.stats.juryAssignments, color: 'text-purple-600 dark:text-purple-400', icon: '⚖️' },
+            { label: t('votesCast'), value: MOCK_PROFILE.stats.votesCast, color: 'text-blue-600 dark:text-blue-400', icon: '🗳️' },
+            { label: t('accuracy'), value: `${MOCK_PROFILE.stats.accuracy}%`, color: 'text-emerald-600 dark:text-emerald-400', icon: '🎯' },
+            { label: t('rewardsEarned'), value: `${MOCK_PROFILE.stats.rewardsEarned} USDC`, color: 'text-yellow-600 dark:text-yellow-400', icon: '💰' },
+            { label: t('jurySessions'), value: MOCK_PROFILE.stats.juryAssignments, color: 'text-purple-600 dark:text-purple-400', icon: '⚖️' },
           ].map((stat) => (
             <div key={stat.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
               <div className="text-2xl mb-2">{stat.icon}</div>
@@ -109,8 +110,8 @@ export default function ProfilePage() {
         {/* Tabs */}
         <div className="flex gap-2 mb-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1">
           {[
-            { id: 'votes', label: 'История голосований' },
-            { id: 'jury', label: 'Сессии жюри' },
+            { id: 'votes', label: t('votingHistory') },
+            { id: 'jury', label: t('jurySessionsTab') },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -130,10 +131,10 @@ export default function ProfilePage() {
         {activeTab === 'votes' && (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
             <div className="grid grid-cols-5 gap-4 px-5 py-3 border-b border-gray-200 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider">
-              <div className="col-span-2">Контракт</div>
-              <div>Голос</div>
-              <div>Результат</div>
-              <div className="text-right">Репутация</div>
+              <div className="col-span-2">{t('contract')}</div>
+              <div>{t('vote')}</div>
+              <div>{t('result')}</div>
+              <div className="text-right">{t('reputation')}</div>
             </div>
             {VOTING_HISTORY.map((entry, i) => (
               <div
@@ -151,14 +152,14 @@ export default function ProfilePage() {
                       ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                       : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
                   }`}>
-                    {entry.vote === 'accept' ? 'Принял' : 'Отклонил'}
+                    {entry.vote === 'accept' ? t('accepted') : t('rejected')}
                   </span>
                 </div>
                 <div>
                   <span className={`text-xs font-medium ${
                     entry.outcome === 'correct' ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-400'
                   }`}>
-                    {entry.outcome === 'correct' ? '✓ Верно' : '~ Меньшинство'}
+                    {entry.outcome === 'correct' ? t('correct') : t('minority')}
                   </span>
                 </div>
                 <div className={`text-right font-bold ${entry.repChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
