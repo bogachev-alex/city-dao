@@ -4,16 +4,17 @@ import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/routing'
 import { useLocale } from 'next-intl'
 import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { useTheme } from './ThemeProvider'
 
 function WalletButton() {
   const { connected, connecting, publicKey, select, connect, disconnect, wallet, wallets } = useWallet()
+  const { connection } = useConnection()
   const [error, setError] = useState<string | null>(null)
+  const [wrongNetwork, setWrongNetwork] = useState(false)
   const pendingConnect = useRef(false)
 
-  // After select() updates the context, fire connect()
   useEffect(() => {
     if (pendingConnect.current && wallet && !connected && !connecting) {
       pendingConnect.current = false
@@ -23,20 +24,25 @@ function WalletButton() {
     }
   }, [wallet, connected, connecting, connect])
 
+  useEffect(() => {
+    if (!connected) { setWrongNetwork(false); return }
+    connection.getGenesisHash().then((hash) => {
+      const isDevnet = hash === 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG'
+      setWrongNetwork(!isDevnet)
+    }).catch(() => {})
+  }, [connected, connection])
+
   const handleConnect = useCallback(() => {
     setError(null)
-
     const phantom = wallets.find(
       (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
     )
     const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
     const target = phantom || anyInstalled
-
     if (!target) {
       window.open('https://phantom.app/', '_blank')
       return
     }
-
     pendingConnect.current = true
     select(target.adapter.name)
   }, [wallets, select])
@@ -48,17 +54,19 @@ function WalletButton() {
   if (connected && publicKey) {
     const addr = publicKey.toBase58()
     return (
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          {addr.slice(0, 4)}…{addr.slice(-4)}
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border ${wrongNetwork ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${wrongNetwork ? 'bg-red-400' : 'bg-emerald-400'}`} />
+            {addr.slice(0, 4)}…{addr.slice(-4)}
+          </div>
+          <button onClick={handleDisconnect} className="px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400 hover:text-white transition-colors">
+            ✕
+          </button>
         </div>
-        <button
-          onClick={handleDisconnect}
-          className="px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400 hover:text-white transition-colors"
-        >
-          ✕
-        </button>
+        {wrongNetwork && (
+          <span className="text-xs text-red-400">Переключите Phantom на Devnet</span>
+        )}
       </div>
     )
   }
@@ -153,9 +161,7 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Language switcher + Wallet + mobile toggle */}
           <div className="flex items-center gap-3">
-            {/* Language switcher */}
             <button
               onClick={switchLocale}
               disabled={isPending}
@@ -164,7 +170,6 @@ export default function Navbar() {
               {locale === 'ru' ? 'KK' : 'RU'}
             </button>
 
-            {/* Solana wallet button */}
             {mounted && (
               <div className="hidden md:block">
                 <WalletButton />
