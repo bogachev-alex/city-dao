@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import ProposalResearch from './ProposalResearch'
-import { useDistrictTreasury } from '../lib/web3/useDistrictTreasury'
+import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
 
 interface Vote {
   id: string
@@ -36,6 +37,7 @@ interface TreasuryDashboardProps {
 }
 
 export default function TreasuryDashboard({ district }: TreasuryDashboardProps) {
+  const t = useTranslations('components.treasuryDashboard')
   const { connected: walletConnected } = useWallet()
   const { voteOnProposal: voteOnChain, loading: solanaLoading } = useDistrictTreasury()
   const [treasury, setTreasury] = useState<TreasuryData | null>(null)
@@ -143,18 +145,18 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       {/* Balance cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/20 dark:to-emerald-600/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6">
-          <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Баланс казны района</div>
+          <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('treasuryBalance')}</div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
           <div className="mt-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Live баланс</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('liveBalance')}</span>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Предложений</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('proposals')}</div>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{proposals.length}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">активных голосований</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('activeVotings')}</div>
           <div className="mt-3">
             <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
               <div className="h-full bg-emerald-500 rounded-full" style={{ width: proposals.length > 0 ? '100%' : '0%' }} />
@@ -167,7 +169,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       {txInfo && (
         <div className="bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3 flex items-center gap-2 text-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-emerald-600 dark:text-emerald-400">Голос записан</span>
+          <span className="text-emerald-600 dark:text-emerald-400">{t('voteRecorded')}</span>
           {txInfo && (
             <a href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
               tx
@@ -182,11 +184,11 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
-          Предложения по расходам
+          {t('spendingProposals')}
         </h3>
         {proposals.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
-            Нет активных предложений
+            {t('noActiveProposals')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -210,8 +212,8 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                           proposal.status === 'EXECUTED' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
                           'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                         }`}>
-                          {proposal.status === 'VOTING' ? 'Голосование' :
-                           proposal.status === 'EXECUTED' ? 'Исполнено' :
+                          {proposal.status === 'VOTING' ? t('voting') :
+                           proposal.status === 'EXECUTED' ? t('executed') :
                            proposal.status}
                         </span>
                       </div>
@@ -229,18 +231,18 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                             onClick={() => handleVote(proposal.id, proposal.title, true)}
                             className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
                           >
-                            За
+                            {t('for')}
                           </button>
                           <button
                             onClick={() => handleVote(proposal.id, proposal.title, false)}
                             className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
                           >
-                            Против
+                            {t('against')}
                           </button>
                         </div>
                       ) : hasVoted ? (
                         <span className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-lg">
-                          Проголосовано
+                          {t('voted')}
                         </span>
                       ) : null}
                     </div>
@@ -248,9 +250,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
 
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
-                      <span>За: {proposal.votesFor}</span>
+                      <span>{t('for')}: {proposal.votesFor}</span>
                       <span>{forPct}%</span>
-                      <span>Против: {proposal.votesAgainst}</span>
+                      <span>{t('against')}: {proposal.votesAgainst}</span>
                     </div>
                     <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
                       <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${forPct}%` }} />

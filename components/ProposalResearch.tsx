@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface ResearchReport {
   swot: {
@@ -52,14 +53,15 @@ const verdictColor = (v: string) =>
 const riskColor = (score: number) =>
   score < 30 ? '#10b981' : score < 60 ? '#f59e0b' : '#ef4444'
 
-const riskLabel = (rec: string) =>
-  rec === 'LOW_RISK' ? 'Низкий риск' : rec === 'MEDIUM_RISK' ? 'Средний риск' : 'Высокий риск'
-
 export default function ProposalResearch({ proposal }: Props) {
+  const t = useTranslations('components.proposalResearch')
   const [report, setReport] = useState<ResearchReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const riskLabel = (rec: string) =>
+    rec === 'LOW_RISK' ? t('lowRisk') : rec === 'MEDIUM_RISK' ? t('mediumRisk') : t('highRisk')
 
   const runResearch = async () => {
     setLoading(true)
@@ -73,7 +75,7 @@ export default function ProposalResearch({ proposal }: Props) {
       })
       if (!res.ok) {
         const e = await res.json()
-        throw new Error(e.error || 'Ошибка сервера')
+        throw new Error(e.error || 'Server error')
       }
       const data = await res.json()
       setReport(data)
@@ -95,7 +97,7 @@ export default function ProposalResearch({ proposal }: Props) {
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.35-4.35M11 8v6M8 11h6" />
         </svg>
-        AI Анализ
+        {t('aiAnalysis')}
       </button>
 
       {/* Slide-in panel */}
@@ -130,9 +132,9 @@ export default function ProposalResearch({ proposal }: Props) {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                     <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                    Агент исследует проект в интернете...
+                    {t('agentResearching')}
                   </div>
-                  {['Проверка рыночных цен...', 'Поиск аналогичных проектов...', 'Анализ рисков...', 'Формирование SWOT...'].map((step, i) => (
+                  {[t('checkingPrices'), t('searchingSimilar'), t('analyzingRisks'), t('formingSwot')].map((step, i) => (
                     <div key={i} className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 animate-pulse" style={{ animationDelay: `${i * 0.3}s` }}>
                       <div className="w-1.5 h-1.5 rounded-full bg-purple-300" />
                       {step}
@@ -154,7 +156,7 @@ export default function ProposalResearch({ proposal }: Props) {
                   {/* Risk meter */}
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Индекс риска</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t('riskIndex')}</span>
                       <span className="text-xs px-2.5 py-1 rounded-full font-medium border"
                         style={{
                           color: riskColor(report.risk_score),
@@ -174,9 +176,9 @@ export default function ProposalResearch({ proposal }: Props) {
                       />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
-                      <span>0 — Минимальный</span>
+                      <span>0 — {t('minimum')}</span>
                       <span className="font-bold" style={{ color: riskColor(report.risk_score) }}>{report.risk_score}/100</span>
-                      <span>100 — Максимальный</span>
+                      <span>100 — {t('maximum')}</span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{report.recommendation_ru}</p>
                   </div>
@@ -184,15 +186,15 @@ export default function ProposalResearch({ proposal }: Props) {
                   {/* Cost analysis */}
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
                     <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-4 flex items-center gap-2">
-                      <span className="text-base">💰</span> Анализ бюджета
+                      <span className="text-base">💰</span> {t('budgetAnalysis')}
                     </h3>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-3">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Предложено</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('proposed')}</div>
                         <div className="text-gray-900 dark:text-white font-bold text-sm">{new Intl.NumberFormat('ru-KZ').format(report.cost_analysis.proposed)} ₸</div>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-3">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Среднее по рынку</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('marketAverage')}</div>
                         <div className="text-gray-900 dark:text-white font-bold text-sm">{new Intl.NumberFormat('ru-KZ').format(report.cost_analysis.market_average)} ₸</div>
                       </div>
                     </div>
@@ -207,14 +209,14 @@ export default function ProposalResearch({ proposal }: Props) {
                   {/* SWOT */}
                   <div>
                     <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-3 flex items-center gap-2">
-                      <span className="text-base">🔍</span> SWOT-анализ
+                      <span className="text-base">🔍</span> {t('swotAnalysis')}
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { key: 'strengths', label: 'Сильные стороны', color: 'emerald', icon: '✅' },
-                        { key: 'weaknesses', label: 'Слабые стороны', color: 'red', icon: '⚠️' },
-                        { key: 'opportunities', label: 'Возможности', color: 'blue', icon: '🚀' },
-                        { key: 'threats', label: 'Угрозы', color: 'yellow', icon: '🛡️' },
+                        { key: 'strengths', label: t('strengths'), color: 'emerald', icon: '✅' },
+                        { key: 'weaknesses', label: t('weaknesses'), color: 'red', icon: '⚠️' },
+                        { key: 'opportunities', label: t('opportunities'), color: 'blue', icon: '🚀' },
+                        { key: 'threats', label: t('threats'), color: 'yellow', icon: '🛡️' },
                       ].map(({ key, label, color, icon }) => (
                         <div key={key} className={`bg-${color}-50 border border-${color}-200 rounded-xl p-4`}>
                           <div className={`text-xs font-semibold text-${color}-600 mb-2 flex items-center gap-1`}>
@@ -237,7 +239,7 @@ export default function ProposalResearch({ proposal }: Props) {
                   {report.similar_projects?.length > 0 && (
                     <div>
                       <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-3 flex items-center gap-2">
-                        <span className="text-base">🌍</span> Аналогичные проекты в мире
+                        <span className="text-base">🌍</span> {t('similarProjects')}
                       </h3>
                       <div className="space-y-2">
                         {report.similar_projects.map((p, i) => (
@@ -261,7 +263,7 @@ export default function ProposalResearch({ proposal }: Props) {
                   <div className="grid grid-cols-1 gap-3">
                     {report.key_positives?.length > 0 && (
                       <div className="bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4">
-                        <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">Почему стоит поддержать</div>
+                        <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">{t('whySupport')}</div>
                         <ul className="space-y-1">
                           {report.key_positives.map((p, i) => (
                             <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex gap-2"><span className="text-emerald-500 dark:text-emerald-400 shrink-0">+</span>{p}</li>
@@ -271,7 +273,7 @@ export default function ProposalResearch({ proposal }: Props) {
                     )}
                     {report.key_concerns?.length > 0 && (
                       <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4">
-                        <div className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">На что обратить внимание</div>
+                        <div className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">{t('whatToWatch')}</div>
                         <ul className="space-y-1">
                           {report.key_concerns.map((c, i) => (
                             <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex gap-2"><span className="text-red-500 dark:text-red-400 shrink-0">!</span>{c}</li>
@@ -284,7 +286,7 @@ export default function ProposalResearch({ proposal }: Props) {
                   {/* Sources */}
                   {report.sources_used?.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-                      <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">Источники</div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">{t('sources')}</div>
                       <div className="flex flex-wrap gap-2">
                         {report.sources_used.map((s, i) => (
                           <span key={i} className="text-xs bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded px-2 py-1 text-gray-500 dark:text-gray-400">{s}</span>

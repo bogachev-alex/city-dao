@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { generateSalt, hashVoteCommitment } from '../lib/crypto'
+import { useTranslations } from 'next-intl'
+import { generateSalt, hashVoteCommitment } from '@/lib/crypto'
 
 interface JuryVotingProps {
   sessionId: string
@@ -30,13 +31,8 @@ interface JurySessionData {
   }[]
 }
 
-const PHOTO_PLACEHOLDERS = [
-  { label: 'Фото 1: Состояние до', color: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700' },
-  { label: 'Фото 2: Процесс работ', color: 'from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700' },
-  { label: 'Фото 3: Завершение', color: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700' },
-]
-
 export default function JuryVoting({ sessionId }: JuryVotingProps) {
+  const t = useTranslations('components.juryVoting')
   const [session, setSession] = useState<JurySessionData | null>(null)
   const [phase, setPhase] = useState<Phase>('loading')
   const [vote, setVote] = useState<'accept' | 'reject' | null>(null)
@@ -47,6 +43,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const [timeLeft, setTimeLeft] = useState(0)
 
   const storageKey = `jury_salt_${sessionId}`
+
+  const PHOTO_PLACEHOLDERS = [
+    { label: t('photo1'), color: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700' },
+    { label: t('photo2'), color: 'from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700' },
+    { label: t('photo3'), color: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700' },
+  ]
+
 
   useEffect(() => {
     fetch(`/api/jury?sessionId=${sessionId}`)
@@ -90,10 +93,10 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         }
       })
       .catch(() => {
-        setError('Не удалось загрузить сессию')
+        setError(t('loadError'))
         setPhase('error')
       })
-  }, [sessionId, storageKey])
+  }, [sessionId, storageKey, t])
 
   useEffect(() => {
     if (phase === 'results' || phase === 'loading' || phase === 'error') return
@@ -144,7 +147,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         }
       }
     } catch {
-      setError('Ошибка при отправке голоса')
+      setError(t('voteError'))
     } finally {
       setLoading(false)
     }
@@ -176,7 +179,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         setPhase('results')
       }
     } catch {
-      setError('Ошибка при раскрытии голоса')
+      setError(t('revealError'))
     } finally {
       setLoading(false)
     }
@@ -202,7 +205,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   if (phase === 'error') {
     return (
       <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-5 text-red-600 dark:text-red-400 text-sm">
-        {error || 'Неизвестная ошибка'}
+        {error || t('unknownError')}
       </div>
     )
   }
@@ -214,9 +217,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="text-gray-700 dark:text-gray-300">{session.contract.title}</span> → {session.milestone.description}
           <span className="ml-2">•</span>
-          <span className="ml-2">{committed}/{totalVoters} коммитов</span>
+          <span className="ml-2">{committed}/{totalVoters} {t('commits')}</span>
           <span className="ml-1">•</span>
-          <span className="ml-1">{revealed}/{totalVoters} раскрыто</span>
+          <span className="ml-1">{revealed}/{totalVoters} {t('revealed')}</span>
         </div>
       )}
 
@@ -234,7 +237,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                 phase === p ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
               }`}>{i + 1}</span>
-              {p === 'commit' ? 'Голосование' : p === 'reveal' ? 'Раскрытие' : 'Результаты'}
+              {p === 'commit' ? t('votingPhase') : p === 'reveal' ? t('revealPhase') : t('resultsPhase')}
             </div>
             {i < 2 && <div className="w-4 h-0.5 bg-gray-200" />}
           </div>
@@ -259,7 +262,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       {phase === 'commit' && (
         <div className="space-y-5">
           <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-3">Фотоматериалы подрядчика</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('contractorPhotos')}</h3>
             <div className="grid grid-cols-3 gap-3">
               {PHOTO_PLACEHOLDERS.map((photo, i) => (
                 <div key={i} className={`aspect-video rounded-xl bg-gradient-to-br ${photo.color} border border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-colors group`}>
@@ -273,7 +276,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           </div>
 
           <div>
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-3">Ваш голос</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('yourVote')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setVote('accept')} className={`p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
                 vote === 'accept' ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/20 shadow-md' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-500/40'
@@ -282,8 +285,8 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
                   <svg width="24" height="24" fill="none" stroke={vote === 'accept' ? 'white' : '#9ca3af'} strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <div>
-                  <div className={`font-semibold ${vote === 'accept' ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Принять</div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500">Работа выполнена</div>
+                  <div className={`font-semibold ${vote === 'accept' ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{t('accept')}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">{t('workDone')}</div>
                 </div>
               </button>
               <button onClick={() => setVote('reject')} className={`p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
@@ -293,8 +296,8 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
                   <svg width="24" height="24" fill="none" stroke={vote === 'reject' ? 'white' : '#9ca3af'} strokeWidth="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
                 </div>
                 <div>
-                  <div className={`font-semibold ${vote === 'reject' ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>Отклонить</div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500">Требует доработки</div>
+                  <div className={`font-semibold ${vote === 'reject' ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>{t('reject')}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">{t('needsRevision')}</div>
                 </div>
               </button>
             </div>
@@ -304,13 +307,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
             vote ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
           }`}>
             {loading ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Отправка в БД...</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('sendingToDb')}</>
             ) : (
-              <><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Зафиксировать голос</>
+              <><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>{t('commitVote')}</>
             )}
           </button>
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-            SHA-256(голос + соль) сохраняется в БД. Соль — в localStorage для раскрытия.
+            {t('commitExplanation')}
           </p>
         </div>
       )}
@@ -319,16 +322,16 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       {phase === 'reveal' && (
         <div className="space-y-5">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Ваш зафиксированный голос</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold mb-4">{t('yourCommittedVote')}</h3>
             <div className="space-y-3">
               <div>
-                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Голос</div>
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('voteLabel')}</div>
                 <div className={`font-medium ${vote === 'accept' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {vote === 'accept' ? 'ПРИНЯТЬ' : 'ОТКЛОНИТЬ'}
+                  {vote === 'accept' ? t('acceptUpper') : t('rejectUpper')}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Хэш коммита (SHA-256)</div>
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('commitHash')}</div>
                 <div className="font-mono text-xs text-gray-500 dark:text-gray-400 break-all bg-gray-50 dark:bg-gray-950 p-2 rounded border border-gray-200 dark:border-gray-800">
                   {commitHash}
                 </div>
@@ -341,15 +344,15 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {committed}/{totalVoters} присяжных зафиксировали голоса. Раскройте свой голос.
+              {t('jurorsCommitted', { committed, total: totalVoters })}
             </div>
           </div>
 
           <button onClick={handleReveal} disabled={loading} className="w-full py-3.5 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md transition-all flex items-center justify-center gap-2">
             {loading ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Раскрытие голоса...</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('revealingVote')}</>
             ) : (
-              <><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>Раскрыть мой голос</>
+              <><svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>{t('revealVote')}</>
             )}
           </button>
         </div>
@@ -372,19 +375,19 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               </svg>
             </div>
             <h3 className="text-gray-900 dark:text-white font-bold text-xl mb-1">
-              {session?.status === 'ESCALATED' ? 'Ничья — эскалация' : 'Голосование завершено'}
+              {session?.status === 'ESCALATED' ? t('tieEscalation') : t('votingFinished')}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              {session?.result === 'ACCEPT' ? 'Этап принят большинством голосов' : session?.result === 'REJECT' ? 'Этап отклонён' : 'Решение не принято, передано на расширенное жюри'}
+              {session?.result === 'ACCEPT' ? t('stageAccepted') : session?.result === 'REJECT' ? t('stageRejected') : t('noDecision')}
             </p>
           </div>
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <h4 className="text-gray-500 dark:text-gray-400 text-sm mb-4">Распределение голосов (взвешенное)</h4>
+            <h4 className="text-gray-500 dark:text-gray-400 text-sm mb-4">{t('weightedDistribution')}</h4>
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Принято</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t('accepted')}</span>
                   <span className="text-gray-900 dark:text-white font-bold">{acceptWeight} / {totalWeight}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -393,7 +396,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-red-500 dark:text-red-400 font-medium">Отклонено</span>
+                  <span className="text-red-500 dark:text-red-400 font-medium">{t('rejected')}</span>
                   <span className="text-gray-900 dark:text-white font-bold">{rejectWeight} / {totalWeight}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -405,13 +408,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
 
           {/* Individual votes */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <h4 className="text-gray-500 dark:text-gray-400 text-sm mb-3">Голоса присяжных</h4>
+            <h4 className="text-gray-500 dark:text-gray-400 text-sm mb-3">{t('jurorVotes')}</h4>
             <div className="space-y-2">
               {session?.votes.map((v) => (
                 <div key={v.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${v.isExpert ? 'bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
-                      {v.isExpert ? 'Эксперт' : 'Гражданин'}
+                      {v.isExpert ? t('expert') : t('citizen')}
                     </span>
                     <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">{v.citizen.walletAddress.slice(0, 12)}...</span>
                     <span className="text-gray-400 dark:text-gray-500 text-xs">x{v.weight}</span>
@@ -419,7 +422,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
                   <span className={`font-medium ${
                     v.revealedVote === 'ACCEPT' ? 'text-emerald-600 dark:text-emerald-400' : v.revealedVote === 'REJECT' ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'
                   }`}>
-                    {v.revealedVote === 'ACCEPT' ? 'Принял' : v.revealedVote === 'REJECT' ? 'Отклонил' : v.commitHash ? 'Скрыт' : '—'}
+                    {v.revealedVote === 'ACCEPT' ? t('acceptedVerb') : v.revealedVote === 'REJECT' ? t('rejectedVerb') : v.commitHash ? t('hidden') : '—'}
                   </span>
                 </div>
               ))}

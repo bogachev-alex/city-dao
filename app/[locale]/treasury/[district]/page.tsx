@@ -1,14 +1,14 @@
 'use client'
 
-import Link from 'next/link'
-import TreasuryDashboard from '../../../components/TreasuryDashboard'
-import { DISTRICTS } from '../../../lib/contracts'
+import { useParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/routing'
+import TreasuryDashboard from '@/components/TreasuryDashboard'
+import { DISTRICTS } from '@/lib/contracts'
 
-interface PageProps {
-  params: { district: string }
-}
-
-export default function TreasuryPage({ params }: PageProps) {
+export default function TreasuryPage() {
+  const params = useParams<{ district: string }>()
+  const t = useTranslations('treasury')
   const district = decodeURIComponent(params.district)
 
   return (
@@ -18,9 +18,9 @@ export default function TreasuryPage({ params }: PageProps) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <div className="text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">Районная казна</div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{district} район</h1>
-              <p className="text-gray-500 dark:text-gray-400">Прозрачное управление бюджетом через децентрализованное голосование</p>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">{t('districtTreasury')}</div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{district} {t('district')}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{t('transparentManagement')}</p>
             </div>
             {/* District switcher */}
             <div className="flex flex-wrap gap-2">

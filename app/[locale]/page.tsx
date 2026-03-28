@@ -1,25 +1,28 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/routing'
 
-const AlmatyMap = dynamic(() => import('../components/AlmatyMap'), { ssr: false })
-
-const STATS = [
-  { label: 'Контрактов под мониторингом', value: '147', icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
-  { label: 'Общая сумма', value: '38B ₸', icon: '💰', color: 'text-emerald-600 dark:text-emerald-400' },
-  { label: 'Нарушений выявлено', value: '26', icon: '⚠️', color: 'text-red-500 dark:text-red-400' },
-  { label: 'Граждан-присяжных', value: '1,247', icon: '👥', color: 'text-purple-600 dark:text-purple-400' },
-]
-
-const LEGEND = [
-  { color: '#10b981', label: 'В срок' },
-  { color: '#f59e0b', label: 'Риск (< 7 дн.)' },
-  { color: '#ef4444', label: 'Просрочен / Штраф' },
-  { color: '#3b82f6', label: 'Завершён' },
-]
+const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 
 export default function HomePage() {
+  const t = useTranslations('home')
+
+  const STATS = [
+    { label: t('contractsMonitored'), value: '147', icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
+    { label: t('totalAmount'), value: '38B ₸', icon: '💰', color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: t('violationsFound'), value: '26', icon: '⚠️', color: 'text-red-500 dark:text-red-400' },
+    { label: t('jurorCitizens'), value: '1,247', icon: '👥', color: 'text-purple-600 dark:text-purple-400' },
+  ]
+
+  const LEGEND = [
+    { color: '#10b981', label: t('onTime') },
+    { color: '#f59e0b', label: t('risk') },
+    { color: '#ef4444', label: t('overdueOrPenalty') },
+    { color: '#3b82f6', label: t('completed') },
+  ]
+
   return (
     <main className="h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Stats banner */}
@@ -42,13 +45,13 @@ export default function HomePage() {
                 href="/contracts"
                 className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors"
               >
-                Все контракты
+                {t('allContracts')}
               </Link>
               <Link
                 href="/register"
                 className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
-                Стать присяжным
+                {t('becomeJuror')}
               </Link>
             </div>
           </div>
@@ -61,7 +64,7 @@ export default function HomePage() {
 
         {/* Legend */}
         <div className="absolute bottom-6 left-4 z-[1000] bg-white dark:bg-gray-950/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg">
-          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-3 uppercase tracking-wider">Статусы контрактов</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-3 uppercase tracking-wider">{t('contractStatuses')}</div>
           <div className="space-y-2">
             {LEGEND.map((item) => (
               <div key={item.label} className="flex items-center gap-2.5">
@@ -84,9 +87,9 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div className="text-gray-900 dark:text-white font-medium text-sm mb-1">Кликните на маркер</div>
+              <div className="text-gray-900 dark:text-white font-medium text-sm mb-1">{t('clickMarker')}</div>
               <div className="text-gray-500 dark:text-gray-400 text-xs">
-                Каждый маркер — активный государственный контракт. Нажмите для просмотра деталей.
+                {t('markerDescription')}
               </div>
             </div>
           </div>

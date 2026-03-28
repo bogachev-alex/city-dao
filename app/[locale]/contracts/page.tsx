@@ -1,24 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract } from '../../lib/contracts'
-import { fetchContracts } from '../../lib/api'
-import ContractCard from '../../components/ContractCard'
-
-const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'active', label: 'Активные' },
-  { value: 'penalized', label: 'Со штрафом' },
-  { value: 'completed', label: 'Завершённые' },
-  { value: 'disputed', label: 'Спорные' },
-]
+import { useTranslations } from 'next-intl'
+import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract } from '@/lib/contracts'
+import { fetchContracts } from '@/lib/api'
+import ContractCard from '@/components/ContractCard'
+import { Link } from '@/i18n/routing'
 
 export default function ContractsPage() {
+  const t = useTranslations('contracts')
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
   const [districtFilter, setDistrictFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+
+  const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
+    { value: 'all', label: t('all') },
+    { value: 'active', label: t('activeFilter') },
+    { value: 'penalized', label: t('penalizedFilter') },
+    { value: 'completed', label: t('completedFilter') },
+    { value: 'disputed', label: t('disputedFilter') },
+  ]
 
   useEffect(() => {
     fetchContracts()
@@ -55,16 +58,16 @@ export default function ContractsPage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Реестр контрактов
+                {t('title')}
               </h1>
               <p className="text-gray-500 dark:text-gray-400">
-                Мониторинг государственных строительных контрактов Алматы
+                {t('subtitle')}
               </p>
             </div>
             <div className="flex gap-3">
               {[
-                { label: 'Активных', value: counts.active, color: 'text-blue-600 dark:text-blue-400' },
-                { label: 'Штраф', value: counts.penalized, color: 'text-red-500 dark:text-red-400' },
+                { label: t('active'), value: counts.active, color: 'text-blue-600 dark:text-blue-400' },
+                { label: t('penalty'), value: counts.penalized, color: 'text-red-500 dark:text-red-400' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-center">
                   <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -86,7 +89,7 @@ export default function ContractsPage() {
             </svg>
             <input
               type="text"
-              placeholder="Поиск по названию или подрядчику..."
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
@@ -117,7 +120,7 @@ export default function ContractsPage() {
               onChange={(e) => setDistrictFilter(e.target.value)}
               className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
             >
-              <option value="all">Все районы</option>
+              <option value="all">{t('allDistricts')}</option>
               {DISTRICTS.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
@@ -128,17 +131,17 @@ export default function ContractsPage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Найдено: <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> контрактов
+            {t('found')} <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> {t('contractsCount')}
           </div>
-          <a
+          <Link
             href="/admin"
             className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:text-emerald-400 transition-colors"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M12 4v16m8-8H4" />
             </svg>
-            Добавить контракт
-          </a>
+            {t('addContract')}
+          </Link>
         </div>
 
         {/* Contract grid */}
@@ -155,8 +158,8 @@ export default function ContractsPage() {
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">Контракты не найдены</div>
-            <div className="text-gray-400 dark:text-gray-500 text-sm">Попробуйте изменить фильтры поиска</div>
+            <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">{t('notFound')}</div>
+            <div className="text-gray-400 dark:text-gray-500 text-sm">{t('tryChangeFilters')}</div>
           </div>
         )}
       </div>

@@ -1,8 +1,9 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname, useRouter } from '@/i18n/routing'
+import { useLocale } from 'next-intl'
+import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { useTheme } from './ThemeProvider'
@@ -91,24 +92,35 @@ function WalletButton() {
 }
 
 export default function Navbar() {
+  const t = useTranslations('nav')
+  const locale = useLocale()
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, toggle } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   const navLinks = [
-    { href: '/', label: 'Карта' },
-    { href: '/contracts', label: 'Контракты' },
-    { href: '/crowdfunding', label: 'Краудфандинг' },
-    { href: '/treasury/Ауэзовский', label: 'Казна' },
-    { href: '/profile', label: 'Профиль' },
-    { href: '/register', label: 'Регистрация' },
-    { href: '/admin', label: 'Админ' },
+    { href: '/' as const, label: t('map') },
+    { href: '/contracts' as const, label: t('contracts') },
+    { href: '/crowdfunding' as const, label: t('crowdfunding') },
+    { href: '/treasury/Ауэзовский' as const, label: t('treasury') },
+    { href: '/profile' as const, label: t('profile') },
+    { href: '/register' as const, label: t('register') },
+    { href: '/admin' as const, label: t('admin') },
   ]
+
+  const switchLocale = () => {
+    const nextLocale = locale === 'ru' ? 'kk' : 'ru'
+    startTransition(() => {
+      router.replace(pathname, { locale: nextLocale })
+    })
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
@@ -141,7 +153,18 @@ export default function Navbar() {
             ))}
           </div>
 
+          {/* Language switcher + Wallet + mobile toggle */}
           <div className="flex items-center gap-3">
+            {/* Language switcher */}
+            <button
+              onClick={switchLocale}
+              disabled={isPending}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
+            >
+              {locale === 'ru' ? 'KK' : 'RU'}
+            </button>
+
+            {/* Solana wallet button */}
             {mounted && (
               <div className="hidden md:block">
                 <WalletButton />
