@@ -63,6 +63,7 @@ jobs:
               echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env.local
             fi
             npm install --production=false --legacy-peer-deps --silent
+            export $(grep -v '^#' .env.local | xargs)
             npx prisma generate
             npx prisma migrate deploy
             pm2 restart amanat --update-env

@@ -2,14 +2,96 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { useTheme } from './ThemeProvider'
+
+function WalletButton() {
+  const { connected, connecting, publicKey, select, connect, disconnect, wallet, wallets } = useWallet()
+  const [error, setError] = useState<string | null>(null)
+  const pendingConnect = useRef(false)
+
+  // After select() updates the context, fire connect()
+  useEffect(() => {
+    if (pendingConnect.current && wallet && !connected && !connecting) {
+      pendingConnect.current = false
+      connect().catch((e: any) => {
+        setError(e?.message || 'Ошибка подключения')
+      })
+    }
+  }, [wallet, connected, connecting, connect])
+
+  const handleConnect = useCallback(() => {
+    setError(null)
+
+    const phantom = wallets.find(
+      (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
+    )
+    const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
+    const target = phantom || anyInstalled
+
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+
+    pendingConnect.current = true
+    select(target.adapter.name)
+  }, [wallets, select])
+
+  const handleDisconnect = useCallback(async () => {
+    try { await disconnect() } catch {}
+  }, [disconnect])
+
+  if (connected && publicKey) {
+    const addr = publicKey.toBase58()
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          {addr.slice(0, 4)}…{addr.slice(-4)}
+        </div>
+        <button
+          onClick={handleDisconnect}
+          className="px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400 hover:text-white transition-colors"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
+
+  if (connecting) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400">
+        <div className="w-3 h-3 border border-gray-500 border-t-white rounded-full animate-spin" />
+        Подключение…
+      </div>
+    )
+  }
+
+  const phantomInstalled = wallets.some(
+    (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
+  )
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={handleConnect}
+        className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-xs text-purple-300 hover:bg-purple-500/30 transition-colors font-medium"
+      >
+        {phantomInstalled ? 'Подключить Phantom' : 'Установить Phantom'}
+      </button>
+      {error && (
+        <span className="text-xs text-red-400">{error}</span>
+      )}
+    </div>
+  )
+}
 
 export default function Navbar() {
   const pathname = usePathname()
-  const { connected, publicKey } = useWallet()
   const { theme, toggle } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -61,15 +143,8 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             {mounted && (
-              <div className="hidden md:block wallet-adapter-btn">
-                <WalletMultiButton />
-              </div>
-            )}
-
-            {mounted && connected && publicKey && (
-              <div className="hidden md:flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                devnet
+              <div className="hidden md:block">
+                <WalletButton />
               </div>
             )}
 
@@ -125,8 +200,8 @@ export default function Navbar() {
               </Link>
             ))}
             {mounted && (
-              <div className="mt-2 wallet-adapter-btn">
-                <WalletMultiButton />
+              <div className="mt-2">
+                <WalletButton />
               </div>
             )}
           </div>
