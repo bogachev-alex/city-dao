@@ -89,14 +89,8 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       }
     })
 
-    if (walletConnected) {
-      try {
-        const result = await voteOnChain(district, proposalTitle, inFavor)
-        setTxInfo(result.tx)
-      } catch (err: any) {
-        console.log('On-chain vote failed (continuing with DB):', err.message)
-      }
-    }
+    // On-chain voting disabled until programs are deployed to devnet
+    // if (walletConnected) { ... }
 
     try {
       const res = await fetch(`/api/treasury/${encodeURIComponent(district)}`, {
