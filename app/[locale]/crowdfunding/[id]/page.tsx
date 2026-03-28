@@ -16,8 +16,9 @@ import {
   getDonorTier,
   normalizeCampaign,
 } from '@/lib/crowdfunding'
-import { fetchCampaign, contributeToCampaign } from '@/lib/api'
+import { fetchCampaign, fetchCitizen, contributeToCampaign } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
+import { PublicKey } from '@solana/web3.js'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -30,8 +31,9 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [donationAmount, setDonationAmount] = useState<number>(5000)
   const [customAmount, setCustomAmount] = useState<string>('')
   const [donated, setDonated] = useState(false)
+  const [donateError, setDonateError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
-  const { connected: walletConnected } = useWallet()
+  const { publicKey, connected: walletConnected } = useWallet()
   const { contribute: contributeOnChain, loading: solanaLoading } = useCrowdfunding()
 
   useEffect(() => {
@@ -76,21 +78,49 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const handleDonate = async () => {
     const amount = customAmount ? parseInt(customAmount) : donationAmount
     if (amount < 500 || amount > 500000) return
+    setDonateError(null)
+
+    // Look up citizen by wallet
+    let citizenId: string | undefined
+    if (publicKey) {
+      try {
+        const citizen = await fetchCitizen(publicKey.toBase58())
+        citizenId = citizen?.id
+      } catch {
+        // citizen not found
+      }
+    }
+    if (!citizenId) {
+      setDonateError('Сначала зарегистрируйтесь как гражданин')
+      return
+    }
 
     setDonated(true)
 
-    // On-chain contribution disabled until programs deployed to devnet
+    let onChainTx: string | undefined
+
+    // Try on-chain contribution if wallet connected and creator wallet known
+    if (walletConnected && campaign.creator_wallet) {
+      try {
+        const creatorPK = new PublicKey(campaign.creator_wallet)
+        const result = await contributeOnChain(creatorPK, campaign.title, amount, false)
+        onChainTx = result.tx
+        setTxInfo(result.tx)
+      } catch (err: any) {
+        console.warn('On-chain contribution failed (continuing with DB):', err.message)
+      }
+    }
 
     // Record in database
     try {
       await contributeToCampaign(campaign.id, {
-        citizenId: 'demo-citizen', // In production: from wallet/session
+        citizenId,
         amount,
         anonymous: false,
-        txSignature: txInfo || undefined,
+        txSignature: onChainTx,
       })
-    } catch {
-      // DB write failed but donation UI already shown
+    } catch (err: any) {
+      console.warn('DB contribution failed:', err.message)
     }
   }
 
@@ -355,6 +385,10 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 >
                   Внести {formatTenge(customAmount ? parseInt(customAmount) || 0 : donationAmount)}
                 </button>
+
+                {donateError && (
+                  <div className="text-xs text-red-500 text-center mt-2">{donateError}</div>
+                )}
 
                 <div className="text-xs text-gray-400 text-center mt-3">
                   Мин. 500 ₸ · Макс. 500 000 ₸

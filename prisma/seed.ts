@@ -519,7 +519,49 @@ async function main() {
     },
   })
 
-  console.log('Created 8 spending proposals')
+  // Fresh proposals with 0 votes — for testing voting flow
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: auezovTreasury.id, title: 'Строительство скейт-парка в мкр. 12',
+      description: 'Молодёжь просит оборудовать скейт-парк на пустыре за ТРЦ. Проект включает рампы, рейлы и зону отдыха.',
+      amount: 7_200_000, category: 'Спорт', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: auezovTreasury.id, title: 'Замена водопроводных труб на ул. Жубанова',
+      description: 'Трубы 1978 года, постоянные прорывы. Замена 1.8 км трубопровода на полиэтиленовый.',
+      amount: 12_500_000, category: 'ЖКХ', status: 'VOTING',
+      votingEnds: new Date(now + 12 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: medeuskiyTreasury.id, title: 'Бесплатные курсы IT для школьников',
+      description: 'Организация курсов программирования в ДК Железнодорожников. 3 группы по 20 человек, 6 месяцев.',
+      amount: 3_800_000, category: 'Образование', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: bostTreasury.id, title: 'Ремонт детской площадки в мкр. Орбита-3',
+      description: 'Площадка в аварийном состоянии: сломанные качели, ржавые горки. Полная замена оборудования.',
+      amount: 4_100_000, category: 'Благоустройство', status: 'VOTING',
+      votingEnds: new Date(now + 10 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: almTreasury.id, title: 'Ярмарка фермерских продуктов по выходным',
+      description: 'Еженедельная ярмарка на площади перед ЦУМом. Аренда палаток, логистика, охрана.',
+      amount: 2_400_000, category: 'Экономика', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+
+  console.log('Created 13 spending proposals (8 with votes + 5 fresh for testing)')
 
   // ─── AI Research Reports (4) ───
   await prisma.aiResearchReport.create({
@@ -778,7 +820,7 @@ async function main() {
   console.log('\n✓ Seed completed successfully!')
   console.log('  8 contractors, 10 contracts, 8 treasuries, 10 citizens')
   console.log('  4 jury sessions, 4 penalties, 15 work logs, 12 NFTs')
-  console.log('  8 proposals, 4 AI reports, 20 proposal votes')
+  console.log('  13 proposals, 4 AI reports, 20 proposal votes')
   console.log('  6 suggestions, 15 suggestion votes')
   console.log('  6 crowdfunding campaigns, 14 contributions')
 }

@@ -27,6 +27,7 @@ export interface Campaign {
   deadline: string
   created_at: string
   creator: string
+  creator_wallet: string
   creator_tier: string
   lat: number
   lng: number
@@ -106,6 +107,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'Айгуль Касымова',
+    creator_wallet: 'DemoWallet3333333333333333333333333333333333',
     creator_tier: 'Gold',
     lat: 43.2395,
     lng: 76.8742,
@@ -133,6 +135,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() + 34 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'Бауржан Нурланов',
+    creator_wallet: 'DemoWallet2222222222222222222222222222222222',
     creator_tier: 'Silver',
     lat: 43.2156,
     lng: 76.8892,
@@ -158,6 +161,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'Инициативная группа «Зелёный Алматы»',
+    creator_wallet: 'DemoWallet3333333333333333333333333333333333',
     creator_tier: 'Gold',
     lat: 43.2401,
     lng: 76.9198,
@@ -184,6 +188,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() + 22 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'Родительский комитет школы №92',
+    creator_wallet: 'DemoWallet1111111111111111111111111111111111',
     creator_tier: 'Silver',
     lat: 43.1897,
     lng: 76.8456,
@@ -209,6 +214,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'Тимур Сагинаев',
+    creator_wallet: 'DemoWallet1111111111111111111111111111111111',
     creator_tier: 'Gold',
     lat: 43.2311,
     lng: 76.9488,
@@ -233,6 +239,7 @@ export const DEMO_CAMPAIGNS: Campaign[] = [
     deadline: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date(Date.now() - 63 * 24 * 60 * 60 * 1000).toISOString(),
     creator: 'КСК «Орбита-2»',
+    creator_wallet: 'DemoWallet2222222222222222222222222222222222',
     creator_tier: 'Silver',
     lat: 43.2256,
     lng: 76.8992,
@@ -288,6 +295,7 @@ export function normalizeCampaign(c: any): Campaign {
     deadline: c.deadline,
     created_at: c.createdAt || c.created_at,
     creator: c.creator?.walletAddress?.slice(0, 8) + '...' || c.creator || '',
+    creator_wallet: c.creator?.walletAddress || c.creator_wallet || '',
     creator_tier: TIER_MAP[c.creator?.tier] || c.creator_tier || 'Bronze',
     lat: c.lat,
     lng: c.lng,

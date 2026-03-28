@@ -10,7 +10,7 @@ import {
   getStateMatch,
   formatTenge,
 } from '@/lib/crowdfunding'
-import { createCampaign } from '@/lib/api'
+import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { DISTRICTS } from '@/lib/contracts'
 
@@ -31,8 +31,9 @@ export default function NewCampaignPage() {
   const [targetAmount, setTargetAmount] = useState<string>('')
   const [deadline, setDeadline] = useState<number>(30)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
-  const { connected: walletConnected } = useWallet()
+  const { publicKey, connected: walletConnected } = useWallet()
   const { createCampaign: createOnChain } = useCrowdfunding()
 
   const totalAmount = parseInt(targetAmount) || 0
@@ -45,6 +46,22 @@ export default function NewCampaignPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
+    setError(null)
+
+    // Look up citizen by wallet
+    let citizenId: string | undefined
+    if (publicKey) {
+      try {
+        const citizen = await fetchCitizen(publicKey.toBase58())
+        citizenId = citizen?.id
+      } catch {
+        // citizen not found
+      }
+    }
+    if (!citizenId) {
+      setError('Сначала зарегистрируйтесь как гражданин')
+      return
+    }
 
     let onChainPubkey: string | undefined
 
@@ -60,7 +77,7 @@ export default function NewCampaignPage() {
         setTxInfo(result.tx)
         onChainPubkey = result.pda
       } catch (err: any) {
-        console.log('On-chain creation failed (continuing with DB):', err.message)
+        console.warn('On-chain creation failed (continuing with DB):', err.message)
       }
     }
 
@@ -73,11 +90,12 @@ export default function NewCampaignPage() {
         category: CATEGORY_ENUM[category],
         targetAmount: totalAmount,
         deadline: new Date(Date.now() + deadline * 24 * 60 * 60 * 1000).toISOString(),
-        creatorId: 'demo-citizen', // In production: from wallet/session
+        creatorId: citizenId,
         onChainPubkey,
       })
-    } catch {
-      // DB write failed but we still show success for demo
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при создании кампании')
+      return
     }
 
     setSubmitted(true)
@@ -135,6 +153,11 @@ export default function NewCampaignPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
           <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">

@@ -17,12 +17,24 @@ interface MilestoneInput {
   tranche_pct: number
 }
 
+const CATEGORIES = [
+  'Дороги',
+  'Электросети',
+  'Водоснабжение',
+  'Социальные объекты',
+  'Озеленение',
+  'Безопасность',
+  'Образование',
+  'Инфраструктура',
+]
+
 interface ContractFormData {
   title: string
   contractor: string
   amount_usdc: number | ''
   deadline: string
   district: string
+  category: string
   lat: string
   lng: string
   milestones: MilestoneInput[]
@@ -34,6 +46,7 @@ const INITIAL_FORM: ContractFormData = {
   amount_usdc: '',
   deadline: '',
   district: '',
+  category: '',
   lat: '43.2551',
   lng: '76.9126',
   milestones: [
@@ -70,6 +83,7 @@ export default function AdminPage() {
         totalAmount: Number(form.amount_usdc),
         deadline: form.deadline,
         district: form.district,
+        category: form.category || undefined,
         lat: parseFloat(form.lat),
         lng: parseFloat(form.lng),
         milestones: form.milestones.map((m) => ({
@@ -81,7 +95,37 @@ export default function AdminPage() {
 
       const created = await createContract(contractData)
 
-      // On-chain registration disabled until programs deployed to devnet
+      // 2. Register on blockchain if wallet connected
+      if (wallet.publicKey) {
+        setSubmitStep('blockchain')
+        try {
+          const result = await registerContractOnChain(
+            form.title,
+            form.district,
+            Number(form.amount_usdc),
+            new Date(form.deadline).getTime() / 1000,
+            form.milestones.map((m) => ({
+              description: m.desc,
+              deadlineDays: m.deadline_days,
+              tranchePct: m.tranche_pct,
+            })),
+            parseFloat(form.lat),
+            parseFloat(form.lng),
+            wallet.publicKey
+          )
+
+          // Update DB record with on-chain pubkey
+          if (result?.pda) {
+            await fetch(`/api/contracts/${created.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ onChainPubkey: result.pda }),
+            })
+          }
+        } catch (blockchainErr: any) {
+          console.warn('Blockchain registration failed, contract saved to DB only:', blockchainErr)
+        }
+      }
 
       setSubmitted(true)
     } catch (err: any) {
@@ -283,6 +327,20 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">Категория</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
+                >
+                  <option value="">Выберите категорию</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

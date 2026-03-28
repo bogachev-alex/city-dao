@@ -41,8 +41,18 @@ export default function CitizenRegistration() {
 
     const walletAddress = publicKey.toBase58()
 
-    // On-chain registration disabled until programs deployed to devnet
-    // try { const result = await registerCitizen(...); } catch {}
+    try {
+      const hashBytes = new Uint8Array(32)
+      for (let i = 0; i < 32; i++) {
+        hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+      }
+      const result = await registerCitizen(district, hashBytes)
+      setTxSignature(result.tx)
+      setOnChain(true)
+      console.log('On-chain registration tx:', result.tx)
+    } catch (err: any) {
+      console.warn('On-chain registration failed (continuing with DB only):', err.message)
+    }
 
     try {
       const res = await fetch('/api/citizens', {
