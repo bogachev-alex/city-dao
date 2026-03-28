@@ -16,7 +16,7 @@ import {
   getDonorTier,
   normalizeCampaign,
 } from '@/lib/crowdfunding'
-import { fetchCampaign, contributeToCampaign } from '@/lib/api'
+import { fetchCampaign, fetchCitizen, contributeToCampaign } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { PublicKey } from '@solana/web3.js'
 
@@ -31,8 +31,9 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [donationAmount, setDonationAmount] = useState<number>(5000)
   const [customAmount, setCustomAmount] = useState<string>('')
   const [donated, setDonated] = useState(false)
+  const [donateError, setDonateError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
-  const { connected: walletConnected } = useWallet()
+  const { publicKey, connected: walletConnected } = useWallet()
   const { contribute: contributeOnChain, loading: solanaLoading } = useCrowdfunding()
 
   useEffect(() => {
@@ -77,6 +78,22 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const handleDonate = async () => {
     const amount = customAmount ? parseInt(customAmount) : donationAmount
     if (amount < 500 || amount > 500000) return
+    setDonateError(null)
+
+    // Look up citizen by wallet
+    let citizenId: string | undefined
+    if (publicKey) {
+      try {
+        const citizen = await fetchCitizen(publicKey.toBase58())
+        citizenId = citizen?.id
+      } catch {
+        // citizen not found
+      }
+    }
+    if (!citizenId) {
+      setDonateError('Сначала зарегистрируйтесь как гражданин')
+      return
+    }
 
     setDonated(true)
 
@@ -97,7 +114,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     // Record in database
     try {
       await contributeToCampaign(campaign.id, {
-        citizenId: 'demo-citizen', // TODO: replace with real citizen lookup
+        citizenId,
         amount,
         anonymous: false,
         txSignature: onChainTx,
@@ -368,6 +385,10 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 >
                   Внести {formatTenge(customAmount ? parseInt(customAmount) || 0 : donationAmount)}
                 </button>
+
+                {donateError && (
+                  <div className="text-xs text-red-500 text-center mt-2">{donateError}</div>
+                )}
 
                 <div className="text-xs text-gray-400 text-center mt-3">
                   Мин. 500 ₸ · Макс. 500 000 ₸
