@@ -81,7 +81,37 @@ export default function AdminPage() {
 
       const created = await createContract(contractData)
 
-      // On-chain registration disabled until programs deployed to devnet
+      // 2. Register on blockchain if wallet connected
+      if (wallet.publicKey) {
+        setSubmitStep('blockchain')
+        try {
+          const result = await registerContractOnChain(
+            form.title,
+            form.district,
+            Number(form.amount_usdc),
+            new Date(form.deadline).getTime() / 1000,
+            form.milestones.map((m) => ({
+              description: m.desc,
+              deadlineDays: m.deadline_days,
+              tranchePct: m.tranche_pct,
+            })),
+            parseFloat(form.lat),
+            parseFloat(form.lng),
+            wallet.publicKey
+          )
+
+          // Update DB record with on-chain pubkey
+          if (result?.pda) {
+            await fetch(`/api/contracts/${created.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ onChainPubkey: result.pda }),
+            })
+          }
+        } catch (blockchainErr: any) {
+          console.warn('Blockchain registration failed, contract saved to DB only:', blockchainErr)
+        }
+      }
 
       setSubmitted(true)
     } catch (err: any) {

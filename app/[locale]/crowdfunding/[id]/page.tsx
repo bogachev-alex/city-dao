@@ -18,6 +18,7 @@ import {
 } from '@/lib/crowdfunding'
 import { fetchCampaign, contributeToCampaign } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
+import { PublicKey } from '@solana/web3.js'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -79,18 +80,30 @@ export default function CampaignDetailPage({ params }: PageProps) {
 
     setDonated(true)
 
-    // On-chain contribution disabled until programs deployed to devnet
+    let onChainTx: string | undefined
+
+    // Try on-chain contribution if wallet connected and creator wallet known
+    if (walletConnected && campaign.creator_wallet) {
+      try {
+        const creatorPK = new PublicKey(campaign.creator_wallet)
+        const result = await contributeOnChain(creatorPK, campaign.title, amount, false)
+        onChainTx = result.tx
+        setTxInfo(result.tx)
+      } catch (err: any) {
+        console.warn('On-chain contribution failed (continuing with DB):', err.message)
+      }
+    }
 
     // Record in database
     try {
       await contributeToCampaign(campaign.id, {
-        citizenId: 'demo-citizen', // In production: from wallet/session
+        citizenId: 'demo-citizen', // TODO: replace with real citizen lookup
         amount,
         anonymous: false,
-        txSignature: txInfo || undefined,
+        txSignature: onChainTx,
       })
-    } catch {
-      // DB write failed but donation UI already shown
+    } catch (err: any) {
+      console.warn('DB contribution failed:', err.message)
     }
   }
 
