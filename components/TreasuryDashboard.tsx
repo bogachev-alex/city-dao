@@ -38,7 +38,7 @@ interface TreasuryDashboardProps {
 
 export default function TreasuryDashboard({ district }: TreasuryDashboardProps) {
   const t = useTranslations('components.treasuryDashboard')
-  const { connected: walletConnected } = useWallet()
+  const { publicKey, connected: walletConnected } = useWallet()
   const { voteOnProposal: voteOnChain, loading: solanaLoading } = useDistrictTreasury()
   const [treasury, setTreasury] = useState<TreasuryData | null>(null)
   const [citizenId, setCitizenId] = useState<string | null>(null)
@@ -47,18 +47,27 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   const [txInfo, setTxInfo] = useState<string | null>(null)
 
   useEffect(() => {
+    const walletAddr = publicKey?.toBase58()
+    const citizenUrl = walletAddr
+      ? `/api/citizens?wallet=${walletAddr}`
+      : '/api/citizens'
+
     Promise.all([
       fetch(`/api/treasury/${encodeURIComponent(district)}`).then((r) => r.json()),
-      fetch('/api/citizens').then((r) => r.json()),
+      fetch(citizenUrl).then((r) => r.json()),
     ])
-      .then(([treasuryData, citizens]) => {
+      .then(([treasuryData, citizenData]) => {
         if (!treasuryData.error) setTreasury(treasuryData)
         let cid: string | null = null
-        if (Array.isArray(citizens) && citizens.length > 0) {
-          const local = citizens.find((c: any) => c.district === district)
-          cid = local?.id || citizens[0].id
-          setCitizenId(cid)
+        if (walletAddr && citizenData && !citizenData.error) {
+          // Wallet connected — use that citizen
+          cid = citizenData.id
+        } else if (Array.isArray(citizenData) && citizenData.length > 0) {
+          // No wallet — fallback to first citizen from district
+          const local = citizenData.find((c: any) => c.district === district)
+          cid = local?.id || citizenData[0].id
         }
+        setCitizenId(cid)
         if (!treasuryData.error && cid) {
           const alreadyVoted = new Set<string>()
           for (const p of treasuryData.proposals || []) {
@@ -71,7 +80,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [district])
+  }, [district, publicKey])
 
   const handleVote = async (proposalId: string, proposalTitle: string, inFavor: boolean) => {
     if (voted.has(proposalId) || !citizenId) return
@@ -89,8 +98,15 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       }
     })
 
-    // On-chain voting disabled until programs are deployed to devnet
-    // if (walletConnected) { ... }
+    // Try on-chain voting if wallet connected
+    if (walletConnected) {
+      try {
+        const result = await voteOnChain(district, proposalTitle, inFavor)
+        setTxInfo(result.tx)
+      } catch (err: any) {
+        console.warn('On-chain vote failed (continuing with DB):', err.message)
+      }
+    }
 
     try {
       const res = await fetch(`/api/treasury/${encodeURIComponent(district)}`, {
