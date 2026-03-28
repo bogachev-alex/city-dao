@@ -56,16 +56,10 @@ jobs:
           ssh root@${{ secrets.DEPLOY_HOST }} bash << ENDSSH
             set -e
             cd /var/www/amanat
-            # Update OPENAI_API_KEY without overwriting the rest of .env.local
-            if grep -q 'OPENAI_API_KEY' .env.local 2>/dev/null; then
-              sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_API_KEY}|" .env.local
-            else
-              echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env.local
-            fi
+            printf 'OPENAI_API_KEY=%s\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public\n' "${OPENAI_API_KEY}" > .env.local
             npm install --production=false --legacy-peer-deps --silent
-            export $(grep -v '^#' .env.local | xargs)
             npx prisma generate
-            npx prisma migrate deploy
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public npx prisma migrate deploy
             pm2 restart amanat --update-env
             pm2 save
             echo "✅ Deployed at $(date)"
