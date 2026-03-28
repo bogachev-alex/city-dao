@@ -21,7 +21,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma client
+        run: npx prisma generate
 
       - name: Build
         run: npm run build
@@ -50,8 +53,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key root@${{ secrets.DEPLOY_HOST }} "
             cd /var/www/amanat &&
-            echo 'OPENAI_API_KEY=$OPENAI_API_KEY' > .env.local &&
-            npm install --production=false --silent &&
+            grep -q 'OPENAI_API_KEY' .env.local && sed -i \"s|OPENAI_API_KEY=.*|OPENAI_API_KEY=$OPENAI_API_KEY|\" .env.local || echo \"OPENAI_API_KEY=$OPENAI_API_KEY\" >> .env.local &&
+            npm install --production=false --legacy-peer-deps --silent &&
+            npx prisma generate &&
+            npx prisma migrate deploy &&
             pm2 restart amanat --update-env &&
             pm2 save &&
             echo '✅ Deployed at \$(date)'
