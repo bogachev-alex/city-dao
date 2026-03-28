@@ -133,7 +133,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-2 border-emerald-200 border-t-emerald-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     )
   }
@@ -142,21 +142,21 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
     <div className="space-y-6">
       {/* Balance cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl p-6">
-          <div className="text-sm text-emerald-600 mb-1">Баланс казны района</div>
-          <div className="text-3xl font-bold text-gray-900 mb-1">{formatTenge(balance)}</div>
-          <div className="text-sm text-gray-500">{district}</div>
+        <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/20 dark:to-emerald-600/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6">
+          <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Баланс казны района</div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
           <div className="mt-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-500">Live баланс</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Live баланс</span>
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <div className="text-sm text-gray-500 mb-1">Предложений</div>
-          <div className="text-2xl font-bold text-emerald-600">{proposals.length}</div>
-          <div className="text-xs text-gray-400 mt-1">активных голосований</div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Предложений</div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{proposals.length}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">активных голосований</div>
           <div className="mt-3">
-            <div className="h-1.5 bg-gray-100 rounded-full">
+            <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
               <div className="h-full bg-emerald-500 rounded-full" style={{ width: proposals.length > 0 ? '100%' : '0%' }} />
             </div>
           </div>
@@ -165,11 +165,11 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
 
       {/* On-chain tx notification */}
       {txInfo && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2 text-sm">
+        <div className="bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3 flex items-center gap-2 text-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-emerald-600">Голос записан</span>
+          <span className="text-emerald-600 dark:text-emerald-400">Голос записан</span>
           {txInfo && (
-            <a href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs underline ml-auto">
+            <a href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
               tx
             </a>
           )}
@@ -178,14 +178,14 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
 
       {/* Proposals */}
       <div>
-        <h3 className="text-gray-900 font-semibold mb-3 flex items-center gap-2">
+        <h3 className="text-gray-900 dark:text-white font-semibold mb-3 flex items-center gap-2">
           <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Предложения по расходам
         </h3>
         {proposals.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
             Нет активных предложений
           </div>
         ) : (
@@ -196,29 +196,29 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
               const hasVoted = voted.has(proposal.id)
 
               return (
-                <div key={proposal.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+                <div key={proposal.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         {proposal.category && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30">
                             {proposal.category}
                           </span>
                         )}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          proposal.status === 'VOTING' ? 'bg-yellow-50 text-yellow-600' :
-                          proposal.status === 'EXECUTED' ? 'bg-emerald-50 text-emerald-600' :
-                          'bg-gray-100 text-gray-500'
+                          proposal.status === 'VOTING' ? 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
+                          proposal.status === 'EXECUTED' ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                          'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                         }`}>
                           {proposal.status === 'VOTING' ? 'Голосование' :
                            proposal.status === 'EXECUTED' ? 'Исполнено' :
                            proposal.status}
                         </span>
                       </div>
-                      <h4 className="text-gray-900 font-medium">{proposal.title}</h4>
-                      <div className="text-sm text-emerald-600 mt-0.5">{formatTenge(proposal.amount)}</div>
+                      <h4 className="text-gray-900 dark:text-white font-medium">{proposal.title}</h4>
+                      <div className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{formatTenge(proposal.amount)}</div>
                       {proposal.description && (
-                        <div className="text-xs text-gray-400 mt-1">{proposal.description}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{proposal.description}</div>
                       )}
                     </div>
                     <div className="flex flex-col gap-2 items-end shrink-0">
@@ -227,19 +227,19 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleVote(proposal.id, proposal.title, true)}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-medium hover:bg-emerald-100 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
                           >
                             За
                           </button>
                           <button
                             onClick={() => handleVote(proposal.id, proposal.title, false)}
-                            className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-medium hover:bg-red-100 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
                           >
                             Против
                           </button>
                         </div>
                       ) : hasVoted ? (
-                        <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-lg">
                           Проголосовано
                         </span>
                       ) : null}
@@ -247,12 +247,12 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-gray-400">
+                    <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
                       <span>За: {proposal.votesFor}</span>
                       <span>{forPct}%</span>
                       <span>Против: {proposal.votesAgainst}</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
                       <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${forPct}%` }} />
                       <div className="h-full bg-red-400 flex-1 transition-all duration-500" />
                     </div>

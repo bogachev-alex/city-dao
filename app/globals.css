@@ -23,6 +23,9 @@
   background: #f9fafb !important;
   font-family: system-ui, sans-serif !important;
 }
+html.dark .leaflet-container {
+  background: #0f1117 !important;
+}
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -32,23 +35,27 @@
 ::-webkit-scrollbar-track {
   background: #f3f4f6;
 }
+html.dark ::-webkit-scrollbar-track {
+  background: #111827;
+}
 
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
+html.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
 
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
 
 html {
   scroll-behavior: smooth;
-}
-
-body {
-  background-color: #f9fafb;
-  color: #111827;
 }
 
 @layer utilities {
@@ -59,7 +66,7 @@ body {
   }
 }
 
-/* Solana wallet adapter overrides — match light theme */
+/* Solana wallet adapter overrides */
 .wallet-adapter-btn .wallet-adapter-button {
   background: #10b981 !important;
   color: white !important;
@@ -83,20 +90,37 @@ body {
   color: #059669 !important;
   border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
+html.dark .wallet-adapter-btn .wallet-adapter-button[data-state="connected"] {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
 
 .wallet-adapter-modal-wrapper {
   background: #ffffff !important;
   border: 1px solid #e5e7eb !important;
 }
+html.dark .wallet-adapter-modal-wrapper {
+  background: #111827 !important;
+  border: 1px solid #374151 !important;
+}
 
 .wallet-adapter-modal-title {
   color: #111827 !important;
+}
+html.dark .wallet-adapter-modal-title {
+  color: white !important;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button {
   color: #374151 !important;
 }
+html.dark .wallet-adapter-modal-list .wallet-adapter-button {
+  color: #d1d5db !important;
+}
 
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
   background: #f3f4f6 !important;
+}
+html.dark .wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background: #1f2937 !important;
 }

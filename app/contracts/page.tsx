@@ -48,27 +48,27 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="min-h-screen pt-16 bg-gray-50">
+    <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="bg-gradient-to-b from-white to-gray-50 border-b border-gray-200">
+      <div className="bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Реестр контрактов
               </h1>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-400">
                 Мониторинг государственных строительных контрактов Алматы
               </p>
             </div>
             <div className="flex gap-3">
               {[
-                { label: 'Активных', value: counts.active, color: 'text-blue-600' },
-                { label: 'Штраф', value: counts.penalized, color: 'text-red-500' },
+                { label: 'Активных', value: counts.active, color: 'text-blue-600 dark:text-blue-400' },
+                { label: 'Штраф', value: counts.penalized, color: 'text-red-500 dark:text-red-400' },
               ].map((stat) => (
-                <div key={stat.label} className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-center">
+                <div key={stat.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-center">
                   <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-                  <div className="text-xs text-gray-500">{stat.label}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -78,10 +78,10 @@ export default function ContractsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Filters */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 space-y-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6 space-y-4">
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -89,7 +89,7 @@ export default function ContractsPage() {
               placeholder="Поиск по названию или подрядчику..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 text-sm"
+              className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
             />
           </div>
 
@@ -102,8 +102,8 @@ export default function ContractsPage() {
                   onClick={() => setStatusFilter(f.value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFilter === f.value
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-gray-50 text-gray-500 border border-gray-200 hover:border-gray-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
+                      : 'bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   {f.label}
@@ -115,7 +115,7 @@ export default function ContractsPage() {
             <select
               value={districtFilter}
               onChange={(e) => setDistrictFilter(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-400"
+              className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
             >
               <option value="all">Все районы</option>
               {DISTRICTS.map((d) => (
@@ -127,12 +127,12 @@ export default function ContractsPage() {
 
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-gray-500">
-            Найдено: <span className="text-gray-900 font-medium">{filtered.length}</span> контрактов
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Найдено: <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> контрактов
           </div>
           <a
             href="/admin"
-            className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:text-emerald-400 transition-colors"
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M12 4v16m8-8H4" />
@@ -150,13 +150,13 @@ export default function ContractsPage() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
               <svg width="28" height="28" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <div className="text-gray-600 font-medium mb-2">Контракты не найдены</div>
-            <div className="text-gray-400 text-sm">Попробуйте изменить фильтры поиска</div>
+            <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">Контракты не найдены</div>
+            <div className="text-gray-400 dark:text-gray-500 text-sm">Попробуйте изменить фильтры поиска</div>
           </div>
         )}
       </div>
