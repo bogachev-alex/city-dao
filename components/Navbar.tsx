@@ -37,6 +37,15 @@ function WalletButton() {
       return
     }
 
+    // If the wallet is already selected, connect directly — select() would be a no-op
+    // and the useEffect watching wallet changes wouldn't fire
+    if (wallet && wallet.adapter.name === target.adapter.name) {
+      connect().catch((e: any) => {
+        setError(e?.message || 'Ошибка подключения')
+      })
+      return
+    }
+
     pendingConnect.current = true
     select(target.adapter.name)
   }, [wallets, select])

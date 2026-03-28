@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
 import {
   DEMO_CAMPAIGNS,
   Campaign,
@@ -11,10 +11,10 @@ import {
   CAMPAIGN_STATUS_CONFIG,
   formatTenge,
   normalizeCampaign,
-} from '../../lib/crowdfunding'
-import { fetchCampaigns } from '../../lib/api'
-import { DISTRICTS } from '../../lib/contracts'
-import CampaignCard from '../../components/CampaignCard'
+} from '@/lib/crowdfunding'
+import { fetchCampaigns } from '@/lib/api'
+import { DISTRICTS } from '@/lib/contracts'
+import CampaignCard from '@/components/CampaignCard'
 
 const STATUS_FILTERS: { value: CampaignStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Все' },
