@@ -6,6 +6,7 @@ import { getMessages, getTranslations } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
 import Navbar from '@/components/Navbar'
 import { SolanaProviderWrapper } from '@/components/SolanaProviderWrapper'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -34,10 +35,12 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className={`${inter.className} bg-gray-950 text-white`}>
         <NextIntlClientProvider messages={messages}>
-          <SolanaProviderWrapper>
-            <Navbar />
-            {children}
-          </SolanaProviderWrapper>
+          <ThemeProvider>
+            <SolanaProviderWrapper>
+              <Navbar />
+              {children}
+            </SolanaProviderWrapper>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>
