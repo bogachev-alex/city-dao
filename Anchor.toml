@@ -1,0 +1,23 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+contract_registry = "GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU"
+citizen_registry = "Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6"
+jury_mechanism = "F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w"
+penalty_engine = "DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z"
+district_treasury = "44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx tsx tests/amanat.test.ts"

@@ -1,0 +1,798 @@
+{
+  "address": "F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w",
+  "metadata": {
+    "name": "jury_mechanism",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Amanat Protocol — Jury Mechanism (Commit-Reveal Voting)"
+  },
+  "instructions": [
+    {
+      "name": "commit_vote",
+      "docs": [
+        "Juror commits their vote hash: SHA-256(vote + salt).",
+        "Vote is hidden until reveal phase."
+      ],
+      "discriminator": [
+        134,
+        97,
+        90,
+        126,
+        91,
+        66,
+        16,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "jury_session"
+        },
+        {
+          "name": "jury_vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jury_session"
+              },
+              {
+                "kind": "account",
+                "path": "juror"
+              }
+            ]
+          }
+        },
+        {
+          "name": "juror",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vote_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_session",
+      "docs": [
+        "Finalize session: tally weighted votes, determine result.",
+        "Expert vote = 2, citizen vote = 1. Threshold = 3 of 5 weighted."
+      ],
+      "discriminator": [
+        34,
+        148,
+        144,
+        47,
+        37,
+        130,
+        206,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "jury_session",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "weighted_accept",
+          "type": "u8"
+        },
+        {
+          "name": "weighted_reject",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "init_session",
+      "docs": [
+        "Initialize a jury session for a milestone review.",
+        "Called after contractor submits milestone completion."
+      ],
+      "discriminator": [
+        121,
+        206,
+        80,
+        106,
+        231,
+        194,
+        225,
+        248
+      ],
+      "accounts": [
+        {
+          "name": "jury_session",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "contract",
+          "type": "pubkey"
+        },
+        {
+          "name": "milestone_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "reveal_vote",
+      "docs": [
+        "Juror reveals their vote + salt. Contract verifies hash matches."
+      ],
+      "discriminator": [
+        100,
+        157,
+        139,
+        17,
+        186,
+        75,
+        185,
+        149
+      ],
+      "accounts": [
+        {
+          "name": "jury_session"
+        },
+        {
+          "name": "jury_vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jury_session"
+              },
+              {
+                "kind": "account",
+                "path": "juror"
+              }
+            ]
+          }
+        },
+        {
+          "name": "juror",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "vote",
+          "type": {
+            "defined": {
+              "name": "JuryVoteValue"
+            }
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "select_jury",
+      "docs": [
+        "Select jurors using VRF result. Sets commit/reveal deadlines.",
+        "In production: VRF result from Switchboard oracle.",
+        "For hackathon: accept any 32-byte seed."
+      ],
+      "discriminator": [
+        206,
+        167,
+        3,
+        110,
+        237,
+        188,
+        161,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "jury_session",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "vrf_result",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "jurors",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "expert_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "start_reveal_phase",
+      "docs": [
+        "Transition from commit to reveal phase.",
+        "Called after commit deadline or when all jurors have committed."
+      ],
+      "discriminator": [
+        138,
+        183,
+        26,
+        136,
+        75,
+        49,
+        252,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "jury_session",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "JurySession",
+      "discriminator": [
+        13,
+        145,
+        28,
+        65,
+        76,
+        130,
+        30,
+        195
+      ]
+    },
+    {
+      "name": "JuryVoteAccount",
+      "discriminator": [
+        27,
+        181,
+        32,
+        186,
+        130,
+        37,
+        45,
+        38
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "JurySelected",
+      "discriminator": [
+        210,
+        226,
+        16,
+        203,
+        203,
+        176,
+        230,
+        182
+      ]
+    },
+    {
+      "name": "JurySessionCreated",
+      "discriminator": [
+        215,
+        152,
+        112,
+        99,
+        228,
+        136,
+        213,
+        171
+      ]
+    },
+    {
+      "name": "PhaseTransitioned",
+      "discriminator": [
+        38,
+        227,
+        19,
+        72,
+        150,
+        22,
+        218,
+        221
+      ]
+    },
+    {
+      "name": "SessionEscalated",
+      "discriminator": [
+        102,
+        145,
+        44,
+        182,
+        159,
+        172,
+        69,
+        117
+      ]
+    },
+    {
+      "name": "SessionFinalized",
+      "discriminator": [
+        33,
+        12,
+        242,
+        91,
+        206,
+        42,
+        163,
+        235
+      ]
+    },
+    {
+      "name": "VoteCommitted",
+      "discriminator": [
+        74,
+        67,
+        158,
+        48,
+        168,
+        230,
+        217,
+        77
+      ]
+    },
+    {
+      "name": "VoteRevealed",
+      "discriminator": [
+        104,
+        162,
+        140,
+        194,
+        213,
+        217,
+        117,
+        179
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "WrongPhase",
+      "msg": "Operation not allowed in current phase"
+    },
+    {
+      "code": 6001,
+      "name": "DeadlinePassed",
+      "msg": "Deadline has passed"
+    },
+    {
+      "code": 6002,
+      "name": "AlreadyCommitted",
+      "msg": "Already committed"
+    },
+    {
+      "code": 6003,
+      "name": "NotCommitted",
+      "msg": "Must commit before reveal"
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyRevealed",
+      "msg": "Already revealed"
+    },
+    {
+      "code": 6005,
+      "name": "HashMismatch",
+      "msg": "Vote hash does not match commitment"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidVote",
+      "msg": "Invalid vote value"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidJurorCount",
+      "msg": "Must have exactly 4 jurors"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidExpertIndex",
+      "msg": "Expert index out of range"
+    }
+  ],
+  "types": [
+    {
+      "name": "JuryResult",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Rejected"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JurySelected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "jurors",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "expert_index",
+            "type": "u8"
+          },
+          {
+            "name": "commit_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_deadline",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JurySession",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "JurySessionStatus"
+              }
+            }
+          },
+          {
+            "name": "vrf_result",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "juror_count",
+            "type": "u8"
+          },
+          {
+            "name": "commit_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "reveal_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "weighted_accept",
+            "type": "u8"
+          },
+          {
+            "name": "weighted_reject",
+            "type": "u8"
+          },
+          {
+            "name": "result",
+            "type": {
+              "defined": {
+                "name": "JuryResult"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JurySessionCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JurySessionStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Selecting"
+          },
+          {
+            "name": "CommitPhase"
+          },
+          {
+            "name": "RevealPhase"
+          },
+          {
+            "name": "Finalized"
+          },
+          {
+            "name": "Escalated"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JuryVoteAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "juror",
+            "type": "pubkey"
+          },
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "committed",
+            "type": "bool"
+          },
+          {
+            "name": "revealed",
+            "type": "bool"
+          },
+          {
+            "name": "vote",
+            "type": {
+              "defined": {
+                "name": "JuryVoteValue"
+              }
+            }
+          },
+          {
+            "name": "is_expert",
+            "type": "bool"
+          },
+          {
+            "name": "weight",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JuryVoteValue",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Accept"
+          },
+          {
+            "name": "Reject"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PhaseTransitioned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_phase",
+            "type": {
+              "defined": {
+                "name": "JurySessionStatus"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionEscalated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "result",
+            "type": {
+              "defined": {
+                "name": "JuryResult"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "juror",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session",
+            "type": "pubkey"
+          },
+          {
+            "name": "juror",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote",
+            "type": {
+              "defined": {
+                "name": "JuryVoteValue"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

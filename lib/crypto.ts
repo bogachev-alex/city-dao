@@ -4,7 +4,7 @@
  */
 export async function hashIIN(iin: string): Promise<string> {
   const encoder = new TextEncoder()
-  const data = encoder.encode(iin.trim())
+  const data = encoder.encode(iin.trim()) as unknown as ArrayBuffer
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -27,7 +27,7 @@ export function generateSalt(): string {
  */
 export async function hashVoteCommitment(vote: 'accept' | 'reject', salt: string): Promise<string> {
   const encoder = new TextEncoder()
-  const data = encoder.encode(`${vote}:${salt}`)
+  const data = encoder.encode(`${vote}:${salt}`) as unknown as ArrayBuffer
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')

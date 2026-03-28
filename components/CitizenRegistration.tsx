@@ -1,16 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { hashIIN } from '../lib/crypto'
 import { DISTRICTS } from '../lib/contracts'
+import { useCitizenRegistry } from '../lib/web3/useCitizenRegistry'
 
 export default function CitizenRegistration() {
+  const { publicKey, connected } = useWallet()
+  const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+
   const [iin, setIin] = useState('')
   const [district, setDistrict] = useState('')
   const [iinHash, setIinHash] = useState<string | null>(null)
-  const [walletConnected, setWalletConnected] = useState(false)
-  const [step, setStep] = useState<'form' | 'hashing' | 'done'>('form')
+  const [step, setStep] = useState<'form' | 'registering' | 'done'>('form')
   const [agreed, setAgreed] = useState(false)
+  const [txSignature, setTxSignature] = useState<string | null>(null)
+  const [regError, setRegError] = useState<string | null>(null)
+  const [onChain, setOnChain] = useState(false)
 
   const isValidIIN = iin.length === 12 && /^\d+$/.test(iin)
 
@@ -24,9 +32,48 @@ export default function CitizenRegistration() {
   }
 
   const handleSubmit = async () => {
-    if (!isValidIIN || !district || !walletConnected || !agreed) return
-    setStep('hashing')
-    await new Promise((r) => setTimeout(r, 1500))
+    if (!isValidIIN || !district || !connected || !agreed || !publicKey || !iinHash) return
+    setStep('registering')
+    setRegError(null)
+
+    const walletAddress = publicKey.toBase58()
+
+    // Step 1: Try on-chain registration
+    try {
+      const hashBytes = new Uint8Array(32)
+      for (let i = 0; i < 32; i++) {
+        hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+      }
+      const result = await registerCitizen(district, hashBytes)
+      setTxSignature(result.tx)
+      setOnChain(true)
+      console.log('On-chain registration tx:', result.tx)
+    } catch (err: any) {
+      console.log('On-chain registration failed (continuing with DB only):', err.message)
+      // Continue with DB-only — on-chain may fail if user has no SOL or program issue
+    }
+
+    // Step 2: Save to PostgreSQL (always)
+    try {
+      const res = await fetch('/api/citizens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, district, iinHash }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setRegError(data.error)
+        setStep('form')
+        return
+      }
+    } catch {
+      setRegError('Ошибка сохранения в БД')
+      setStep('form')
+      return
+    }
+
+    // Clear IIN from memory
+    setIin('')
     setStep('done')
   }
 
@@ -39,7 +86,7 @@ export default function CitizenRegistration() {
           </svg>
         </div>
         <h3 className="text-2xl font-bold text-white mb-2">Регистрация завершена!</h3>
-        <p className="text-gray-400 mb-6">Вы успешно зарегистрированы как гражданин Amanat Protocol</p>
+        <p className="text-gray-400 mb-6">Вы зарегистрированы как гражданин Amanat Protocol</p>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 text-left mb-6 max-w-sm mx-auto">
           <div className="space-y-3">
             <div>
@@ -52,7 +99,31 @@ export default function CitizenRegistration() {
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-1">Кошелёк</div>
-              <div className="text-white font-medium font-mono text-sm">0xA3...f9D2</div>
+              <div className="text-white font-medium font-mono text-sm">{publicKey?.toBase58()}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Solana</div>
+              {onChain ? (
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-emerald-400 text-xs">On-chain</span>
+                  {txSignature && (
+                    <a
+                      href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 text-xs underline"
+                    >
+                      tx
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                  <span className="text-yellow-400 text-xs">Ожидает подтверждения</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -70,6 +141,13 @@ export default function CitizenRegistration() {
 
   return (
     <div className="space-y-6">
+      {/* Error */}
+      {(regError || solanaError) && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-400">
+          {regError || solanaError}
+        </div>
+      )}
+
       {/* Step 1: IIN */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -97,13 +175,9 @@ export default function CitizenRegistration() {
             <div className="flex items-center justify-between mt-1.5">
               <span className="text-xs text-gray-600">{iin.length}/12 символов</span>
               {isValidIIN && <span className="text-xs text-emerald-400">Действительный ИИН</span>}
-              {iin.length > 0 && !isValidIIN && (
-                <span className="text-xs text-red-400">Только 12 цифр</span>
-              )}
             </div>
           </div>
 
-          {/* Hash preview */}
           {iinHash && (
             <div className="bg-gray-950 border border-emerald-500/20 rounded-lg p-3">
               <div className="text-xs text-emerald-400/70 mb-1.5 flex items-center gap-1.5">
@@ -147,16 +221,10 @@ export default function CitizenRegistration() {
           <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">3</div>
           <h3 className="text-white font-semibold">Подключить кошелёк</h3>
         </div>
-        {!walletConnected ? (
-          <button
-            onClick={() => setWalletConnected(true)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold hover:from-purple-600 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 12V22H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
-            </svg>
-            Подключить Phantom Wallet
-          </button>
+        {!connected ? (
+          <div className="wallet-adapter-btn">
+            <WalletMultiButton />
+          </div>
         ) : (
           <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -166,7 +234,7 @@ export default function CitizenRegistration() {
             </div>
             <div>
               <div className="text-emerald-400 font-medium text-sm">Подключено</div>
-              <div className="text-gray-400 font-mono text-xs">0xA3f2...9D2b</div>
+              <div className="text-gray-400 font-mono text-xs">{publicKey?.toBase58()}</div>
             </div>
           </div>
         )}
@@ -181,9 +249,8 @@ export default function CitizenRegistration() {
           <div>
             <div className="text-blue-400 font-medium text-sm mb-1">Конфиденциальность</div>
             <p className="text-gray-400 text-xs leading-relaxed">
-              Ваш ИИН никогда не покидает ваш браузер. Мы используем SHA-256 хэширование на стороне клиента.
+              ИИН хэшируется SHA-256 в вашем браузере и никогда не покидает клиент.
               В блокчейн записывается только хэш, что делает невозможным обратное восстановление ИИН.
-              Хэш служит уникальным идентификатором для предотвращения дублирования.
             </p>
           </div>
         </div>
@@ -204,24 +271,24 @@ export default function CitizenRegistration() {
           )}
         </div>
         <span className="text-sm text-gray-400">
-          Я соглашаюсь с условиями использования Amanat Protocol и подтверждаю, что являюсь жителем Алматы
+          Я соглашаюсь с условиями Amanat Protocol и подтверждаю, что являюсь жителем Алматы
         </span>
       </label>
 
       {/* Submit */}
       <button
         onClick={handleSubmit}
-        disabled={!isValidIIN || !district || !walletConnected || !agreed || step === 'hashing'}
+        disabled={!isValidIIN || !district || !connected || !agreed || step === 'registering'}
         className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-          isValidIIN && district && walletConnected && agreed
+          isValidIIN && district && connected && agreed
             ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-xl shadow-emerald-500/30'
             : 'bg-gray-800 text-gray-600 cursor-not-allowed'
         }`}
       >
-        {step === 'hashing' ? (
+        {step === 'registering' ? (
           <>
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Регистрация...
+            {solanaLoading ? 'Подписание транзакции...' : 'Сохранение в БД...'}
           </>
         ) : (
           <>

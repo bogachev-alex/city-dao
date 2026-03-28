@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { DEMO_CONTRACTS, DISTRICTS, ContractStatus } from '../../lib/contracts'
+import { useState, useEffect } from 'react'
+import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract } from '../../lib/contracts'
+import { fetchContracts } from '../../lib/api'
 import ContractCard from '../../components/ContractCard'
 
 const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
@@ -13,11 +14,26 @@ const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
 ]
 
 export default function ContractsPage() {
+  const [contracts, setContracts] = useState<Contract[]>([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
   const [districtFilter, setDistrictFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filtered = DEMO_CONTRACTS.filter((c) => {
+  useEffect(() => {
+    fetchContracts()
+      .then((data: any[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setContracts(data.map(normalizeContract))
+        } else {
+          setContracts(DEMO_CONTRACTS)
+        }
+      })
+      .catch(() => setContracts(DEMO_CONTRACTS))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = contracts.filter((c) => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false
     if (districtFilter !== 'all' && c.district !== districtFilter) return false
     if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase()) && !c.contractor.toLowerCase().includes(searchQuery.toLowerCase())) return false
@@ -25,10 +41,10 @@ export default function ContractsPage() {
   })
 
   const counts = {
-    active: DEMO_CONTRACTS.filter((c) => c.status === 'active').length,
-    penalized: DEMO_CONTRACTS.filter((c) => c.status === 'penalized').length,
-    completed: DEMO_CONTRACTS.filter((c) => c.status === 'completed').length,
-    disputed: DEMO_CONTRACTS.filter((c) => c.status === 'disputed').length,
+    active: contracts.filter((c) => c.status === 'active').length,
+    penalized: contracts.filter((c) => c.status === 'penalized').length,
+    completed: contracts.filter((c) => c.status === 'completed').length,
+    disputed: contracts.filter((c) => c.status === 'disputed').length,
   }
 
   return (

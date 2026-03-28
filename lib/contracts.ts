@@ -116,6 +116,49 @@ export function getContractById(id: string): Contract | undefined {
   return DEMO_CONTRACTS.find((c) => c.id === id)
 }
 
+// Map Prisma enum values (UPPER_CASE) to frontend types (lower_case)
+const CONTRACT_STATUS_MAP: Record<string, ContractStatus> = {
+  ACTIVE: 'active', active: 'active',
+  PENALIZED: 'penalized', penalized: 'penalized',
+  COMPLETED: 'completed', completed: 'completed',
+  DISPUTED: 'disputed', disputed: 'disputed',
+  TERMINATED: 'completed', // treat terminated as completed for display
+}
+
+const MILESTONE_STATUS_MAP: Record<string, MilestoneStatus> = {
+  PENDING: 'pending', pending: 'pending',
+  SUBMITTED: 'submitted', submitted: 'submitted',
+  UNDER_REVIEW: 'under_review', under_review: 'under_review',
+  ACCEPTED: 'accepted', accepted: 'accepted',
+  REJECTED: 'rejected', rejected: 'rejected',
+  OVERDUE: 'overdue', overdue: 'overdue',
+}
+
+/** Normalize API response (Prisma format) to frontend Contract shape */
+export function normalizeContract(c: any): Contract {
+  return {
+    id: c.id,
+    title: c.title,
+    contractor: c.contractor?.name || c.contractor || '',
+    amount_usdc: Number(c.totalAmount || c.amount_usdc || 0) / 1000,
+    deadline: c.deadline,
+    district: c.district,
+    status: CONTRACT_STATUS_MAP[c.status] || 'active',
+    lat: c.lat,
+    lng: c.lng,
+    escrow_amount: Number(c.escrowAmount || c.escrow_amount || 0),
+    penalty_amount: Number(c.penaltyAmount || c.penalty_amount || 0),
+    days_overdue: c.days_overdue,
+    milestones: (c.milestones || []).map((m: any) => ({
+      id: m.id,
+      desc: m.description || m.desc,
+      deadline_days: m.deadlineDays || m.deadline_days,
+      tranche_pct: m.tranchePct || m.tranche_pct,
+      status: MILESTONE_STATUS_MAP[m.status] || 'pending',
+    })),
+  }
+}
+
 export function getDaysUntilDeadline(deadline: string): number {
   const now = Date.now()
   const dl = new Date(deadline).getTime()

@@ -2,17 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 
 export default function Navbar() {
   const pathname = usePathname()
-  const [walletConnected, setWalletConnected] = useState(false)
+  const { connected, publicKey } = useWallet()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const navLinks = [
     { href: '/', label: 'Карта' },
     { href: '/contracts', label: 'Контракты' },
-    { href: '/treasury/Медеуский', label: 'Казна' },
+    { href: '/treasury/Ауэзовский', label: 'Казна' },
     { href: '/profile', label: 'Профиль' },
     { href: '/register', label: 'Регистрация' },
     { href: '/admin', label: 'Админ' },
@@ -53,17 +60,19 @@ export default function Navbar() {
 
           {/* Wallet + mobile toggle */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setWalletConnected(!walletConnected)}
-              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                walletConnected
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full ${walletConnected ? 'bg-emerald-400 animate-pulse' : 'bg-white'}`} />
-              {walletConnected ? '0xA3...f9D2' : 'Подключить кошелёк'}
-            </button>
+            {/* Solana wallet button — styled to match dark theme */}
+            {mounted && (
+              <div className="hidden md:block wallet-adapter-btn">
+                <WalletMultiButton />
+              </div>
+            )}
+
+            {mounted && connected && publicKey && (
+              <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                devnet
+              </div>
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -100,17 +109,11 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <button
-              onClick={() => setWalletConnected(!walletConnected)}
-              className={`w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                walletConnected
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full ${walletConnected ? 'bg-emerald-400 animate-pulse' : 'bg-white'}`} />
-              {walletConnected ? '0xA3...f9D2' : 'Подключить кошелёк'}
-            </button>
+            {mounted && (
+              <div className="mt-2 wallet-adapter-btn">
+                <WalletMultiButton />
+              </div>
+            )}
           </div>
         </div>
       )}

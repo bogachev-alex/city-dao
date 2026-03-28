@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Navbar from '../components/Navbar'
+import { SolanaProviderWrapper } from '../components/SolanaProviderWrapper'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -18,8 +19,10 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className={`${inter.className} bg-gray-950 text-white`}>
-        <Navbar />
-        {children}
+        <SolanaProviderWrapper>
+          <Navbar />
+          {children}
+        </SolanaProviderWrapper>
       </body>
     </html>
   )

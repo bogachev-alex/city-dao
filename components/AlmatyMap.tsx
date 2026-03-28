@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { DEMO_CONTRACTS, getContractPinColor, getDaysUntilDeadline } from '../lib/contracts'
+import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS } from '../lib/contracts'
+import { fetchContracts } from '../lib/api'
 import Link from 'next/link'
 
 // Fix default icon issue with Next.js
@@ -61,6 +62,22 @@ function MapController() {
 }
 
 export default function AlmatyMap() {
+  const [contracts, setContracts] = useState<Contract[]>([])
+
+  useEffect(() => {
+    fetchContracts()
+      .then((data: any[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setContracts(data.map(normalizeContract))
+        } else {
+          setContracts(DEMO_CONTRACTS)
+        }
+      })
+      .catch(() => {
+        setContracts(DEMO_CONTRACTS)
+      })
+  }, [])
+
   return (
     <MapContainer
       center={[43.2551, 76.9126]}
@@ -76,7 +93,7 @@ export default function AlmatyMap() {
         maxZoom={20}
       />
 
-      {DEMO_CONTRACTS.map((contract) => {
+      {contracts.map((contract) => {
         const pinType = getContractPinColor(contract)
         const color = PIN_COLORS[pinType]
         const isOverdue = contract.status === 'penalized'

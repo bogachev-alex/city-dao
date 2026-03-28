@@ -1,16 +1,23 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import JuryVoting from '../../../components/JuryVoting'
 
-interface PageProps {
-  params: { session_id: string }
-}
-
-export default function JuryPage({ params }: PageProps) {
+export default function JuryPage() {
+  const params = useParams<{ session_id: string }>()
   const sessionId = params.session_id
-  const parts = sessionId.split('-')
-  const contractId = parts[0]
+  const [sessionInfo, setSessionInfo] = useState<any>(null)
+
+  useEffect(() => {
+    fetch(`/api/jury?sessionId=${sessionId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setSessionInfo(data)
+      })
+      .catch(() => {})
+  }, [sessionId])
 
   return (
     <div className="min-h-screen pt-16 bg-gray-950">
@@ -18,13 +25,13 @@ export default function JuryPage({ params }: PageProps) {
       <div className="border-b border-gray-800 bg-gray-900/50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
           <Link
-            href={`/contracts/${contractId}`}
+            href={sessionInfo?.contract ? `/contracts/${sessionInfo.contract.id}` : '/contracts'}
             className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M15 19l-7-7 7-7" />
             </svg>
-            Контракт #{contractId}
+            {sessionInfo?.contract?.title || 'Контракты'}
           </Link>
           <span className="text-gray-700">/</span>
           <span className="text-gray-400 text-sm">Голосование жюри</span>
@@ -42,7 +49,9 @@ export default function JuryPage({ params }: PageProps) {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Голосование присяжного</h1>
-              <p className="text-gray-400 text-sm">Сессия #{sessionId}</p>
+              <p className="text-gray-400 text-sm">
+                {sessionInfo?.milestone?.description || `Сессия #${sessionId.slice(0, 8)}`}
+              </p>
             </div>
           </div>
 
@@ -55,11 +64,21 @@ export default function JuryPage({ params }: PageProps) {
               </div>
               <div>
                 <div className="text-gray-500 text-xs mb-1">Присяжных</div>
-                <div className="text-white font-medium">9 граждан</div>
+                <div className="text-white font-medium">{sessionInfo?.votes?.length || '...'}</div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs mb-1">Ваша репутация</div>
-                <div className="text-emerald-400 font-medium">340 очков</div>
+                <div className="text-gray-500 text-xs mb-1">Статус</div>
+                <div className={`font-medium ${
+                  sessionInfo?.status === 'FINALIZED' ? 'text-emerald-400' :
+                  sessionInfo?.status === 'ESCALATED' ? 'text-yellow-400' :
+                  'text-blue-400'
+                }`}>
+                  {sessionInfo?.status === 'COMMIT_PHASE' ? 'Фаза коммита' :
+                   sessionInfo?.status === 'REVEAL_PHASE' ? 'Фаза раскрытия' :
+                   sessionInfo?.status === 'FINALIZED' ? 'Завершено' :
+                   sessionInfo?.status === 'ESCALATED' ? 'Эскалация' :
+                   sessionInfo?.status || '...'}
+                </div>
               </div>
             </div>
           </div>
@@ -74,7 +93,7 @@ export default function JuryPage({ params }: PageProps) {
           <div className="space-y-2 text-xs text-gray-500">
             <div className="flex gap-2">
               <span className="text-emerald-400 font-bold shrink-0">1.</span>
-              <span>Вы голосуете (Accept/Reject), и ваш голос шифруется: <code className="text-emerald-400/80">SHA-256(голос + соль)</code>. Хэш отправляется on-chain.</span>
+              <span>Вы голосуете (Accept/Reject), и ваш голос шифруется: <code className="text-emerald-400/80">SHA-256(голос + соль)</code>. Хэш сохраняется в БД.</span>
             </div>
             <div className="flex gap-2">
               <span className="text-emerald-400 font-bold shrink-0">2.</span>
@@ -82,11 +101,11 @@ export default function JuryPage({ params }: PageProps) {
             </div>
             <div className="flex gap-2">
               <span className="text-emerald-400 font-bold shrink-0">3.</span>
-              <span>Смарт-контракт проверяет: <code className="text-emerald-400/80">SHA-256(голос + соль) == хэш</code>. Если всё совпадает, голос засчитывается.</span>
+              <span>Смарт-контракт проверяет: <code className="text-emerald-400/80">SHA-256(голос + соль) == хэш</code>. Если совпадает — голос засчитан.</span>
             </div>
             <div className="flex gap-2">
               <span className="text-emerald-400 font-bold shrink-0">4.</span>
-              <span>Присяжные, проголосовавшие с большинством, получают +15 очков репутации. Меньшинство — +5.</span>
+              <span>Присяжные, проголосовавшие с большинством, получают +10 очков репутации. Против — -5.</span>
             </div>
           </div>
         </div>
