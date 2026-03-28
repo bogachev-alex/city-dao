@@ -70,7 +70,7 @@ function WalletButton() {
             <div className={`w-2 h-2 rounded-full animate-pulse ${wrongNetwork ? 'bg-red-400' : 'bg-emerald-400'}`} />
             {addr.slice(0, 4)}…{addr.slice(-4)}
           </div>
-          <button onClick={handleDisconnect} className="px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400 hover:text-white transition-colors">
+          <button onClick={handleDisconnect} className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
             ✕
           </button>
         </div>
