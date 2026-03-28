@@ -1,0 +1,405 @@
+{
+  "address": "Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6",
+  "metadata": {
+    "name": "citizen_registry",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Amanat Protocol — Citizen Registry (Soulbound Token)"
+  },
+  "instructions": [
+    {
+      "name": "check_eligibility",
+      "docs": [
+        "Check if ban has expired and re-enable citizen."
+      ],
+      "discriminator": [
+        36,
+        15,
+        52,
+        116,
+        158,
+        218,
+        253,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "citizen_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  116,
+                  105,
+                  122,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "citizen_profile.wallet",
+                "account": "CitizenProfile"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "record_missed_jury",
+      "docs": [
+        "Record a missed jury duty. After 3 misses → 30-day ban."
+      ],
+      "discriminator": [
+        97,
+        150,
+        110,
+        79,
+        57,
+        124,
+        239,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "citizen_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  116,
+                  105,
+                  122,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "citizen_profile.wallet",
+                "account": "CitizenProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_citizen",
+      "docs": [
+        "Register a new citizen with hashed IIN. Creates a Soulbound Token (non-transferable).",
+        "IIN is hashed client-side — only the hash reaches the chain."
+      ],
+      "discriminator": [
+        241,
+        250,
+        3,
+        236,
+        214,
+        25,
+        141,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "citizen_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  116,
+                  105,
+                  122,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "district",
+          "type": "string"
+        },
+        {
+          "name": "iin_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_reputation",
+      "docs": [
+        "Update reputation score after jury vote or other action.",
+        "Only callable by authorized programs (jury_mechanism, penalty_engine)."
+      ],
+      "discriminator": [
+        194,
+        220,
+        43,
+        201,
+        54,
+        209,
+        49,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "citizen_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  116,
+                  105,
+                  122,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "citizen_profile.wallet",
+                "account": "CitizenProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delta",
+          "type": "i64"
+        },
+        {
+          "name": "voted_with_majority",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CitizenProfile",
+      "discriminator": [
+        123,
+        91,
+        153,
+        74,
+        147,
+        249,
+        109,
+        159
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CitizenRegistered",
+      "discriminator": [
+        170,
+        129,
+        158,
+        81,
+        238,
+        197,
+        71,
+        145
+      ]
+    },
+    {
+      "name": "ReputationUpdated",
+      "discriminator": [
+        26,
+        36,
+        187,
+        150,
+        235,
+        90,
+        106,
+        89
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "CitizenProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "name": "iin_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "reputation_score",
+            "type": "i64"
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "CitizenTier"
+              }
+            }
+          },
+          {
+            "name": "is_eligible",
+            "type": "bool"
+          },
+          {
+            "name": "votes_cast",
+            "type": "u32"
+          },
+          {
+            "name": "votes_with_majority",
+            "type": "u32"
+          },
+          {
+            "name": "missed_jury_count",
+            "type": "u8"
+          },
+          {
+            "name": "ban_until",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CitizenRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CitizenTier",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "New"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Trusted"
+          },
+          {
+            "name": "Guardian"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_score",
+            "type": "i64"
+          },
+          {
+            "name": "delta",
+            "type": "i64"
+          },
+          {
+            "name": "tier",
+            "type": {
+              "defined": {
+                "name": "CitizenTier"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

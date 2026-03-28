@@ -1,6 +1,10 @@
-import { notFound } from 'next/navigation'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, DEMO_CONTRACTS } from '../../../lib/contracts'
+import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, normalizeContract } from '../../../lib/contracts'
+import { fetchContract } from '../../../lib/api'
 import MilestoneTracker from '../../../components/MilestoneTracker'
 import PenaltyCalculator from '../../../components/PenaltyCalculator'
 
@@ -11,25 +15,54 @@ const statusConfig = {
   disputed: { label: 'Спор', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
 }
 
-export function generateStaticParams() {
-  return DEMO_CONTRACTS.map((c) => ({ id: c.id }))
-}
+export default function ContractDetailPage() {
+  const params = useParams<{ id: string }>()
+  const [contract, setContract] = useState<Contract | null>(null)
+  const [loading, setLoading] = useState(true)
 
-interface PageProps {
-  params: { id: string }
-}
+  useEffect(() => {
+    if (!params.id) return
 
-export default function ContractDetailPage({ params }: PageProps) {
-  const contract = getContractById(params.id)
+    fetchContract(params.id)
+      .then((data: any) => {
+        if (data && !data.error) {
+          setContract(normalizeContract(data))
+        } else {
+          // Fallback to static demo data
+          const demo = getContractById(params.id)
+          setContract(demo || null)
+        }
+      })
+      .catch(() => {
+        const demo = getContractById(params.id)
+        setContract(demo || null)
+      })
+      .finally(() => setLoading(false))
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (!contract) {
-    notFound()
+    return (
+      <div className="min-h-screen pt-16 bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-400 text-lg mb-2">Контракт не найден</div>
+          <Link href="/contracts" className="text-emerald-400 text-sm hover:underline">Вернуться к реестру</Link>
+        </div>
+      </div>
+    )
   }
 
   const daysLeft = getDaysUntilDeadline(contract.deadline)
   const completed = getMilestoneCompletedCount(contract)
   const total = contract.milestones.length
-  const progressPct = Math.round((completed / total) * 100)
+  const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
   const status = statusConfig[contract.status]
 
   const PHOTO_EVIDENCE = [
@@ -192,7 +225,7 @@ export default function ContractDetailPage({ params }: PageProps) {
               <h3 className="text-white font-semibold mb-4">Метаданные</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { label: 'ID контракта', value: `#${contract.id.padStart(6, '0')}` },
+                  { label: 'ID контракта', value: `#${contract.id.slice(0, 8)}` },
                   { label: 'Координаты', value: `${contract.lat}, ${contract.lng}` },
                   { label: 'Эскроу (20%)', value: `${formatAmount(contract.escrow_amount)} USDC` },
                   { label: 'Статус', value: statusConfig[contract.status].label },

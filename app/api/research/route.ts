@@ -1,7 +1,11 @@
 import OpenAI from 'openai'
 import { NextRequest, NextResponse } from 'next/server'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+export const dynamic = 'force-dynamic'
+
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' })
+}
 
 export async function POST(req: NextRequest) {
   const { proposal } = await req.json()
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // Use OpenAI Responses API with web search
-    const response = await (openai as any).responses.create({
+    const response = await (getOpenAI() as any).responses.create({
       model: 'gpt-4o-mini',
       tools: [{ type: 'web_search_preview' }],
       input: prompt,

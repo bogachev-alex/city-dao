@@ -1,0 +1,308 @@
+{
+  "address": "DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z",
+  "metadata": {
+    "name": "penalty_engine",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Amanat Protocol — Automatic Penalty Engine"
+  },
+  "instructions": [
+    {
+      "name": "execute_penalty",
+      "docs": [
+        "Execute penalty and transfer funds from escrow to district treasury.",
+        "Anyone can call — fully decentralized enforcement.",
+        "",
+        "Formula:",
+        "time_penalty    = total_amount × days_overdue / 100   (1% per day)",
+        "quality_penalty = total_amount × rejection_count × 10 / 100  (10% per rejection)",
+        "ghost_penalty   = total_amount × ghost_count × 5 / 100  (5% per ghost site)",
+        "total capped at 30% of total_amount"
+      ],
+      "discriminator": [
+        25,
+        147,
+        94,
+        133,
+        39,
+        138,
+        17,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "contract_data",
+          "docs": [
+            "The contract being penalized — read-only reference.",
+            "In production, this would be a CPI to contract_registry."
+          ]
+        },
+        {
+          "name": "penalty_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  97,
+                  108,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract_data"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "district_treasury",
+          "writable": true
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "penalty_type",
+          "type": {
+            "defined": {
+              "name": "PenaltyType"
+            }
+          }
+        },
+        {
+          "name": "days_overdue",
+          "type": "u64"
+        },
+        {
+          "name": "rejection_count",
+          "type": "u8"
+        },
+        {
+          "name": "ghost_count",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ContractRef",
+      "discriminator": [
+        14,
+        255,
+        67,
+        65,
+        128,
+        63,
+        94,
+        138
+      ]
+    },
+    {
+      "name": "PenaltyRecord",
+      "discriminator": [
+        139,
+        64,
+        28,
+        156,
+        16,
+        153,
+        54,
+        206
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "PenaltyCapped",
+      "discriminator": [
+        89,
+        249,
+        172,
+        142,
+        173,
+        221,
+        154,
+        77
+      ]
+    },
+    {
+      "name": "PenaltyExecuted",
+      "discriminator": [
+        147,
+        158,
+        140,
+        215,
+        131,
+        135,
+        0,
+        248
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NoPenaltyDue",
+      "msg": "No penalty due — cap already reached or zero amount"
+    }
+  ],
+  "types": [
+    {
+      "name": "ContractRef",
+      "docs": [
+        "Minimal reference to contract data needed for penalty calculation.",
+        "In production, this is read via CPI from contract_registry."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "penalty_accumulated",
+            "type": "u64"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyCapped",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_penalty",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "penalty_type",
+            "type": {
+              "defined": {
+                "name": "PenaltyType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_accumulated",
+            "type": "u64"
+          },
+          {
+            "name": "cap",
+            "type": "u64"
+          },
+          {
+            "name": "triggered_by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "penalty_type",
+            "type": {
+              "defined": {
+                "name": "PenaltyType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "days_overdue",
+            "type": "u64"
+          },
+          {
+            "name": "triggered_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TimeOverdue"
+          },
+          {
+            "name": "QualityRejected"
+          },
+          {
+            "name": "GhostSite"
+          }
+        ]
+      }
+    }
+  ]
+}

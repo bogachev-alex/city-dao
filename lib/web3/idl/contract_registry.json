@@ -1,0 +1,834 @@
+{
+  "address": "GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU",
+  "metadata": {
+    "name": "contract_registry",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Amanat Protocol — Government Contract Registry"
+  },
+  "instructions": [
+    {
+      "name": "accept_milestone",
+      "docs": [
+        "Accept a milestone (called by jury_mechanism after successful vote).",
+        "Releases tranche to contractor."
+      ],
+      "discriminator": [
+        67,
+        203,
+        235,
+        220,
+        254,
+        79,
+        251,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "government_contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contractor",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "milestone_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "check_deadline",
+      "docs": [
+        "Check deadline and auto-penalize if overdue. Anyone can call this."
+      ],
+      "discriminator": [
+        60,
+        21,
+        93,
+        139,
+        196,
+        27,
+        48,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_contract",
+      "docs": [
+        "Register a new government contract. Akimat-only.",
+        "20% of total_amount is transferred to escrow PDA immediately."
+      ],
+      "discriminator": [
+        215,
+        41,
+        228,
+        131,
+        56,
+        222,
+        121,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  97,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "title"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "government_contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contractor"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "district",
+          "type": "string"
+        },
+        {
+          "name": "total_amount",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        },
+        {
+          "name": "milestones",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "MilestoneInput"
+              }
+            }
+          }
+        },
+        {
+          "name": "lat",
+          "type": "f64"
+        },
+        {
+          "name": "lng",
+          "type": "f64"
+        }
+      ]
+    },
+    {
+      "name": "reject_milestone",
+      "docs": [
+        "Reject a milestone (called by jury_mechanism after failed vote)."
+      ],
+      "discriminator": [
+        243,
+        48,
+        66,
+        165,
+        237,
+        41,
+        116,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "milestone_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "submit_milestone",
+      "docs": [
+        "Contractor submits milestone completion with IPFS evidence hash."
+      ],
+      "discriminator": [
+        35,
+        96,
+        220,
+        215,
+        102,
+        83,
+        139,
+        52
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "contractor",
+          "signer": true,
+          "relations": [
+            "government_contract"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "milestone_index",
+          "type": "u8"
+        },
+        {
+          "name": "evidence_hash",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "terminate_contract",
+      "docs": [
+        "Terminate contract. Akimat-only. Returns remaining escrow to city."
+      ],
+      "discriminator": [
+        39,
+        195,
+        134,
+        151,
+        240,
+        183,
+        194,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "government_contract"
+          ]
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GovernmentContract",
+      "discriminator": [
+        156,
+        20,
+        92,
+        179,
+        239,
+        77,
+        158,
+        133
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ContractCompleted",
+      "discriminator": [
+        99,
+        32,
+        99,
+        27,
+        103,
+        45,
+        188,
+        151
+      ]
+    },
+    {
+      "name": "ContractFlaggedForTermination",
+      "discriminator": [
+        242,
+        49,
+        27,
+        193,
+        54,
+        156,
+        162,
+        234
+      ]
+    },
+    {
+      "name": "ContractRegistered",
+      "discriminator": [
+        243,
+        59,
+        9,
+        161,
+        164,
+        202,
+        111,
+        122
+      ]
+    },
+    {
+      "name": "ContractTerminated",
+      "discriminator": [
+        37,
+        192,
+        250,
+        243,
+        252,
+        77,
+        20,
+        90
+      ]
+    },
+    {
+      "name": "MilestoneAccepted",
+      "discriminator": [
+        101,
+        69,
+        82,
+        199,
+        19,
+        111,
+        187,
+        148
+      ]
+    },
+    {
+      "name": "MilestoneRejected",
+      "discriminator": [
+        194,
+        242,
+        80,
+        147,
+        56,
+        228,
+        195,
+        245
+      ]
+    },
+    {
+      "name": "MilestoneSubmitted",
+      "discriminator": [
+        242,
+        19,
+        75,
+        99,
+        12,
+        28,
+        19,
+        33
+      ]
+    },
+    {
+      "name": "PenaltyTriggered",
+      "discriminator": [
+        120,
+        229,
+        152,
+        203,
+        28,
+        167,
+        97,
+        164
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidMilestoneCount",
+      "msg": "Contract must have 2-10 milestones"
+    },
+    {
+      "code": 6001,
+      "name": "MilestonePercentageMismatch",
+      "msg": "Milestone percentages must sum to 100"
+    },
+    {
+      "code": 6002,
+      "name": "ContractNotActive",
+      "msg": "Contract is not active"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidMilestoneIndex",
+      "msg": "Invalid milestone index"
+    },
+    {
+      "code": 6004,
+      "name": "MilestoneNotSubmittable",
+      "msg": "Milestone is not in a submittable state"
+    },
+    {
+      "code": 6005,
+      "name": "MilestoneNotUnderReview",
+      "msg": "Milestone is not under review"
+    },
+    {
+      "code": 6006,
+      "name": "CannotTerminate",
+      "msg": "Contract cannot be terminated in current status"
+    }
+  ],
+  "types": [
+    {
+      "name": "ContractCompleted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractFlaggedForTermination",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Penalized"
+          },
+          {
+            "name": "Completed"
+          },
+          {
+            "name": "Terminated"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractTerminated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GovernmentContract",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "contractor",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          },
+          {
+            "name": "penalty_amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ContractStatus"
+              }
+            }
+          },
+          {
+            "name": "lat",
+            "type": "f64"
+          },
+          {
+            "name": "lng",
+            "type": "f64"
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "milestones_accepted",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "milestones",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Milestone"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Milestone",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "deadline_days",
+            "type": "u16"
+          },
+          {
+            "name": "tranche_pct",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MilestoneStatus"
+              }
+            }
+          },
+          {
+            "name": "sort_order",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneAccepted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          },
+          {
+            "name": "tranche",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneInput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "deadline_days",
+            "type": "u16"
+          },
+          {
+            "name": "tranche_pct",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneRejected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Submitted"
+          },
+          {
+            "name": "UnderReview"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Rejected"
+          },
+          {
+            "name": "Overdue"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          },
+          {
+            "name": "evidence_hash",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyTriggered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "penalty_type",
+            "type": {
+              "defined": {
+                "name": "PenaltyType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "days_overdue",
+            "type": "u64"
+          },
+          {
+            "name": "triggered_by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TimeOverdue"
+          },
+          {
+            "name": "QualityRejected"
+          },
+          {
+            "name": "GhostSite"
+          }
+        ]
+      }
+    }
+  ]
+}

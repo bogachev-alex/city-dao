@@ -1,0 +1,414 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// MODULE 1: CONTRACT REGISTRY
+// ─────────────────────────────────────────────
+
+enum ContractStatus {
+  ACTIVE
+  DISPUTED
+  PENALIZED
+  COMPLETED
+  TERMINATED
+}
+
+enum MilestoneStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  OVERDUE
+}
+
+model Contract {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  district      String
+  lat           Float
+  lng           Float
+  contractorId  String
+  contractor    Contractor     @relation(fields: [contractorId], references: [id])
+  totalAmount   BigInt         // in tenge
+  escrowAmount  BigInt         // 20% of totalAmount
+  penaltyAmount BigInt         @default(0)
+  startDate     DateTime       @default(now())
+  deadline      DateTime
+  status        ContractStatus @default(ACTIVE)
+  category      String?
+  onChainPubkey String?        @unique // Solana account address
+
+  milestones    Milestone[]
+  jurySessions  JurySession[]
+  penalties     Penalty[]
+  workLogs      WorkLog[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Milestone {
+  id           String          @id @default(cuid())
+  contractId   String
+  contract     Contract        @relation(fields: [contractId], references: [id])
+  description  String
+  deadlineDays Int             // days from contract start
+  tranchePct   Int             // % of total payment
+  status       MilestoneStatus @default(PENDING)
+  sortOrder    Int             @default(0)
+
+  jurySessions JurySession[]
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// MODULE 2: CITIZEN REGISTRY (Soulbound Token)
+// ─────────────────────────────────────────────
+
+enum CitizenTier {
+  NEW        // 0-49
+  ACTIVE     // 50-149
+  TRUSTED    // 150-299
+  GUARDIAN   // 300+
+}
+
+model Citizen {
+  id              String      @id @default(cuid())
+  walletAddress   String      @unique
+  district        String
+  iinHash         String      @unique // SHA-256(IIN + salt), never raw IIN
+  reputationScore Int         @default(100)
+  tier            CitizenTier @default(NEW)
+  isEligible      Boolean     @default(true)
+  banUntil        DateTime?
+  votesCast       Int         @default(0)
+  votesWithMajority Int       @default(0)
+  missedJuryCount Int         @default(0)
+
+  juryVotes       JuryVote[]
+  suggestions     CitizenSuggestion[]
+  proposalVotes   ProposalVote[]
+  suggestionVotes SuggestionVote[]
+  nfts            CitizenNft[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// MODULE 3: JURY MECHANISM (Commit-Reveal)
+// ─────────────────────────────────────────────
+
+enum JurySessionStatus {
+  SELECTING     // VRF selection in progress
+  COMMIT_PHASE  // 48h commit window
+  REVEAL_PHASE  // 24h reveal window
+  FINALIZED     // votes tallied
+  ESCALATED     // tie → 5-person jury
+}
+
+enum VoteValue {
+  ACCEPT
+  REJECT
+}
+
+model JurySession {
+  id             String            @id @default(cuid())
+  contractId     String
+  contract       Contract          @relation(fields: [contractId], references: [id])
+  milestoneId    String
+  milestone      Milestone         @relation(fields: [milestoneId], references: [id])
+  status         JurySessionStatus @default(SELECTING)
+  vrfResult      String?           // hex-encoded VRF proof
+  commitDeadline DateTime?
+  revealDeadline DateTime?
+  result         VoteValue?        // final outcome after finalization
+  weightedAccept Int               @default(0)
+  weightedReject Int               @default(0)
+
+  votes          JuryVote[]
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model JuryVote {
+  id           String       @id @default(cuid())
+  sessionId    String
+  session      JurySession  @relation(fields: [sessionId], references: [id])
+  citizenId    String
+  citizen      Citizen      @relation(fields: [citizenId], references: [id])
+  isExpert     Boolean      @default(false) // expert vote weight = 2
+  commitHash   String?      // SHA-256(vote + salt)
+  revealedVote VoteValue?
+  revealedSalt String?
+  weight       Int          @default(1) // 1 for citizen, 2 for expert
+  rewardTenge  Int?         // 500-1000 citizen, 2000-5000 expert
+
+  createdAt    DateTime     @default(now())
+
+  @@unique([sessionId, citizenId])
+}
+
+// ─────────────────────────────────────────────
+// MODULE 4: PENALTY ENGINE
+// ─────────────────────────────────────────────
+
+enum PenaltyType {
+  TIME_OVERDUE     // 1% per day
+  QUALITY_REJECTED // 10% per rejection
+  GHOST_SITE       // 5% per ghost-site report
+}
+
+model Penalty {
+  id           String      @id @default(cuid())
+  contractId   String
+  contract     Contract    @relation(fields: [contractId], references: [id])
+  type         PenaltyType
+  amountTenge  BigInt
+  daysOverdue  Int?
+  triggeredBy  String?     // wallet address of citizen who called check_deadline
+  txSignature  String?     // Solana tx signature
+
+  createdAt    DateTime    @default(now())
+}
+
+// ─────────────────────────────────────────────
+// MODULE 5: DISTRICT TREASURY
+// ─────────────────────────────────────────────
+
+enum ProposalStatus {
+  DRAFT
+  VOTING
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
+model DistrictTreasury {
+  id        String             @id @default(cuid())
+  district  String             @unique
+  balance   BigInt             @default(0) // in tenge
+  proposals SpendingProposal[]
+
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model SpendingProposal {
+  id           String           @id @default(cuid())
+  treasuryId   String
+  treasury     DistrictTreasury @relation(fields: [treasuryId], references: [id])
+  title        String
+  description  String
+  amount       BigInt
+  category     String?
+  status       ProposalStatus   @default(DRAFT)
+  votingEnds   DateTime?
+  votesFor     Int              @default(0)
+  votesAgainst Int              @default(0)
+  quorumMet    Boolean          @default(false)
+
+  aiResearch   AiResearchReport?
+  votes        ProposalVote[]
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model ProposalVote {
+  id         String           @id @default(cuid())
+  proposalId String
+  proposal   SpendingProposal @relation(fields: [proposalId], references: [id])
+  citizenId  String
+  citizen    Citizen          @relation(fields: [citizenId], references: [id])
+  inFavor    Boolean
+
+  createdAt  DateTime         @default(now())
+
+  @@unique([proposalId, citizenId])
+}
+
+// ─────────────────────────────────────────────
+// MODULE 6: AI RESEARCH AGENT
+// ─────────────────────────────────────────────
+
+enum RiskLevel {
+  LOW_RISK
+  MEDIUM_RISK
+  HIGH_RISK
+}
+
+model AiResearchReport {
+  id          String           @id @default(cuid())
+  proposalId  String           @unique
+  proposal    SpendingProposal @relation(fields: [proposalId], references: [id])
+  swot        Json             // { strengths, weaknesses, opportunities, threats }
+  costAnalysis Json            // { proposed, market_average, deviation_pct, verdict }
+  similarProjects Json         // [{ city, country, year, budget_usd, outcome, lessons }]
+  riskScore   Int              // 0-100
+  riskLevel   RiskLevel
+  keyConcerns Json             // string[]
+  keyPositives Json            // string[]
+  sourcesUsed Json             // string[]
+
+  suggestion  CitizenSuggestion?
+
+  createdAt   DateTime         @default(now())
+}
+
+// ─────────────────────────────────────────────
+// MODULE 7: CONTRACTOR WORK LOG
+// ─────────────────────────────────────────────
+
+enum WorkLogType {
+  DAILY_LOG
+  MILESTONE_CLAIM
+  BLOCKER
+  MATERIAL_DELIVERY
+}
+
+enum ContractorRating {
+  AAA        // 90-100
+  AA         // 75-89
+  A          // 60-74
+  B          // 40-59
+  C          // 20-39
+  BLACKLISTED // <20 or 3 strikes
+}
+
+model Contractor {
+  id              String           @id @default(cuid())
+  name            String
+  walletAddress   String?          @unique
+  rating          ContractorRating @default(AA)
+  reputationScore Int              @default(75)
+  onTimeRate      Float            @default(1.0)   // 0-1
+  acceptanceRate  Float            @default(1.0)   // jury first-attempt acceptance
+  updateFrequency Float            @default(1.0)   // 0-1, higher = more frequent
+  gpsAccuracy     Float            @default(1.0)   // 0-1
+  blockerSpeed    Float            @default(1.0)   // 0-1
+
+  contracts       Contract[]
+  workLogs        WorkLog[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model WorkLog {
+  id             String      @id @default(cuid())
+  contractId     String
+  contract       Contract    @relation(fields: [contractId], references: [id])
+  contractorId   String
+  contractor     Contractor  @relation(fields: [contractorId], references: [id])
+  type           WorkLogType
+  title          String
+  description    String?
+  completionPct  Int?        // 0-100
+  workersOnSite  Int?
+  equipmentCount Int?
+  photoHashes    Json?       // IPFS/Arweave hashes, string[]
+  gpsLat         Float?
+  gpsLng         Float?
+  gpsValid       Boolean     @default(false) // within 500m of contract
+
+  createdAt      DateTime    @default(now())
+}
+
+// ─────────────────────────────────────────────
+// MODULE 8: CITIZEN SUGGESTIONS
+// ─────────────────────────────────────────────
+
+enum SuggestionStatus {
+  PENDING_UPVOTES
+  AI_RESEARCH
+  READY_FOR_BALLOT
+  ACTIVE_VOTE
+  FUNDED
+  REJECTED
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model CitizenSuggestion {
+  id              String           @id @default(cuid())
+  citizenId       String
+  citizen         Citizen          @relation(fields: [citizenId], references: [id])
+  title           String
+  problemDesc     String
+  suggestedFix    String?
+  district        String
+  lat             Float
+  lng             Float
+  urgency         Urgency          @default(MEDIUM)
+  budgetMin       BigInt?
+  budgetMax       BigInt?
+  affectedCount   Int?
+  photoHashes     Json?            // IPFS hashes, string[]
+  status          SuggestionStatus @default(PENDING_UPVOTES)
+  upvotesNeeded   Int              // 10 for Bronze, 5 for Silver, 0 for Gold
+  upvotesReceived Int              @default(0)
+
+  votes           SuggestionVote[]
+  aiReport        AiResearchReport? @relation(fields: [aiReportId], references: [id])
+  aiReportId      String?          @unique
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model SuggestionVote {
+  id           String            @id @default(cuid())
+  suggestionId String
+  suggestion   CitizenSuggestion @relation(fields: [suggestionId], references: [id])
+  citizenId    String
+  citizen      Citizen           @relation(fields: [citizenId], references: [id])
+  isUpvote     Boolean
+
+  createdAt    DateTime          @default(now())
+
+  @@unique([suggestionId, citizenId])
+}
+
+// ─────────────────────────────────────────────
+// NFT COLLECTION
+// ─────────────────────────────────────────────
+
+enum NftType {
+  ACTIVE_CITIZEN    // rep >= 50
+  TRUSTED_CITIZEN   // rep >= 150
+  GUARDIAN_CITIZEN   // rep >= 300
+  CITY_BUILDER      // funded suggestion
+  FAIR_JUDGE        // 10 jury votes + accuracy
+  WHISTLEBLOWER     // flagged cheating contractor
+  DISTRICT_CHAMPION // most active citizen of month
+}
+
+model CitizenNft {
+  id          String   @id @default(cuid())
+  citizenId   String
+  citizen     Citizen  @relation(fields: [citizenId], references: [id])
+  type        NftType
+  metadata    Json?    // project metadata, achievement details
+  mintAddress String?  // Solana NFT mint address
+
+  createdAt   DateTime @default(now())
+
+  @@unique([citizenId, type])
+}
