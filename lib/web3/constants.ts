@@ -11,6 +11,7 @@ export const PROGRAM_IDS = {
   juryMechanism: new PublicKey('F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w'),
   penaltyEngine: new PublicKey('DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z'),
   districtTreasury: new PublicKey('44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy'),
+  crowdfunding: new PublicKey('CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ'),
 } as const
 
 // PDA seeds
@@ -24,6 +25,9 @@ export const SEEDS = {
   treasury: Buffer.from('treasury'),
   proposal: Buffer.from('proposal'),
   ballot: Buffer.from('ballot'),
+  campaign: Buffer.from('campaign'),
+  cfEscrow: Buffer.from('cf_escrow'),
+  donor: Buffer.from('donor'),
 } as const
 
 // Almaty districts

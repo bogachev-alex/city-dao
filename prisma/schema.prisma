@@ -50,6 +50,7 @@ model Contract {
   jurySessions  JurySession[]
   penalties     Penalty[]
   workLogs      WorkLog[]
+  crowdfunding  CrowdfundingCampaign?
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -100,6 +101,8 @@ model Citizen {
   proposalVotes   ProposalVote[]
   suggestionVotes SuggestionVote[]
   nfts            CitizenNft[]
+  contributions   CampaignContribution[]
+  campaigns       CrowdfundingCampaign[]  // campaigns created by this citizen
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -398,6 +401,10 @@ enum NftType {
   FAIR_JUDGE        // 10 jury votes + accuracy
   WHISTLEBLOWER     // flagged cheating contractor
   DISTRICT_CHAMPION // most active citizen of month
+  DONOR_PARTICIPANT // crowdfunding 500-4999 ₸
+  DONOR_PATRON      // crowdfunding 5000-49999 ₸
+  DONOR_FOUNDER     // crowdfunding 50000+ ₸
+  DONOR_CORPORATE   // corporate crowdfunding donor
 }
 
 model CitizenNft {
@@ -411,4 +418,70 @@ model CitizenNft {
   createdAt   DateTime @default(now())
 
   @@unique([citizenId, type])
+}
+
+// ─────────────────────────────────────────────
+// MODULE 9: CIVIC CROWDFUNDING
+// ─────────────────────────────────────────────
+
+enum CrowdfundingStatus {
+  ACTIVE         // accepting contributions
+  FUNDED         // citizen target reached, waiting for state match
+  MATCHED        // state deposited their share
+  IN_PROGRESS    // linked to a contract, work started
+  COMPLETED      // project delivered
+  EXPIRED        // deadline passed without reaching target → auto-refund
+}
+
+enum CrowdfundingCategory {
+  PLAYGROUND     // 90% state
+  SCHOOL         // 90% state
+  ROADS          // 70% state
+  LANDSCAPING    // 50% state
+  COMMERCIAL     // 0% state
+}
+
+model CrowdfundingCampaign {
+  id              String              @id @default(cuid())
+  title           String
+  description     String
+  district        String
+  lat             Float
+  lng             Float
+  category        CrowdfundingCategory
+  status          CrowdfundingStatus  @default(ACTIVE)
+  targetAmount    BigInt              // total project cost (tenge)
+  citizenTarget   BigInt              // citizen share (auto-calculated from category)
+  stateMatch      BigInt              // state subsidy (auto-calculated from category)
+  citizenRaised   BigInt              @default(0)
+  stateDeposited  Boolean             @default(false)
+  donorCount      Int                 @default(0)
+  deadline        DateTime
+  creatorId       String
+  creator         Citizen             @relation(fields: [creatorId], references: [id])
+  contractId      String?             @unique // linked contract after funding
+  contract        Contract?           @relation(fields: [contractId], references: [id])
+  onChainPubkey   String?             @unique // Solana campaign account address
+
+  contributions   CampaignContribution[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model CampaignContribution {
+  id          String              @id @default(cuid())
+  campaignId  String
+  campaign    CrowdfundingCampaign @relation(fields: [campaignId], references: [id])
+  citizenId   String
+  citizen     Citizen             @relation(fields: [citizenId], references: [id])
+  amount      BigInt              // in tenge
+  anonymous   Boolean             @default(false)
+  txSignature String?             // Solana tx signature
+  nftMint     String?             // NFT mint address for donor reward
+
+  createdAt   DateTime            @default(now())
+
+  @@index([campaignId])
+  @@index([citizenId])
 }

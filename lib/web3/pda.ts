@@ -64,3 +64,29 @@ export function getBallotPDA(proposal: PublicKey, voter: PublicKey): [PublicKey,
     PROGRAM_IDS.districtTreasury
   )
 }
+
+// ─── Crowdfunding ───
+
+/** Derive crowdfunding campaign PDA from creator + title */
+export function getCampaignPDA(creator: PublicKey, title: string): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.campaign, creator.toBuffer(), Buffer.from(title)],
+    PROGRAM_IDS.crowdfunding
+  )
+}
+
+/** Derive campaign escrow PDA from campaign account */
+export function getCampaignEscrowPDA(campaign: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.cfEscrow, campaign.toBuffer()],
+    PROGRAM_IDS.crowdfunding
+  )
+}
+
+/** Derive donor record PDA from campaign + donor wallet */
+export function getDonorRecordPDA(campaign: PublicKey, donor: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.donor, campaign.toBuffer(), donor.toBuffer()],
+    PROGRAM_IDS.crowdfunding
+  )
+}
