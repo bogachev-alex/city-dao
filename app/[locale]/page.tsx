@@ -1,19 +1,43 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 
+function formatBigAmount(val: number): string {
+  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B ₸`
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(0)}M ₸`
+  return `${val.toLocaleString('ru-KZ')} ₸`
+}
+
 export default function HomePage() {
   const t = useTranslations('home')
+  const [stats, setStats] = useState({ contracts: 0, totalAmount: 0, penalized: 0, citizens: 0 })
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/contracts').then(r => r.json()).catch(() => []),
+      fetch('/api/citizens').then(r => r.json()).catch(() => []),
+    ]).then(([contracts, citizens]) => {
+      const contractList = Array.isArray(contracts) ? contracts : []
+      const citizenList = Array.isArray(citizens) ? citizens : []
+      setStats({
+        contracts: contractList.length,
+        totalAmount: contractList.reduce((s: number, c: any) => s + Number(c.totalAmount || 0), 0),
+        penalized: contractList.filter((c: any) => c.status === 'PENALIZED').length,
+        citizens: citizenList.length,
+      })
+    })
+  }, [])
 
   const STATS = [
-    { label: t('contractsMonitored'), value: '147', icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
-    { label: t('totalAmount'), value: '38B ₸', icon: '💰', color: 'text-emerald-600 dark:text-emerald-400' },
-    { label: t('violationsFound'), value: '26', icon: '⚠️', color: 'text-red-500 dark:text-red-400' },
-    { label: t('jurorCitizens'), value: '1,247', icon: '👥', color: 'text-purple-600 dark:text-purple-400' },
+    { label: t('contractsMonitored'), value: String(stats.contracts), icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
+    { label: t('totalAmount'), value: formatBigAmount(stats.totalAmount), icon: '💰', color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: t('violationsFound'), value: String(stats.penalized), icon: '⚠️', color: 'text-red-500 dark:text-red-400' },
+    { label: t('jurorCitizens'), value: String(stats.citizens), icon: '👥', color: 'text-purple-600 dark:text-purple-400' },
   ]
 
   const LEGEND = [
