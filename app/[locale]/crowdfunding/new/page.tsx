@@ -9,10 +9,10 @@ import {
   getCitizenTarget,
   getStateMatch,
   formatTenge,
-} from '../../../lib/crowdfunding'
-import { createCampaign } from '../../../lib/api'
-import { useCrowdfunding } from '../../../lib/web3/useCrowdfunding'
-import { DISTRICTS } from '../../../lib/contracts'
+} from '@/lib/crowdfunding'
+import { createCampaign } from '@/lib/api'
+import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
+import { DISTRICTS } from '@/lib/contracts'
 
 // Category key to Prisma enum
 const CATEGORY_ENUM: Record<CampaignCategory, string> = {

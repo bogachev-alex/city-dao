@@ -13,8 +13,8 @@ import {
   DONOR_TIER_CONFIG,
   DonorTier,
   normalizeCampaign,
-} from '../../../lib/crowdfunding'
-import { fetchCampaigns } from '../../../lib/api'
+} from '@/lib/crowdfunding'
+import { fetchCampaigns } from '@/lib/api'
 
 // Mock: user has donated to campaigns cf-1, cf-3, cf-5
 const MY_DONATIONS = [

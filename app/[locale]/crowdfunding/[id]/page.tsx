@@ -15,9 +15,9 @@ import {
   DONOR_TIER_CONFIG,
   getDonorTier,
   normalizeCampaign,
-} from '../../../lib/crowdfunding'
-import { fetchCampaign, contributeToCampaign } from '../../../lib/api'
-import { useCrowdfunding } from '../../../lib/web3/useCrowdfunding'
+} from '@/lib/crowdfunding'
+import { fetchCampaign, contributeToCampaign } from '@/lib/api'
+import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
