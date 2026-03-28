@@ -1,9 +1,9 @@
 import { vi } from 'vitest'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 
-// A deterministic test keypair
-export const TEST_WALLET = new PublicKey('DemoWallet1111111111111111111111111111111111')
-export const TEST_WALLET_2 = new PublicKey('DemoWallet2222222222222222222222222222222222')
+// Valid base58 test public keys
+export const TEST_WALLET = new PublicKey('GRxpKMjVx7UiRp4VnDHDdFR6qkuMN5cGSLSYHDQGRg8K')
+export const TEST_WALLET_2 = new PublicKey('5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d')
 
 // Mock rpc chain: program.methods.X(...).accounts({...}).rpc()
 export function mockRpcChain(txSig = 'mock-tx-signature') {

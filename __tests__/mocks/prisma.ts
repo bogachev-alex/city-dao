@@ -32,7 +32,11 @@ export const prismaMock = {
   citizenNft: mockModel(),
   crowdfundingCampaign: mockModel(),
   campaignContribution: mockModel(),
-  $transaction: vi.fn(async (fn: any) => fn(prismaMock)),
+  $transaction: vi.fn(async (arg: any) => {
+    // Support both array syntax and function syntax
+    if (Array.isArray(arg)) return Promise.all(arg)
+    return arg(prismaMock)
+  }),
 }
 
 // Reset all mocks between tests
