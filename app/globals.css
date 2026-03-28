@@ -6,7 +6,7 @@
 .leaflet-popup-content-wrapper {
   background: transparent !important;
   border-radius: 12px !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.15) !important;
   padding: 0 !important;
 }
 
@@ -20,7 +20,7 @@
 }
 
 .leaflet-container {
-  background: #0f1117 !important;
+  background: #f9fafb !important;
   font-family: system-ui, sans-serif !important;
 }
 
@@ -30,16 +30,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: #f3f4f6;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #d1d5db;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #9ca3af;
 }
 
 html {
@@ -47,8 +47,8 @@ html {
 }
 
 body {
-  background-color: #030712;
-  color: #f9fafb;
+  background-color: #f9fafb;
+  color: #111827;
 }
 
 @layer utilities {
@@ -59,7 +59,7 @@ body {
   }
 }
 
-/* Solana wallet adapter overrides — match dark theme */
+/* Solana wallet adapter overrides — match light theme */
 .wallet-adapter-btn .wallet-adapter-button {
   background: #10b981 !important;
   color: white !important;
@@ -79,24 +79,24 @@ body {
 }
 
 .wallet-adapter-btn .wallet-adapter-button[data-state="connected"] {
-  background: rgba(16, 185, 129, 0.15) !important;
-  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: #059669 !important;
   border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
 
 .wallet-adapter-modal-wrapper {
-  background: #111827 !important;
-  border: 1px solid #374151 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
 }
 
 .wallet-adapter-modal-title {
-  color: white !important;
+  color: #111827 !important;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button {
-  color: #d1d5db !important;
+  color: #374151 !important;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
-  background: #1f2937 !important;
+  background: #f3f4f6 !important;
 }

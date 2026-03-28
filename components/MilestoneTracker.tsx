@@ -17,7 +17,7 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
     ),
     label: 'Ожидание',
     color: 'text-gray-400',
-    bg: 'bg-gray-700 border-gray-600',
+    bg: 'bg-gray-100 border-gray-300',
   },
   submitted: {
     icon: (
@@ -26,8 +26,8 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
       </svg>
     ),
     label: 'Подан',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/20 border-blue-500/40',
+    color: 'text-blue-500',
+    bg: 'bg-blue-50 border-blue-300',
   },
   under_review: {
     icon: (
@@ -37,8 +37,8 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
       </svg>
     ),
     label: 'На проверке',
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/20 border-yellow-500/40',
+    color: 'text-yellow-600',
+    bg: 'bg-yellow-50 border-yellow-300',
   },
   accepted: {
     icon: (
@@ -47,8 +47,8 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
       </svg>
     ),
     label: 'Принят',
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/20 border-emerald-500/40',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50 border-emerald-300',
   },
   rejected: {
     icon: (
@@ -57,8 +57,8 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
       </svg>
     ),
     label: 'Отклонён',
-    color: 'text-red-400',
-    bg: 'bg-red-500/20 border-red-500/40',
+    color: 'text-red-500',
+    bg: 'bg-red-50 border-red-300',
   },
   overdue: {
     icon: (
@@ -67,8 +67,8 @@ const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: stri
       </svg>
     ),
     label: 'Просрочен',
-    color: 'text-red-400',
-    bg: 'bg-red-500/20 border-red-500/40',
+    color: 'text-red-500',
+    bg: 'bg-red-50 border-red-300',
   },
 }
 
@@ -88,21 +88,21 @@ export default function MilestoneTracker({ milestones, contractId }: MilestoneTr
             <div className="flex flex-col items-center">
               <div
                 className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${config.bg} ${config.color} ${
-                  isActive ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-yellow-400' : ''
+                  isActive ? 'ring-2 ring-offset-2 ring-offset-white ring-yellow-400' : ''
                 }`}
               >
                 {config.icon}
               </div>
-              {!isLast && <div className="w-0.5 flex-1 bg-gray-800 my-1 min-h-[1.5rem]" />}
+              {!isLast && <div className="w-0.5 flex-1 bg-gray-200 my-1 min-h-[1.5rem]" />}
             </div>
 
             {/* Content */}
             <div className={`pb-6 flex-1 ${isLast ? 'pb-0' : ''}`}>
               <div className={`rounded-xl border p-4 transition-all ${
-                isActive ? 'border-yellow-500/40 bg-yellow-500/5' : 'border-gray-800 bg-gray-900/50'
+                isActive ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-white'
               }`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h4 className={`font-medium text-sm ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                  <h4 className={`font-medium text-sm ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>
                     {milestone.desc}
                   </h4>
                   <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${config.bg} ${config.color} border`}>
@@ -123,8 +123,8 @@ export default function MilestoneTracker({ milestones, contractId }: MilestoneTr
                     Транш: {milestone.tranche_pct}%
                   </span>
                   {isActive && (
-                    <span className="text-yellow-400 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse inline-block" />
+                    <span className="text-yellow-600 font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse inline-block" />
                       Активный этап
                     </span>
                   )}
@@ -132,10 +132,10 @@ export default function MilestoneTracker({ milestones, contractId }: MilestoneTr
 
                 {/* Jury vote button for under_review */}
                 {milestone.status === 'under_review' && (
-                  <div className="mt-3 pt-3 border-t border-gray-800">
+                  <div className="mt-3 pt-3 border-t border-gray-200">
                     <a
                       href={`/jury/${contractId}-${milestone.id}`}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors"
                     >
                       <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

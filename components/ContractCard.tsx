@@ -8,10 +8,10 @@ interface ContractCardProps {
 }
 
 const statusConfig = {
-  active: { label: 'Активный', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  penalized: { label: 'Штраф', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  completed: { label: 'Завершён', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  disputed: { label: 'Спор', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  active: { label: 'Активный', color: 'bg-blue-50 text-blue-600 border-blue-200' },
+  penalized: { label: 'Штраф', color: 'bg-red-50 text-red-600 border-red-200' },
+  completed: { label: 'Завершён', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  disputed: { label: 'Спор', color: 'bg-yellow-50 text-yellow-600 border-yellow-200' },
 }
 
 export default function ContractCard({ contract }: ContractCardProps) {
@@ -22,14 +22,14 @@ export default function ContractCard({ contract }: ContractCardProps) {
   const status = statusConfig[contract.status]
 
   const deadlineColor =
-    daysLeft < 0 ? 'text-red-400' : daysLeft < 7 ? 'text-yellow-400' : 'text-gray-400'
+    daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500'
 
   return (
     <Link href={`/contracts/${contract.id}`}>
-      <div className="group bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-emerald-500/40 hover:bg-gray-900/80 transition-all duration-200 cursor-pointer">
+      <div className="group bg-white border border-gray-200 rounded-xl p-5 hover:border-emerald-300 hover:shadow-md transition-all duration-200 cursor-pointer">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-emerald-400 transition-colors line-clamp-2">
+          <h3 className="font-semibold text-gray-900 text-sm leading-snug group-hover:text-emerald-600 transition-colors line-clamp-2">
             {contract.title}
           </h3>
           <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
@@ -57,11 +57,11 @@ export default function ContractCard({ contract }: ContractCardProps) {
         {/* Amount */}
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-xs text-gray-500 mb-0.5">Сумма контракта</div>
-            <div className="text-white font-semibold">{formatAmount(contract.amount_usdc)} USDC</div>
+            <div className="text-xs text-gray-400 mb-0.5">Сумма контракта</div>
+            <div className="text-gray-900 font-semibold">{formatAmount(contract.amount_usdc)} USDC</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500 mb-0.5">Дедлайн</div>
+            <div className="text-xs text-gray-400 mb-0.5">Дедлайн</div>
             <div className={`font-medium text-sm ${deadlineColor}`}>
               {daysLeft < 0 ? `Просрочен на ${Math.abs(daysLeft)} дн.` : `${daysLeft} дн. осталось`}
             </div>
@@ -70,11 +70,11 @@ export default function ContractCard({ contract }: ContractCardProps) {
 
         {/* Progress bar */}
         <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
             <span>Прогресс этапов</span>
             <span>{completed}/{total} выполнено</span>
           </div>
-          <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 contract.status === 'penalized' ? 'bg-red-500' : 'bg-emerald-500'
@@ -86,11 +86,11 @@ export default function ContractCard({ contract }: ContractCardProps) {
 
         {/* Penalty */}
         {contract.penalty_amount > 0 && (
-          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-            <svg width="14" height="14" fill="none" stroke="#f87171" strokeWidth="2" viewBox="0 0 24 24">
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <svg width="14" height="14" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <span className="text-xs text-red-400 font-medium animate-pulse">
+            <span className="text-xs text-red-600 font-medium animate-pulse">
               Штраф: {formatAmount(contract.penalty_amount)} USDC
             </span>
           </div>

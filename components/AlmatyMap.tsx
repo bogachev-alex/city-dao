@@ -87,7 +87,7 @@ export default function AlmatyMap() {
     >
       <MapController />
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={20}
@@ -111,36 +111,37 @@ export default function AlmatyMap() {
               maxWidth={280}
             >
               <div style={{
-                background: '#111827',
-                border: '1px solid #374151',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
                 borderRadius: '12px',
                 padding: '16px',
                 fontFamily: 'system-ui, sans-serif',
                 minWidth: '240px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
               }}>
                 <div style={{
                   display: 'inline-block',
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  background: color + '20',
+                  background: color + '15',
                   color: color,
                   fontSize: '11px',
                   fontWeight: 600,
                   marginBottom: '8px',
-                  border: `1px solid ${color}50`,
+                  border: `1px solid ${color}30`,
                 }}>
                   {PIN_LABELS[pinType]}
                 </div>
-                <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px', marginBottom: '6px', lineHeight: 1.4 }}>
+                <div style={{ color: '#111827', fontWeight: 600, fontSize: '14px', marginBottom: '6px', lineHeight: 1.4 }}>
                   {contract.title}
                 </div>
-                <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>
+                <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
                   {contract.contractor}
                 </div>
-                <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '12px' }}>
+                <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '12px' }}>
                   {daysLeft < 0
-                    ? <span style={{ color: '#f87171' }}>Просрочен на {Math.abs(daysLeft)} дн.</span>
-                    : <span style={{ color: daysLeft < 7 ? '#fbbf24' : '#9ca3af' }}>{daysLeft} дн. до дедлайна</span>
+                    ? <span style={{ color: '#ef4444' }}>Просрочен на {Math.abs(daysLeft)} дн.</span>
+                    : <span style={{ color: daysLeft < 7 ? '#d97706' : '#6b7280' }}>{daysLeft} дн. до дедлайна</span>
                   }
                 </div>
                 <a
