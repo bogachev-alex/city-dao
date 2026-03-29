@@ -6,7 +6,8 @@
     "treasury": "Казна",
     "profile": "Профиль",
     "register": "Регистрация",
-    "admin": "Админ"
+    "admin": "Админ",
+    "login": "Войти"
   },
   "home": {
     "contractsMonitored": "Контрактов под мониторингом",

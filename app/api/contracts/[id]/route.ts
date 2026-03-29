@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,11 +32,14 @@ export async function GET(
   return NextResponse.json(contract)
 }
 
-// PATCH /api/contracts/[id] — update contract status
+// PATCH /api/contracts/[id] — update contract status (AKIMAT only)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = requireRole(req, ['AKIMAT'])
+  if (denied) return denied
+
   const { id } = await params
   const body = await req.json()
 

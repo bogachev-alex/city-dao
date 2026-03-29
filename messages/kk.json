@@ -6,7 +6,8 @@
     "treasury": "Қазына",
     "profile": "Профиль",
     "register": "Тіркелу",
-    "admin": "Әкімші"
+    "admin": "Әкімші",
+    "login": "Кіру"
   },
   "home": {
     "contractsMonitored": "Бақылаудағы келісімшарттар",
