@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,8 +25,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(contracts)
 }
 
-// POST /api/contracts — register a new contract (akimat only)
+// POST /api/contracts — register a new contract (AKIMAT only)
 export async function POST(req: NextRequest) {
+  const denied = requireRole(req, ['AKIMAT'])
+  if (denied) return denied
+
   const body = await req.json()
 
   // Resolve contractor: use contractorId directly, or find-or-create by contractorName

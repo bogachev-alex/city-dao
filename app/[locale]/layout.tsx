@@ -7,6 +7,7 @@ import { routing } from '@/i18n/routing'
 import Navbar from '@/components/Navbar'
 import { SolanaProviderWrapper } from '@/components/SolanaProviderWrapper'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { AuthProvider } from '@/components/AuthContext'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -36,10 +37,12 @@ export default async function LocaleLayout({
       <body className={`${inter.className} bg-gray-950 text-white`}>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
-            <SolanaProviderWrapper>
-              <Navbar />
-              {children}
-            </SolanaProviderWrapper>
+            <AuthProvider>
+              <SolanaProviderWrapper>
+                <Navbar />
+                {children}
+              </SolanaProviderWrapper>
+            </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>
