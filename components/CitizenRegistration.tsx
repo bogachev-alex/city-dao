@@ -8,6 +8,8 @@ import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
 import { DISTRICTS } from '@/lib/contracts'
 import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
+import { useAuth } from '@/components/AuthContext'
+import type { AuthUser } from '@/lib/auth'
 
 const PHONE_RE = /^\+7\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}$/
 
@@ -29,6 +31,7 @@ export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
   const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+  const { login } = useAuth()
 
   const handleConnect = useCallback(() => {
     const phantom = wallets.find(
@@ -114,9 +117,18 @@ export default function CitizenRegistration() {
     }
 
     setIin('')
+    const trimmedName = name.trim()
     // Save profile data for login page to pick up
     localStorage.setItem('citizen', JSON.stringify({ district, walletAddress }))
-    localStorage.setItem('citizen_profile', JSON.stringify({ name: name.trim(), phone, district, walletAddress }))
+    localStorage.setItem('citizen_profile', JSON.stringify({ name: trimmedName, phone, district, walletAddress }))
+
+    // Auto-login with name from registration form
+    const authUser: AuthUser = {
+      role: 'CITIZEN',
+      id: walletAddress,
+      name: trimmedName || `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
+    }
+    login(authUser)
     setStep('done')
   }
 
@@ -179,11 +191,11 @@ export default function CitizenRegistration() {
           </div>
         </div>
         <div className="flex gap-3 justify-center">
-          <Link href="/login" className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors">
-            Войти в систему
+          <Link href="/profile" className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors">
+            {t('myProfile')}
           </Link>
-          <Link href="/contracts" className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            {t('contracts')}
+          <Link href="/" className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            На главную
           </Link>
         </div>
       </div>

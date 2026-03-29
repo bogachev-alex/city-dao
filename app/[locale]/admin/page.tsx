@@ -55,7 +55,7 @@ const INITIAL_FORM: ContractFormData = {
 
 export default function AdminPage() {
   const t = useTranslations('admin')
-  const { user, loading } = useAuth()
+  const { user, loading, authHeader } = useAuth()
   const router = useRouter()
   const [form, setForm] = useState<ContractFormData>(INITIAL_FORM)
   const [submitted, setSubmitted] = useState(false)
@@ -99,7 +99,7 @@ export default function AdminPage() {
         })),
       }
 
-      const created = await createContract(contractData)
+      const created = await createContract(contractData, authHeader())
 
       // 2. Register on blockchain if wallet connected
       if (wallet.publicKey) {
