@@ -75,3 +75,15 @@ export function clearAuth(): void {
 export function encodeAuthToken(user: AuthUser): string {
   return btoa(JSON.stringify({ role: user.role, id: user.id }))
 }
+
+/**
+ * Create an AuthUser from a Solana wallet public key (base58).
+ * Wallet-based login defaults to CITIZEN role.
+ */
+export function walletToAuthUser(publicKeyBase58: string): AuthUser {
+  return {
+    role: 'CITIZEN',
+    id: publicKeyBase58,
+    name: `${publicKeyBase58.slice(0, 4)}...${publicKeyBase58.slice(-4)}`,
+  }
+}

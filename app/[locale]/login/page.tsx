@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
 import {
   type UserRole,
   type AuthUser,
   ROLE_LABELS,
   ROLE_DESCRIPTIONS,
   ROLE_ICONS,
+  walletToAuthUser,
 } from '@/lib/auth'
 
 const ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
@@ -28,11 +31,13 @@ const REDIRECT_AFTER_LOGIN: Record<UserRole, string> = {
 export default function LoginPage() {
   const { user, login } = useAuth()
   const router = useRouter()
+  const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
 
   const [tab, setTab] = useState<'login' | 'register'>('login')
   const [selectedRole, setSelectedRole] = useState<UserRole>('CITIZEN')
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [walletError, setWalletError] = useState<string | null>(null)
 
   // Already logged in → redirect
   useEffect(() => {
@@ -55,6 +60,30 @@ export default function LoginPage() {
 
   const handleDemoLogin = (role: UserRole) => {
     login(DEMO_ACCOUNTS[role])
+  }
+
+  const handleWalletConnect = useCallback(() => {
+    setWalletError(null)
+    const phantom = wallets.find(
+      (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
+    )
+    const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
+    const target = phantom || anyInstalled
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+    if (wallet && wallet.adapter.name === target.adapter.name) {
+      connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
+      return
+    }
+    select(target.adapter.name)
+    setTimeout(() => connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения')), 100)
+  }, [wallets, wallet, select, connect])
+
+  const handleWalletLogin = () => {
+    if (!publicKey) return
+    login(walletToAuthUser(publicKey.toBase58()))
   }
 
   return (
@@ -92,7 +121,66 @@ export default function LoginPage() {
           ))}
         </div>
 
+        {/* Phantom wallet login block */}
+        <div className="bg-gray-900 border border-purple-500/30 rounded-2xl p-5 mb-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-purple-300">Войти через Phantom кошелёк</p>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
+              devnet
+            </span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Подключите Phantom кошелёк (Solana devnet). Транзакции не требуются — вход бесплатный.
+          </p>
+
+          {walletError && (
+            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              {walletError}
+            </p>
+          )}
+
+          {!connected ? (
+            <button
+              onClick={handleWalletConnect}
+              disabled={connecting}
+              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {connecting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Подключение...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Подключить Phantom
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-xl px-4 py-3">
+                <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+                <span className="font-mono text-xs text-purple-300 truncate">
+                  {publicKey?.toBase58().slice(0, 8)}...{publicKey?.toBase58().slice(-6)}
+                </span>
+                <span className="ml-auto text-xs text-gray-500">подключён</span>
+              </div>
+              <button
+                onClick={handleWalletLogin}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
+              >
+                Войти как Гражданин
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
+          <p className="text-xs text-gray-500 text-center uppercase tracking-widest">или войти без кошелька</p>
+
           {/* Role selection */}
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Кто вы?</p>
