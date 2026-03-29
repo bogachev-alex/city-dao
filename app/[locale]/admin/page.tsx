@@ -4,12 +4,9 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton as WalletMultiButtonUnstyled } from '@solana/wallet-adapter-react-ui'
 import { DISTRICTS, formatTengeWithCrypto } from '@/lib/contracts'
 import { createContract } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
-
-const WalletMultiButton = WalletMultiButtonUnstyled as any
 
 interface MilestoneInput {
   desc: string
@@ -214,14 +211,8 @@ export default function AdminPage() {
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('registerContract')}</h1>
             </div>
-            <WalletMultiButton />
           </div>
           <p className="text-gray-500 dark:text-gray-400 ml-14">{t('addDescription')}</p>
-          {!wallet.publicKey && (
-            <p className="text-yellow-600 dark:text-yellow-400/80 text-xs ml-14 mt-1">
-              {t('connectWalletHint') || 'Подключите кошелек для регистрации контракта в блокчейне'}
-            </p>
-          )}
         </div>
       </div>
 
