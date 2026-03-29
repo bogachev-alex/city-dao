@@ -85,8 +85,14 @@ export function getDaysLeft(deadline: string): number {
   return Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 }
 
+const KZT_PER_SOL = 80_000
+const KZT_PER_USDT = 510
+
 export function formatTenge(amount: number): string {
-  return new Intl.NumberFormat('ru-KZ').format(amount) + ' ₸'
+  const tenge = new Intl.NumberFormat('ru-KZ').format(amount)
+  const sol = (amount / KZT_PER_SOL).toFixed(1)
+  const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
+  return `${tenge} ₸ (${sol} SOL / ${usdt} USDT)`
 }
 
 // Demo data — realistic Almaty campaigns
@@ -273,7 +279,7 @@ const CATEGORY_MAP: Record<string, CampaignCategory> = {
 }
 
 const TIER_MAP: Record<string, string> = {
-  NEW: 'Bronze', ACTIVE: 'Silver', TRUSTED: 'Gold', GUARDIAN: 'Gold',
+  NEW: 'Bronze', ACTIVE: 'Silver', TRUSTED: 'Gold', GUARDIAN: 'Platinum',
 }
 
 /** Normalize API response (Prisma format) to frontend Campaign shape */

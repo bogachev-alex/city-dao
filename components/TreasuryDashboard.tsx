@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import ProposalResearch from './ProposalResearch'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
+import { formatTengeWithCrypto } from '@/lib/contracts'
 
 interface Vote {
   id: string
@@ -141,7 +142,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
     })
   }
 
-  const formatTenge = (n: number | string) => new Intl.NumberFormat('ru-KZ').format(Number(n)) + ' ₸'
+  const formatTenge = (n: number | string) => formatTengeWithCrypto(Number(n))
 
   const balance = treasury ? Number(treasury.balance) : 0
   const proposals = treasury?.proposals || []

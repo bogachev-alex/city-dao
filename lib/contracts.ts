@@ -140,7 +140,7 @@ export function normalizeContract(c: any): Contract {
     id: c.id,
     title: c.title,
     contractor: c.contractor?.name || c.contractor || '',
-    amount_usdc: Number(c.totalAmount || c.amount_usdc || 0) / 1000,
+    amount_usdc: Number(c.totalAmount || c.amount_usdc || 0),
     deadline: c.deadline,
     district: c.district,
     status: CONTRACT_STATUS_MAP[c.status] || 'active',
@@ -175,6 +175,18 @@ export function getContractPinColor(contract: Contract): 'green' | 'yellow' | 'r
 
 export function formatAmount(amount: number): string {
   return new Intl.NumberFormat('ru-KZ').format(amount)
+}
+
+// 1 SOL ≈ 80,000 KZT, 1 USDT ≈ 510 KZT (approximate rates for demo)
+const KZT_PER_SOL = 80_000
+const KZT_PER_USDT = 510
+
+/** Format tenge amount with SOL/USDT equivalents in parentheses */
+export function formatTengeWithCrypto(amount: number): string {
+  const tenge = new Intl.NumberFormat('ru-KZ').format(amount)
+  const sol = (amount / KZT_PER_SOL).toFixed(1)
+  const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
+  return `${tenge} ₸ (${sol} SOL / ${usdt} USDT)`
 }
 
 export function getMilestoneCompletedCount(contract: Contract): number {
