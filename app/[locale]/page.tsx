@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
+const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
 
 const KZT_PER_SOL = 80_000
 const KZT_PER_USDT = 510
@@ -29,12 +30,15 @@ export default function HomePage() {
     Promise.all([
       fetch('/api/contracts').then(r => r.json()).catch(() => []),
       fetch('/api/citizens').then(r => r.json()).catch(() => []),
-    ]).then(([contracts, citizens]) => {
+      fetch('/api/goszakup?limit=50').then(r => r.json()).catch(() => ({ contracts: [] })),
+    ]).then(([contracts, citizens, goszakup]) => {
       const contractList = Array.isArray(contracts) ? contracts : []
       const citizenList = Array.isArray(citizens) ? citizens : []
+      const gzContracts = Array.isArray(goszakup?.contracts) ? goszakup.contracts : []
+      const allContracts = [...contractList, ...gzContracts]
       setStats({
-        contracts: contractList.length,
-        totalAmount: contractList.reduce((s: number, c: any) => s + Number(c.totalAmount || 0), 0),
+        contracts: allContracts.length,
+        totalAmount: allContracts.reduce((s: number, c: any) => s + Number(c.totalAmount || c.amount_usdc || 0), 0),
         penalized: contractList.filter((c: any) => c.status === 'PENALIZED').length,
         citizens: citizenList.length,
       })
@@ -57,6 +61,7 @@ export default function HomePage() {
 
   return (
     <main className="h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
+      <Onboarding />
       {/* Stats banner */}
       <div className="bg-white dark:bg-gray-950/95 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">

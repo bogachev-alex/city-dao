@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
 import { DISTRICTS } from '@/lib/contracts'
@@ -11,8 +11,26 @@ import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
 
 export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
-  const { publicKey, connected } = useWallet()
+  const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
   const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+
+  const handleConnect = useCallback(() => {
+    const phantom = wallets.find(
+      (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
+    )
+    const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
+    const target = phantom || anyInstalled
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+    if (wallet && wallet.adapter.name === target.adapter.name) {
+      connect().catch(() => {})
+      return
+    }
+    select(target.adapter.name)
+    setTimeout(() => connect().catch(() => {}), 100)
+  }, [wallets, wallet, select, connect])
 
   const [iin, setIin] = useState('')
   const [district, setDistrict] = useState('')
@@ -73,6 +91,7 @@ export default function CitizenRegistration() {
     }
 
     setIin('')
+    localStorage.setItem('citizen', JSON.stringify({ district, walletAddress }))
     setStep('done')
   }
 
@@ -221,9 +240,25 @@ export default function CitizenRegistration() {
           <h3 className="text-gray-900 dark:text-white font-semibold">{t('connectWallet')}</h3>
         </div>
         {!connected ? (
-          <div className="wallet-adapter-btn">
-            <WalletMultiButton />
-          </div>
+          <button
+            onClick={handleConnect}
+            disabled={connecting}
+            className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {connecting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Подключение...
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                {t('selectWallet')}
+              </>
+            )}
+          </button>
         ) : (
           <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">

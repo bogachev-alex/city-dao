@@ -3,13 +3,8 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton as WalletMultiButtonUnstyled } from '@solana/wallet-adapter-react-ui'
 import { DISTRICTS, formatTengeWithCrypto } from '@/lib/contracts'
 import { createContract } from '@/lib/api'
-import { useContractRegistry } from '@/lib/web3/useContractRegistry'
-
-const WalletMultiButton = WalletMultiButtonUnstyled as any
 
 interface MilestoneInput {
   desc: string
@@ -62,10 +57,6 @@ export default function AdminPage() {
   const [submitting, setSubmitting] = useState(false)
   const [activeSection, setActiveSection] = useState<'general' | 'milestones'>('general')
   const [error, setError] = useState<string | null>(null)
-  const [submitStep, setSubmitStep] = useState<'db' | 'blockchain' | null>(null)
-
-  const wallet = useWallet()
-  const { registerContract: registerContractOnChain } = useContractRegistry()
 
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
@@ -73,10 +64,8 @@ export default function AdminPage() {
   const handleSubmit = async () => {
     setSubmitting(true)
     setError(null)
-    setSubmitStep('db')
 
     try {
-      // 1. Save to database
       const contractData = {
         title: form.title,
         contractorName: form.contractor,
@@ -93,46 +82,12 @@ export default function AdminPage() {
         })),
       }
 
-      const created = await createContract(contractData)
-
-      // 2. Register on blockchain if wallet connected
-      if (wallet.publicKey) {
-        setSubmitStep('blockchain')
-        try {
-          const result = await registerContractOnChain(
-            form.title,
-            form.district,
-            Number(form.amount_usdc),
-            new Date(form.deadline).getTime() / 1000,
-            form.milestones.map((m) => ({
-              description: m.desc,
-              deadlineDays: m.deadline_days,
-              tranchePct: m.tranche_pct,
-            })),
-            parseFloat(form.lat),
-            parseFloat(form.lng),
-            wallet.publicKey
-          )
-
-          // Update DB record with on-chain pubkey
-          if (result?.pda) {
-            await fetch(`/api/contracts/${created.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ onChainPubkey: result.pda }),
-            })
-          }
-        } catch (blockchainErr: any) {
-          console.warn('Blockchain registration failed, contract saved to DB only:', blockchainErr)
-        }
-      }
-
+      await createContract(contractData)
       setSubmitted(true)
     } catch (err: any) {
       setError(err.message || 'Ошибка при создании контракта')
     } finally {
       setSubmitting(false)
-      setSubmitStep(null)
     }
   }
 
@@ -214,14 +169,8 @@ export default function AdminPage() {
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('registerContract')}</h1>
             </div>
-            <WalletMultiButton />
           </div>
           <p className="text-gray-500 dark:text-gray-400 ml-14">{t('addDescription')}</p>
-          {!wallet.publicKey && (
-            <p className="text-yellow-600 dark:text-yellow-400/80 text-xs ml-14 mt-1">
-              {t('connectWalletHint') || 'Подключите кошелек для регистрации контракта в блокчейне'}
-            </p>
-          )}
         </div>
       </div>
 
@@ -467,7 +416,7 @@ export default function AdminPage() {
               {submitting ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {submitStep === 'db' ? t('submitting') : submitStep === 'blockchain' ? t('submittingBlockchain') || 'Регистрация в блокчейн...' : t('submitting')}
+                  {t('submitting')}
                 </>
               ) : (
                 <>
