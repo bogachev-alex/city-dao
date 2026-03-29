@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,11 +32,14 @@ export async function GET(
   return NextResponse.json(treasury)
 }
 
-// POST /api/treasury/[district] — create spending proposal
+// POST /api/treasury/[district] — create spending proposal (AKIMAT only)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ district: string }> }
 ) {
+  const denied = requireRole(req, ['AKIMAT'])
+  if (denied) return denied
+
   const { district } = await params
   const decodedDistrict = decodeURIComponent(district)
   const body = await req.json()
@@ -62,11 +66,14 @@ export async function POST(
   return NextResponse.json(proposal, { status: 201 })
 }
 
-// PATCH /api/treasury/[district] — vote on a proposal
+// PATCH /api/treasury/[district] — vote on a proposal (CITIZEN only)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ district: string }> }
 ) {
+  const denied = requireRole(req, ['CITIZEN'])
+  if (denied) return denied
+
   const body = await req.json()
   const { proposalId, citizenId, inFavor } = body
 

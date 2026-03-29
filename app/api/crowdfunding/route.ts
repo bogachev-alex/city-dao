@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,8 +41,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(campaigns)
 }
 
-// POST /api/crowdfunding — create a new campaign
+// POST /api/crowdfunding — create a new campaign (CITIZEN only)
 export async function POST(req: NextRequest) {
+  const denied = requireRole(req, ['CITIZEN'])
+  if (denied) return denied
+
   const body = await req.json()
   const { title, description, district, category, targetAmount, deadline, creatorId, lat, lng, onChainPubkey } = body
 

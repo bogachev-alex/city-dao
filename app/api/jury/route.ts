@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,8 +39,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(sessions)
 }
 
-// POST /api/jury/commit — submit vote commitment
+// POST /api/jury — submit vote commitment (CITIZEN only)
 export async function POST(req: NextRequest) {
+  const denied = requireRole(req, ['CITIZEN'])
+  if (denied) return denied
+
   const { sessionId, citizenId, commitHash } = await req.json()
 
   const vote = await prisma.juryVote.findFirst({
@@ -60,8 +64,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(updated)
 }
 
-// PATCH /api/jury — reveal vote
+// PATCH /api/jury — reveal vote (CITIZEN only)
 export async function PATCH(req: NextRequest) {
+  const denied = requireRole(req, ['CITIZEN'])
+  if (denied) return denied
+
   const { sessionId, citizenId, vote, salt } = await req.json()
 
   const juryVote = await prisma.juryVote.findFirst({

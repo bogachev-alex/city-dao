@@ -85,8 +85,8 @@ export default function ProfilePage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Вы ещё не зарегистрированы</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Пройдите регистрацию, чтобы участвовать в голосованиях и контролировать контракты.</p>
-          <Link href="/register" className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors">
-            Зарегистрироваться
+          <Link href="/login" className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors">
+            Войти / Зарегистрироваться
           </Link>
         </div>
       </div>

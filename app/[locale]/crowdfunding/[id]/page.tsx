@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Link } from '@/i18n/routing'
+import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useAuth } from '@/components/AuthContext'
 import {
   getCampaignById,
   DEMO_CAMPAIGNS,
@@ -35,6 +36,8 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [txInfo, setTxInfo] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
   const { contribute: contributeOnChain, loading: solanaLoading } = useCrowdfunding()
+  const { user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     fetchCampaign(params.id)
@@ -80,6 +83,12 @@ export default function CampaignDetailPage({ params }: PageProps) {
     if (amount < 500 || amount > 500000) return
     setDonateError(null)
 
+    // Must be logged in
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
     // Look up citizen by wallet
     let citizenId: string | undefined
     if (publicKey) {
@@ -91,7 +100,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
       }
     }
     if (!citizenId) {
-      setDonateError('Сначала зарегистрируйтесь как гражданин')
+      setDonateError('Кошелёк не зарегистрирован как гражданин')
       return
     }
 

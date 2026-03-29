@@ -11,12 +11,15 @@ beforeEach(() => resetPrismaMock())
 
 const makeParams = (id: string) => Promise.resolve({ id })
 
+const citizenHeaders = { 'Content-Type': 'application/json', 'x-user-role': 'CITIZEN' }
+
 describe('POST /api/crowdfunding — create campaign', () => {
   it('calculates correct citizen/state split for PLAYGROUND (90% state)', async () => {
     prismaMock.crowdfundingCampaign.create.mockResolvedValue({ id: 'cf1' })
 
     const res = await listRoute.POST(new NextRequest('http://localhost/api/crowdfunding', {
       method: 'POST',
+      headers: citizenHeaders,
       body: JSON.stringify({
         title: 'Test', description: 'Desc', district: 'A',
         category: 'PLAYGROUND', targetAmount: 10000000,
@@ -33,6 +36,7 @@ describe('POST /api/crowdfunding — create campaign', () => {
   it('400 when required fields missing', async () => {
     const res = await listRoute.POST(new NextRequest('http://localhost/api/crowdfunding', {
       method: 'POST',
+      headers: citizenHeaders,
       body: JSON.stringify({ title: 'Only title' }),
     }))
     expect(res.status).toBe(400)
@@ -54,6 +58,7 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
     const res = await detailRoute.POST(
       new NextRequest('http://localhost/api/crowdfunding/cf1', {
         method: 'POST',
+        headers: citizenHeaders,
         body: JSON.stringify({ citizenId: 'c1', amount: 100, anonymous: false }),
       }),
       { params: makeParams('cf1') }
@@ -66,6 +71,7 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
     const res = await detailRoute.POST(
       new NextRequest('http://localhost/api/crowdfunding/cf1', {
         method: 'POST',
+        headers: citizenHeaders,
         body: JSON.stringify({ citizenId: 'c1', amount: 600000, anonymous: false }),
       }),
       { params: makeParams('cf1') }
@@ -75,12 +81,12 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
 
   it('accepts valid contribution', async () => {
     prismaMock.crowdfundingCampaign.findUnique.mockResolvedValue(activeCampaign)
-    prismaMock.campaignContribution.create.mockResolvedValue({ id: 'cont1' })
-    prismaMock.crowdfundingCampaign.update.mockResolvedValue({ ...activeCampaign })
+    prismaMock.$transaction.mockResolvedValue([{ id: 'cont1' }, { ...activeCampaign }])
 
     const res = await detailRoute.POST(
       new NextRequest('http://localhost/api/crowdfunding/cf1', {
         method: 'POST',
+        headers: citizenHeaders,
         body: JSON.stringify({ citizenId: 'c1', amount: 5000, anonymous: false }),
       }),
       { params: makeParams('cf1') }
@@ -96,6 +102,7 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
     const res = await detailRoute.POST(
       new NextRequest('http://localhost/api/crowdfunding/cf1', {
         method: 'POST',
+        headers: citizenHeaders,
         body: JSON.stringify({ citizenId: 'c1', amount: 5000, anonymous: false }),
       }),
       { params: makeParams('cf1') }

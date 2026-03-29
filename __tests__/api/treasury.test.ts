@@ -34,12 +34,12 @@ describe('GET /api/treasury/[district]', () => {
 describe('PATCH /api/treasury/[district] — voting', () => {
   it('records a vote', async () => {
     prismaMock.proposalVote.findUnique.mockResolvedValue(null)
-    prismaMock.proposalVote.create.mockResolvedValue({ id: 'v1' })
-    prismaMock.spendingProposal.update.mockResolvedValue({ id: 'p1', votesFor: 1 })
+    prismaMock.$transaction.mockResolvedValue([{ id: 'v1' }, { id: 'p1', votesFor: 1 }])
 
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-user-role': 'CITIZEN' },
         body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
       }),
       { params: makeParams('Ауэзовский') }
@@ -53,6 +53,7 @@ describe('PATCH /api/treasury/[district] — voting', () => {
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-user-role': 'CITIZEN' },
         body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
       }),
       { params: makeParams('Ауэзовский') }

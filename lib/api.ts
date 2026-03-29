@@ -1,5 +1,27 @@
 const BASE = ''
 
+/**
+ * Reads the current auth user from localStorage and returns HTTP headers
+ * with x-user-role + Authorization: Bearer <token> for API mutation calls.
+ * Returns empty object when called server-side or when not logged in.
+ */
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem('amanat_auth')
+    if (!raw) return {}
+    const user = JSON.parse(raw) as { role?: string; id?: string }
+    if (!user?.role) return {}
+    const token = btoa(JSON.stringify({ role: user.role, id: user.id ?? '' }))
+    return {
+      'x-user-role': user.role,
+      Authorization: `Bearer ${token}`,
+    }
+  } catch {
+    return {}
+  }
+}
+
 // ─── Contracts ───
 
 export async function fetchContracts(params?: { district?: string; status?: string }) {
@@ -30,7 +52,7 @@ export async function createContract(data: {
 }) {
   const res = await fetch(`${BASE}/api/contracts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -49,6 +71,19 @@ export async function fetchTreasury(district: string) {
 
 export async function fetchTreasuries() {
   const res = await fetch(`${BASE}/api/treasury`)
+  return res.json()
+}
+
+export async function voteOnProposal(district: string, data: {
+  proposalId: string
+  citizenId: string
+  inFavor: boolean
+}) {
+  const res = await fetch(`${BASE}/api/treasury/${encodeURIComponent(district)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  })
   return res.json()
 }
 
@@ -76,10 +111,49 @@ export async function fetchJurySession(sessionId: string) {
   return res.json()
 }
 
+export async function commitJuryVote(data: { sessionId: string; citizenId: string; commitHash: string }) {
+  const res = await fetch(`${BASE}/api/jury`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  })
+  return res.json()
+}
+
+export async function revealJuryVote(data: { sessionId: string; citizenId: string; vote: string; salt: string }) {
+  const res = await fetch(`${BASE}/api/jury`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  })
+  return res.json()
+}
+
 // ─── Work Logs ───
 
 export async function fetchWorkLogs(contractId: string) {
   const res = await fetch(`${BASE}/api/work-logs?contractId=${contractId}`)
+  return res.json()
+}
+
+export async function createWorkLog(data: {
+  contractId: string
+  contractorId: string
+  type: string
+  title: string
+  description?: string
+  completionPct?: number
+  workersOnSite?: number
+  equipmentCount?: number
+  photoHashes?: string[]
+  gpsLat?: number
+  gpsLng?: number
+}) {
+  const res = await fetch(`${BASE}/api/work-logs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(data),
+  })
   return res.json()
 }
 
@@ -130,7 +204,7 @@ export async function createCampaign(data: {
 }) {
   const res = await fetch(`${BASE}/api/crowdfunding`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   return res.json()
@@ -144,7 +218,7 @@ export async function contributeToCampaign(campaignId: string, data: {
 }) {
   const res = await fetch(`${BASE}/api/crowdfunding/${campaignId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   })
   return res.json()
@@ -153,7 +227,7 @@ export async function contributeToCampaign(campaignId: string, data: {
 export async function updateCampaignStatus(campaignId: string, action: string, extra?: Record<string, string>) {
   const res = await fetch(`${BASE}/api/crowdfunding/${campaignId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ action, ...extra }),
   })
   return res.json()

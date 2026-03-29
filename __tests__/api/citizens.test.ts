@@ -58,6 +58,7 @@ describe('PATCH /api/citizens — computeTier', () => {
 
     const res = await PATCH(new NextRequest('http://localhost/api/citizens', {
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-user-role': 'AKIMAT' },
       body: JSON.stringify({ walletAddress: 'W1', reputationDelta: delta }),
     }))
     expect(res.status).toBe(200)

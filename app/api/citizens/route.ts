@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CitizenTier } from '@/lib/generated/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,8 +58,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(citizen, { status: 201 })
 }
 
-// PATCH /api/citizens — update reputation
+// PATCH /api/citizens — update reputation (AKIMAT only)
 export async function PATCH(req: NextRequest) {
+  const denied = requireRole(req, ['AKIMAT'])
+  if (denied) return denied
+
   const { walletAddress, reputationDelta } = await req.json()
 
   const citizen = await prisma.citizen.findUnique({ where: { walletAddress } })

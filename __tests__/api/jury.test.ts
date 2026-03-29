@@ -25,6 +25,8 @@ describe('GET /api/jury', () => {
   })
 })
 
+const citizenHeaders = { 'Content-Type': 'application/json', 'x-user-role': 'CITIZEN' }
+
 describe('POST /api/jury (commit)', () => {
   it('commits vote for valid juror', async () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
@@ -32,6 +34,7 @@ describe('POST /api/jury (commit)', () => {
 
     const res = await POST(new NextRequest('http://localhost/api/jury', {
       method: 'POST',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', commitHash: 'hash123' }),
     }))
     expect(res.status).toBe(200)
@@ -41,6 +44,7 @@ describe('POST /api/jury (commit)', () => {
     prismaMock.juryVote.findFirst.mockResolvedValue(null)
     const res = await POST(new NextRequest('http://localhost/api/jury', {
       method: 'POST',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'intruder', commitHash: 'x' }),
     }))
     expect(res.status).toBe(403)
@@ -50,6 +54,7 @@ describe('POST /api/jury (commit)', () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: 'existing' })
     const res = await POST(new NextRequest('http://localhost/api/jury', {
       method: 'POST',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', commitHash: 'new' }),
     }))
     expect(res.status).toBe(409)
@@ -72,6 +77,7 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
 
     const res = await PATCH(new NextRequest('http://localhost/api/jury', {
       method: 'PATCH',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote, salt }),
     }))
     expect(res.status).toBe(200)
@@ -87,6 +93,7 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
 
     const res = await PATCH(new NextRequest('http://localhost/api/jury', {
       method: 'PATCH',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote: 'accept', salt: 'differentsalt' }),
     }))
     expect(res.status).toBe(400)
@@ -98,6 +105,7 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
     const res = await PATCH(new NextRequest('http://localhost/api/jury', {
       method: 'PATCH',
+      headers: citizenHeaders,
       body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote: 'accept', salt: 'x' }),
     }))
     expect(res.status).toBe(400)

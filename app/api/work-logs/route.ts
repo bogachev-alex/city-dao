@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +23,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(logs)
 }
 
-// POST /api/work-logs — submit work log entry
+// POST /api/work-logs — submit work log entry (CONTRACTOR or AKIMAT only)
 export async function POST(req: NextRequest) {
+  const denied = requireRole(req, ['CONTRACTOR', 'AKIMAT'])
+  if (denied) return denied
+
   const body = await req.json()
 
   // Validate GPS proximity (within 500m of contract location)
