@@ -38,6 +38,7 @@ export default function LoginPage() {
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
+  const [pendingConnect, setPendingConnect] = useState(false)
 
   // Already logged in → redirect
   useEffect(() => {
@@ -45,6 +46,14 @@ export default function LoginPage() {
       router.replace(REDIRECT_AFTER_LOGIN[user.role] as any)
     }
   }, [user, router])
+
+  // Connect after wallet is selected (reliable alternative to setTimeout)
+  useEffect(() => {
+    if (pendingConnect && wallet && !connected && !connecting) {
+      setPendingConnect(false)
+      connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
+    }
+  }, [pendingConnect, wallet, connected, connecting, connect])
 
   const handleSubmit = () => {
     const displayName = name.trim() || DEMO_ACCOUNTS[selectedRole].name
@@ -64,21 +73,23 @@ export default function LoginPage() {
 
   const handleWalletConnect = useCallback(() => {
     setWalletError(null)
+    const isUsable = (state: WalletReadyState) =>
+      state === WalletReadyState.Installed || state === WalletReadyState.Loadable
     const phantom = wallets.find(
-      (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
+      (w) => w.adapter.name === 'Phantom' && isUsable(w.readyState)
     )
-    const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
-    const target = phantom || anyInstalled
+    const anyUsable = wallets.find((w) => isUsable(w.readyState))
+    const target = phantom || anyUsable
     if (!target) {
       window.open('https://phantom.app/', '_blank')
       return
     }
-    if (wallet && wallet.adapter.name === target.adapter.name) {
+    if (wallet?.adapter.name === target.adapter.name) {
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
       return
     }
     select(target.adapter.name)
-    setTimeout(() => connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения')), 100)
+    setPendingConnect(true)
   }, [wallets, wallet, select, connect])
 
   const handleWalletLogin = () => {
