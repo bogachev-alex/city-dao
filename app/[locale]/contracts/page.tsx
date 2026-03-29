@@ -6,9 +6,11 @@ import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract 
 import { fetchContracts } from '@/lib/api'
 import ContractCard from '@/components/ContractCard'
 import { Link } from '@/i18n/routing'
+import { useAuth } from '@/components/AuthContext'
 
 export default function ContractsPage() {
   const t = useTranslations('contracts')
+  const { user } = useAuth()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
@@ -133,15 +135,17 @@ export default function ContractsPage() {
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {t('found')} <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> {t('contractsCount')}
           </div>
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:text-emerald-400 transition-colors"
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 4v16m8-8H4" />
-            </svg>
-            {t('addContract')}
-          </Link>
+          {user?.role === 'AKIMAT' && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:text-emerald-400 transition-colors"
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 4v16m8-8H4" />
+              </svg>
+              {t('addContract')}
+            </Link>
+          )}
         </div>
 
         {/* Contract grid */}
