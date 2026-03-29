@@ -66,6 +66,185 @@ html {
   }
 }
 
+/* ═══════════════════════════════════════════════════
+   ACCESSIBILITY MODE (for visually impaired users)
+   Activated via html.a11y class
+   ═══════════════════════════════════════════════════ */
+
+/* Base: larger text, higher line-height */
+html.a11y {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+html.a11y body {
+  line-height: 1.8;
+}
+
+/* High-contrast colors override — force black/white + bright accents */
+html.a11y,
+html.a11y.dark {
+  --a11y-bg: #ffffff;
+  --a11y-text: #000000;
+  --a11y-accent: #005500;
+  --a11y-accent-light: #e6ffe6;
+  --a11y-link: #0000cc;
+  --a11y-danger: #cc0000;
+  --a11y-warning: #996600;
+  --a11y-border: #000000;
+  --a11y-muted: #444444;
+}
+html.a11y.dark {
+  --a11y-bg: #000000;
+  --a11y-text: #ffffff;
+  --a11y-accent: #00ff66;
+  --a11y-accent-light: #003311;
+  --a11y-link: #66aaff;
+  --a11y-danger: #ff4444;
+  --a11y-warning: #ffcc00;
+  --a11y-border: #ffffff;
+  --a11y-muted: #bbbbbb;
+}
+
+/* Force backgrounds and text colors */
+html.a11y body,
+html.a11y [class*="bg-gray"],
+html.a11y [class*="bg-white"],
+html.a11y [class*="bg-gradient"] {
+  background-color: var(--a11y-bg) !important;
+  background-image: none !important;
+}
+html.a11y nav,
+html.a11y .fixed {
+  background-color: var(--a11y-bg) !important;
+  backdrop-filter: none !important;
+}
+html.a11y [class*="text-gray"],
+html.a11y [class*="text-white"],
+html.a11y p,
+html.a11y span,
+html.a11y div,
+html.a11y h1, html.a11y h2, html.a11y h3, html.a11y h4 {
+  color: var(--a11y-text) !important;
+}
+
+/* Accent / emerald → high-contrast green */
+html.a11y [class*="text-emerald"],
+html.a11y [class*="text-green"] {
+  color: var(--a11y-accent) !important;
+}
+html.a11y [class*="bg-emerald"] {
+  background-color: var(--a11y-accent) !important;
+  color: var(--a11y-bg) !important;
+}
+
+/* Danger / red */
+html.a11y [class*="text-red"] {
+  color: var(--a11y-danger) !important;
+}
+
+/* Warning / yellow → amber */
+html.a11y [class*="text-yellow"],
+html.a11y [class*="text-amber"] {
+  color: var(--a11y-warning) !important;
+}
+
+/* Links */
+html.a11y a {
+  color: var(--a11y-link) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+html.a11y a:hover {
+  text-decoration-thickness: 3px !important;
+}
+/* Nav links — skip underline, use border instead */
+html.a11y nav a {
+  text-decoration: none !important;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+html.a11y nav a:hover,
+html.a11y nav a:focus-visible {
+  border-color: var(--a11y-accent) !important;
+}
+html.a11y nav a[class*="bg-emerald"] {
+  border-color: var(--a11y-accent) !important;
+  background-color: var(--a11y-accent-light) !important;
+  color: var(--a11y-text) !important;
+}
+
+/* Borders — always visible */
+html.a11y [class*="border"] {
+  border-color: var(--a11y-border) !important;
+  border-width: 2px !important;
+}
+
+/* Buttons — high contrast, large tap target */
+html.a11y button,
+html.a11y [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+  border: 2px solid var(--a11y-border) !important;
+  font-weight: 700 !important;
+}
+html.a11y button:focus-visible,
+html.a11y a:focus-visible,
+html.a11y input:focus-visible,
+html.a11y select:focus-visible {
+  outline: 4px solid var(--a11y-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Inputs */
+html.a11y input,
+html.a11y select,
+html.a11y textarea {
+  font-size: 1.1rem !important;
+  border: 2px solid var(--a11y-border) !important;
+  background-color: var(--a11y-bg) !important;
+  color: var(--a11y-text) !important;
+  min-height: 44px;
+}
+html.a11y input::placeholder {
+  color: var(--a11y-muted) !important;
+}
+
+/* Remove animations that can be disorienting */
+html.a11y *,
+html.a11y *::before,
+html.a11y *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Cards — clear separation */
+html.a11y [class*="rounded-xl"],
+html.a11y [class*="rounded-lg"] {
+  border-radius: 4px !important;
+  border: 2px solid var(--a11y-border) !important;
+}
+
+/* Status badges — ensure readable */
+html.a11y [class*="rounded-full"][class*="px-"] {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+}
+
+/* Skip decorative shadows */
+html.a11y [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+/* Ensure sufficient spacing */
+html.a11y .space-y-3 > * + * { margin-top: 1rem !important; }
+html.a11y .space-y-4 > * + * { margin-top: 1.25rem !important; }
+html.a11y .space-y-6 > * + * { margin-top: 1.75rem !important; }
+html.a11y .gap-2 { gap: 0.75rem !important; }
+html.a11y .gap-3 { gap: 1rem !important; }
+html.a11y .gap-4 { gap: 1.25rem !important; }
+
 /* Solana wallet adapter overrides */
 .wallet-adapter-btn .wallet-adapter-button {
   background: #10b981 !important;

@@ -3,111 +3,13 @@
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/routing'
 import { useLocale } from 'next-intl'
-import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
-import { WalletReadyState } from '@solana/wallet-adapter-base'
+import { useState, useEffect, useTransition } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
+import { useA11y } from './AccessibilityProvider'
 import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, type UserRole } from '@/lib/auth'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
-
-function WalletButton() {
-  const { connected, connecting, publicKey, select, connect, disconnect, wallet, wallets } = useWallet()
-  const { connection } = useConnection()
-  const [error, setError] = useState<string | null>(null)
-  const [wrongNetwork, setWrongNetwork] = useState(false)
-  const pendingConnect = useRef(false)
-
-  useEffect(() => {
-    if (pendingConnect.current && wallet && !connected && !connecting) {
-      pendingConnect.current = false
-      connect().catch((e: any) => {
-        setError(e?.message || 'Ошибка подключения')
-      })
-    }
-  }, [wallet, connected, connecting, connect])
-
-  useEffect(() => {
-    if (!connected) { setWrongNetwork(false); return }
-    connection.getGenesisHash().then((hash) => {
-      const isDevnet = hash === 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG'
-      setWrongNetwork(!isDevnet)
-    }).catch(() => {})
-  }, [connected, connection])
-
-  const handleConnect = useCallback(() => {
-    setError(null)
-    const phantom = wallets.find(
-      (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
-    )
-    const anyInstalled = wallets.find((w) => w.readyState === WalletReadyState.Installed)
-    const target = phantom || anyInstalled
-    if (!target) {
-      window.open('https://phantom.app/', '_blank')
-      return
-    }
-    if (wallet && wallet.adapter.name === target.adapter.name) {
-      connect().catch((e: any) => {
-        setError(e?.message || 'Ошибка подключения')
-      })
-      return
-    }
-    pendingConnect.current = true
-    select(target.adapter.name)
-  }, [wallets, wallet, connect, select])
-
-  const handleDisconnect = useCallback(async () => {
-    try { await disconnect() } catch {}
-  }, [disconnect])
-
-  if (connected && publicKey) {
-    const addr = publicKey.toBase58()
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border ${wrongNetwork ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
-            <div className={`w-2 h-2 rounded-full animate-pulse ${wrongNetwork ? 'bg-red-400' : 'bg-emerald-400'}`} />
-            {addr.slice(0, 4)}…{addr.slice(-4)}
-          </div>
-          <button onClick={handleDisconnect} className="px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            ✕
-          </button>
-        </div>
-        {wrongNetwork && (
-          <span className="text-xs text-red-400">Переключите Phantom на Devnet</span>
-        )}
-      </div>
-    )
-  }
-
-  if (connecting) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-400">
-        <div className="w-3 h-3 border border-gray-500 border-t-white rounded-full animate-spin" />
-        Подключение…
-      </div>
-    )
-  }
-
-  const phantomInstalled = wallets.some(
-    (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
-  )
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={handleConnect}
-        className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-xs text-purple-300 hover:bg-purple-500/30 transition-colors font-medium"
-      >
-        {phantomInstalled ? 'Подключить Phantom' : 'Установить Phantom'}
-      </button>
-      {error && (
-        <span className="text-xs text-red-400">{error}</span>
-      )}
-    </div>
-  )
-}
 
 export default function Navbar() {
   const t = useTranslations('nav')
@@ -116,6 +18,7 @@ export default function Navbar() {
   const router = useRouter()
   const { theme, toggle } = useTheme()
   const { user, logout, switchRole } = useAuth()
+  const { enabled: a11y, toggle: toggleA11y } = useA11y()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -124,7 +27,7 @@ export default function Navbar() {
   useEffect(() => { setMounted(true) }, [])
 
   const navLinks = user
-    ? NAV_BY_ROLE[user.role].map((item) => ({ href: item.href, label: t(item.labelKey as any) }))
+    ? NAV_BY_ROLE[user.role].map((item) => ({ href: item.href, label: t(item.labelKey as any), tour: item.labelKey }))
     : []
 
   const switchLocale = () => {
@@ -143,7 +46,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center gap-3 group" data-tour="logo">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:shadow-emerald-500/50 transition-shadow">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -160,6 +63,7 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href as any}
+                data-tour={link.tour}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   pathname === link.href
                     ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
@@ -181,12 +85,26 @@ export default function Navbar() {
               {locale === 'ru' ? 'KK' : 'RU'}
             </button>
 
+            {/* Accessibility toggle */}
             {mounted && (
-              <div className="hidden md:block">
-                <WalletButton />
-              </div>
+              <button
+                onClick={toggleA11y}
+                className={`p-2 rounded-md transition-colors ${
+                  a11y
+                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+                title={a11y ? 'Обычная версия' : 'Версия для слабовидящих'}
+                aria-label={a11y ? 'Выключить режим для слабовидящих' : 'Включить режим для слабовидящих'}
+              >
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
             )}
 
+            {/* Theme toggle */}
             {mounted && (
               <button
                 onClick={toggle}
@@ -207,7 +125,7 @@ export default function Navbar() {
 
             {/* User block */}
             {mounted && user ? (
-              <div className="relative hidden md:block">
+              <div className="relative hidden md:block" data-tour="auth">
                 <button
                   onClick={() => setRoleSwitcherOpen((v) => !v)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
@@ -259,6 +177,7 @@ export default function Navbar() {
             ) : mounted && (
               <Link
                 href="/login"
+                data-tour="auth"
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors"
               >
                 Войти
@@ -333,11 +252,6 @@ export default function Navbar() {
               >
                 Войти
               </Link>
-            )}
-            {mounted && (
-              <div className="mt-2">
-                <WalletButton />
-              </div>
             )}
           </div>
         </div>

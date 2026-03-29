@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar'
 import { SolanaProviderWrapper } from '@/components/SolanaProviderWrapper'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/components/AuthContext'
+import { AccessibilityProvider } from '@/components/AccessibilityProvider'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -38,10 +39,12 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
             <AuthProvider>
-              <SolanaProviderWrapper>
-                <Navbar />
-                {children}
-              </SolanaProviderWrapper>
+              <AccessibilityProvider>
+                <SolanaProviderWrapper>
+                  <Navbar />
+                  {children}
+                </SolanaProviderWrapper>
+              </AccessibilityProvider>
             </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
