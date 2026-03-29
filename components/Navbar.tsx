@@ -26,9 +26,15 @@ export default function Navbar() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  const navLinks = user
-    ? NAV_BY_ROLE[user.role].map((item) => ({ href: item.href, label: t(item.labelKey as any), tour: item.labelKey }))
-    : []
+  const DEFAULT_NAV: { href: string; labelKey: string }[] = [
+    { href: '/', labelKey: 'map' },
+    { href: '/contracts', labelKey: 'contracts' },
+    { href: '/crowdfunding', labelKey: 'crowdfunding' },
+    { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
+  ]
+
+  const navItems = user ? NAV_BY_ROLE[user.role] : DEFAULT_NAV
+  const navLinks = navItems.map((item) => ({ href: item.href, label: t(item.labelKey as any), tour: item.labelKey }))
 
   const switchLocale = () => {
     const nextLocale = locale === 'ru' ? 'kk' : 'ru'
