@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link } from '@/i18n/routing'
+import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { DISTRICTS, formatTengeWithCrypto } from '@/lib/contracts'
 import { createContract } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+import { useAuth } from '@/components/AuthContext'
 
 interface MilestoneInput {
   desc: string
@@ -54,6 +55,8 @@ const INITIAL_FORM: ContractFormData = {
 
 export default function AdminPage() {
   const t = useTranslations('admin')
+  const { user, loading, authHeader } = useAuth()
+  const router = useRouter()
   const [form, setForm] = useState<ContractFormData>(INITIAL_FORM)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -63,6 +66,12 @@ export default function AdminPage() {
 
   const wallet = useWallet()
   const { registerContract: registerContractOnChain } = useContractRegistry()
+
+  useEffect(() => {
+    if (!loading && user?.role !== 'AKIMAT') {
+      router.replace('/' as any)
+    }
+  }, [user, loading, router])
 
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
@@ -90,7 +99,7 @@ export default function AdminPage() {
         })),
       }
 
-      const created = await createContract(contractData)
+      const created = await createContract(contractData, authHeader())
 
       // 2. Register on blockchain if wallet connected
       if (wallet.publicKey) {
@@ -152,6 +161,14 @@ export default function AdminPage() {
       ...f,
       milestones: f.milestones.map((m, i) => (i === idx ? { ...m, [field]: value } : m)),
     }))
+  }
+
+  if (loading || user?.role !== 'AKIMAT') {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   if (submitted) {

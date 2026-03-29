@@ -15,22 +15,25 @@ export async function fetchContract(id: string) {
   return res.json()
 }
 
-export async function createContract(data: {
-  title: string
-  description?: string
-  contractorName: string
-  totalAmount: number
-  deadline: string
-  district: string
-  lat: number
-  lng: number
-  category?: string
-  onChainPubkey?: string
-  milestones: { description: string; deadlineDays: number; tranchePct: number }[]
-}) {
+export async function createContract(
+  data: {
+    title: string
+    description?: string
+    contractorName: string
+    totalAmount: number
+    deadline: string
+    district: string
+    lat: number
+    lng: number
+    category?: string
+    onChainPubkey?: string
+    milestones: { description: string; deadlineDays: number; tranchePct: number }[]
+  },
+  authHeaders?: Record<string, string>
+) {
   const res = await fetch(`${BASE}/api/contracts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify(data),
   })
   if (!res.ok) {

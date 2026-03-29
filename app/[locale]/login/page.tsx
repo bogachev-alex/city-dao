@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from '@/i18n/routing'
+import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
@@ -9,7 +10,6 @@ import {
   type UserRole,
   type AuthUser,
   ROLE_LABELS,
-  ROLE_DESCRIPTIONS,
   ROLE_ICONS,
   walletToAuthUser,
 } from '@/lib/auth'
@@ -33,21 +33,17 @@ export default function LoginPage() {
   const router = useRouter()
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
 
-  const [tab, setTab] = useState<'login' | 'register'>('login')
-  const [selectedRole, setSelectedRole] = useState<UserRole>('CITIZEN')
-  const [name, setName] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
   const [pendingConnect, setPendingConnect] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [notFound, setNotFound] = useState(false)
 
-  // Already logged in → redirect
   useEffect(() => {
     if (user) {
       router.replace(REDIRECT_AFTER_LOGIN[user.role] as any)
     }
   }, [user, router])
 
-  // Connect after wallet is selected (reliable alternative to setTimeout)
   useEffect(() => {
     if (pendingConnect && wallet && !connected && !connecting) {
       setPendingConnect(false)
@@ -55,29 +51,12 @@ export default function LoginPage() {
     }
   }, [pendingConnect, wallet, connected, connecting, connect])
 
-  const handleSubmit = () => {
-    const displayName = name.trim() || DEMO_ACCOUNTS[selectedRole].name
-    setSubmitting(true)
-    const authUser: AuthUser = {
-      role: selectedRole,
-      id: `${selectedRole.toLowerCase()}-${Date.now()}`,
-      name: displayName,
-    }
-    login(authUser)
-    // router.replace fires via useEffect above once `user` updates
-  }
-
-  const handleDemoLogin = (role: UserRole) => {
-    login(DEMO_ACCOUNTS[role])
-  }
-
   const handleWalletConnect = useCallback(() => {
     setWalletError(null)
+    setNotFound(false)
     const isUsable = (state: WalletReadyState) =>
       state === WalletReadyState.Installed || state === WalletReadyState.Loadable
-    const phantom = wallets.find(
-      (w) => w.adapter.name === 'Phantom' && isUsable(w.readyState)
-    )
+    const phantom = wallets.find((w) => w.adapter.name === 'Phantom' && isUsable(w.readyState))
     const anyUsable = wallets.find((w) => isUsable(w.readyState))
     const target = phantom || anyUsable
     if (!target) {
@@ -92,62 +71,86 @@ export default function LoginPage() {
     setPendingConnect(true)
   }, [wallets, wallet, select, connect])
 
-  const handleWalletLogin = () => {
+  const handleWalletLogin = async () => {
     if (!publicKey) return
-    login(walletToAuthUser(publicKey.toBase58()))
+    setChecking(true)
+    setNotFound(false)
+    try {
+      const res = await fetch(`/api/citizens?wallet=${publicKey.toBase58()}`)
+      if (res.ok) {
+        const data = await res.json()
+        // Use stored name from registration if available
+        const stored = localStorage.getItem('citizen_profile')
+        const name = stored ? JSON.parse(stored).name : undefined
+        const authUser = walletToAuthUser(publicKey.toBase58())
+        if (name) authUser.name = name
+        login(authUser)
+      } else {
+        setNotFound(true)
+      }
+    } catch {
+      // If API unreachable (no DB), fall through to demo mode
+      login(walletToAuthUser(publicKey.toBase58()))
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const handleDemoLogin = (role: UserRole) => {
+    login(DEMO_ACCOUNTS[role])
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-10">
+      <div className="flex items-center gap-3 mb-8">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
         </div>
         <div>
-          <div className="font-bold text-xl text-white tracking-wider">
-            AMANAT <span className="text-emerald-400">PROTOCOL</span>
+          <div className="font-bold text-xl text-gray-900 dark:text-white tracking-wider">
+            AMANAT <span className="text-emerald-600 dark:text-emerald-400">PROTOCOL</span>
           </div>
           <div className="text-xs text-gray-500">Прозрачный мониторинг Алматы</div>
         </div>
       </div>
 
-      <div className="w-full max-w-md">
-        {/* Tab switcher */}
-        <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-2xl p-1 mb-6">
-          {(['login', 'register'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                tab === t
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {t === 'login' ? 'Войти' : 'Зарегистрироваться'}
-            </button>
-          ))}
-        </div>
-
-        {/* Phantom wallet login block */}
-        <div className="bg-gray-900 border border-purple-500/30 rounded-2xl p-5 mb-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-purple-300">Войти через Phantom кошелёк</p>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
-              devnet
-            </span>
+      <div className="w-full max-w-md space-y-4">
+        {/* Wallet login */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 space-y-4 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Вход в систему</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Подключите Phantom кошелёк для входа
+            </p>
           </div>
-          <p className="text-xs text-gray-500">
-            Подключите Phantom кошелёк (Solana devnet). Транзакции не требуются — вход бесплатный.
-          </p>
 
           {walletError && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
               {walletError}
             </p>
+          )}
+
+          {notFound && (
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4">
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-semibold mb-1">
+                Аккаунт не найден
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400/80 mb-3">
+                Этот кошелёк ещё не зарегистрирован в системе Amanat Protocol.
+              </p>
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Зарегистрироваться
+                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
           )}
 
           {!connected ? (
@@ -171,87 +174,58 @@ export default function LoginPage() {
               )}
             </button>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-xl px-4 py-3">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 rounded-xl px-4 py-3">
                 <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
-                <span className="font-mono text-xs text-purple-300 truncate">
-                  {publicKey?.toBase58().slice(0, 8)}...{publicKey?.toBase58().slice(-6)}
+                <span className="font-mono text-xs text-purple-700 dark:text-purple-300 truncate">
+                  {publicKey?.toBase58().slice(0, 10)}...{publicKey?.toBase58().slice(-8)}
                 </span>
-                <span className="ml-auto text-xs text-gray-500">подключён</span>
+                <span className="ml-auto text-xs text-gray-400">подключён</span>
               </div>
               <button
                 onClick={handleWalletLogin}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold text-sm transition-all shadow-lg shadow-purple-500/20"
+                disabled={checking}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                Войти как Гражданин
+                {checking ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Проверка...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" />
+                    </svg>
+                    Войти
+                  </>
+                )}
               </button>
             </div>
           )}
+
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+            Ещё нет аккаунта?{' '}
+            <Link href="/register" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
+              Зарегистрироваться
+            </Link>
+          </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
-          <p className="text-xs text-gray-500 text-center uppercase tracking-widest">или войти без кошелька</p>
-
-          {/* Role selection */}
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Кто вы?</p>
-            <div className="grid grid-cols-3 gap-2">
-              {ROLES.map((role) => (
-                <button
-                  key={role}
-                  onClick={() => setSelectedRole(role)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-center ${
-                    selectedRole === role
-                      ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400'
-                      : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 hover:text-gray-300'
-                  }`}
-                >
-                  <span className="text-2xl">{ROLE_ICONS[role]}</span>
-                  <span className="text-xs font-semibold leading-tight">{ROLE_LABELS[role]}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">{ROLE_DESCRIPTIONS[selectedRole]}</p>
-          </div>
-
-          {/* Name input */}
-          <div>
-            <label className="text-sm text-gray-400 block mb-1.5">
-              {tab === 'login' ? 'Ваше имя или организация' : 'Имя / название организации'}
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={DEMO_ACCOUNTS[selectedRole].name}
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/60 text-sm"
-            />
-          </div>
-
-          {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-60"
-          >
-            {tab === 'login' ? `Войти как ${ROLE_LABELS[selectedRole]}` : `Зарегистрироваться`}
-          </button>
-        </div>
-
-        {/* Demo switcher */}
-        <div className="mt-6 bg-gray-900/60 border border-gray-800 border-dashed rounded-2xl p-4">
-          <p className="text-xs text-gray-500 text-center mb-3 uppercase tracking-widest">
-            Тестовый режим — быстрый вход
+        {/* Demo test access */}
+        <div className="bg-white dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-3 uppercase tracking-widest font-medium">
+            Тестовый доступ
           </p>
           <div className="grid grid-cols-3 gap-2">
             {ROLES.map((role) => (
               <button
                 key={role}
                 onClick={() => handleDemoLogin(role)}
-                className="flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl bg-gray-950 border border-gray-800 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all"
+                className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-emerald-400/50 dark:hover:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-all"
               >
-                <span className="text-xl">{ROLE_ICONS[role]}</span>
-                <span className="text-xs text-gray-400 font-medium text-center leading-tight">
+                <span className="text-2xl">{ROLE_ICONS[role]}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium text-center leading-tight">
                   {ROLE_LABELS[role]}
                 </span>
               </button>

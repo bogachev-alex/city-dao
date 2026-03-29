@@ -8,11 +8,30 @@ import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
 import { DISTRICTS } from '@/lib/contracts'
 import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
+import { useAuth } from '@/components/AuthContext'
+import type { AuthUser } from '@/lib/auth'
+
+const PHONE_RE = /^\+7\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}$/
+
+function formatPhone(raw: string): string {
+  // Allow only digits and leading +
+  const digits = raw.replace(/[^\d]/g, '')
+  if (!digits) return ''
+  // Normalise to +7XXXXXXXXXX
+  const d = digits.startsWith('7') ? digits : digits.startsWith('8') ? '7' + digits.slice(1) : digits
+  let result = '+7'
+  if (d.length > 1) result += ' (' + d.slice(1, 4)
+  if (d.length >= 4) result += ') ' + d.slice(4, 7)
+  if (d.length >= 7) result += '-' + d.slice(7, 9)
+  if (d.length >= 9) result += '-' + d.slice(9, 11)
+  return result
+}
 
 export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
-  const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+  const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+  const { login } = useAuth()
 
   const handleConnect = useCallback(() => {
     const phantom = wallets.find(
@@ -32,6 +51,8 @@ export default function CitizenRegistration() {
     setTimeout(() => connect().catch(() => {}), 100)
   }, [wallets, wallet, select, connect])
 
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
   const [iin, setIin] = useState('')
   const [district, setDistrict] = useState('')
   const [iinHash, setIinHash] = useState<string | null>(null)
@@ -42,6 +63,12 @@ export default function CitizenRegistration() {
   const [onChain, setOnChain] = useState(false)
 
   const isValidIIN = iin.length === 12 && /^\d+$/.test(iin)
+  const isValidPhone = PHONE_RE.test(phone)
+  const isValidName = name.trim().length >= 2
+
+  const handlePhoneChange = (raw: string) => {
+    setPhone(formatPhone(raw))
+  }
 
   const handleIINChange = async (value: string) => {
     setIin(value)
@@ -53,7 +80,7 @@ export default function CitizenRegistration() {
   }
 
   const handleSubmit = async () => {
-    if (!isValidIIN || !district || !connected || !agreed || !publicKey || !iinHash) return
+    if (!isValidIIN || !isValidName || !isValidPhone || !district || !connected || !agreed || !publicKey || !iinHash) return
     setStep('registering')
     setRegError(null)
 
@@ -67,7 +94,6 @@ export default function CitizenRegistration() {
       const result = await registerCitizen(district, hashBytes)
       setTxSignature(result.tx)
       setOnChain(true)
-      console.log('On-chain registration tx:', result.tx)
     } catch (err: any) {
       console.warn('On-chain registration failed (continuing with DB only):', err.message)
     }
@@ -91,7 +117,18 @@ export default function CitizenRegistration() {
     }
 
     setIin('')
+    const trimmedName = name.trim()
+    // Save profile data for login page to pick up
     localStorage.setItem('citizen', JSON.stringify({ district, walletAddress }))
+    localStorage.setItem('citizen_profile', JSON.stringify({ name: trimmedName, phone, district, walletAddress }))
+
+    // Auto-login with name from registration form
+    const authUser: AuthUser = {
+      role: 'CITIZEN',
+      id: walletAddress,
+      name: trimmedName || `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
+    }
+    login(authUser)
     setStep('done')
   }
 
@@ -107,6 +144,14 @@ export default function CitizenRegistration() {
         <p className="text-gray-500 dark:text-gray-400 mb-6">{t('registeredAs')}</p>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 text-left mb-6 max-w-sm mx-auto">
           <div className="space-y-3">
+            <div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Имя</div>
+              <div className="text-gray-900 dark:text-white font-medium">{name}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">Телефон</div>
+              <div className="text-gray-900 dark:text-white font-medium">{phone}</div>
+            </div>
             <div>
               <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('district')}</div>
               <div className="text-gray-900 dark:text-white font-medium">{district}</div>
@@ -149,8 +194,8 @@ export default function CitizenRegistration() {
           <Link href="/profile" className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors">
             {t('myProfile')}
           </Link>
-          <Link href="/contracts" className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            {t('contracts')}
+          <Link href="/" className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            На главную
           </Link>
         </div>
       </div>
@@ -166,10 +211,55 @@ export default function CitizenRegistration() {
         </div>
       )}
 
-      {/* Step 1: IIN */}
+      {/* Step 1: Personal info */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">1</div>
+          <h3 className="text-gray-900 dark:text-white font-semibold">Личные данные</h3>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-gray-500 dark:text-gray-400 mb-1.5 block">Полное имя</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Алибек Джаксыбеков"
+              className={`w-full bg-gray-50 dark:bg-gray-950 border rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 transition-all text-sm ${
+                name.length > 0 && !isValidName
+                  ? 'border-red-300 dark:border-red-500/50 focus:ring-red-200 dark:focus:ring-red-500/30'
+                  : isValidName
+                  ? 'border-emerald-300 dark:border-emerald-500/50 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
+                  : 'border-gray-200 dark:border-gray-700 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
+              }`}
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 dark:text-gray-400 mb-1.5 block">Номер телефона</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              placeholder="+7 (700) 123-45-67"
+              className={`w-full bg-gray-50 dark:bg-gray-950 border rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 transition-all text-sm font-mono ${
+                phone.length > 0 && !isValidPhone
+                  ? 'border-red-300 dark:border-red-500/50 focus:ring-red-200 dark:focus:ring-red-500/30'
+                  : isValidPhone
+                  ? 'border-emerald-300 dark:border-emerald-500/50 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
+                  : 'border-gray-200 dark:border-gray-700 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
+              }`}
+            />
+            {phone.length > 0 && !isValidPhone && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1">Введите корректный казахстанский номер</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Step 2: IIN */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">2</div>
           <h3 className="text-gray-900 dark:text-white font-semibold">{t('enterIIN')}</h3>
         </div>
 
@@ -184,10 +274,10 @@ export default function CitizenRegistration() {
               placeholder="000000000000"
               className={`w-full bg-gray-50 dark:bg-gray-950 border rounded-lg px-4 py-3 text-gray-900 dark:text-white font-mono text-lg tracking-widest placeholder-gray-300 dark:placeholder-gray-700 focus:outline-none focus:ring-2 transition-all ${
                 iin.length > 0 && !isValidIIN
-                  ? 'border-red-300 focus:ring-red-200 dark:focus:ring-red-500/30'
+                  ? 'border-red-300 dark:border-red-500/50 focus:ring-red-200 dark:focus:ring-red-500/30'
                   : isValidIIN
                   ? 'border-emerald-300 dark:border-emerald-500/50 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
+                  : 'border-gray-200 dark:border-gray-700 focus:ring-emerald-200 dark:focus:ring-emerald-500/30'
               }`}
             />
             <div className="flex items-center justify-between mt-1.5">
@@ -210,10 +300,10 @@ export default function CitizenRegistration() {
         </div>
       </div>
 
-      {/* Step 2: District */}
+      {/* Step 3: District */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">2</div>
+          <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">3</div>
           <h3 className="text-gray-900 dark:text-white font-semibold">{t('selectDistrict')}</h3>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -233,12 +323,16 @@ export default function CitizenRegistration() {
         </div>
       </div>
 
-      {/* Step 3: Wallet */}
+      {/* Step 4: Wallet (required) */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">3</div>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm">4</div>
           <h3 className="text-gray-900 dark:text-white font-semibold">{t('connectWallet')}</h3>
+          <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">обязательно</span>
         </div>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4 ml-11">
+          Кошелёк привязывается к вашей учётной записи и используется для входа в систему
+        </p>
         {!connected ? (
           <button
             onClick={handleConnect}
@@ -260,22 +354,22 @@ export default function CitizenRegistration() {
             )}
           </button>
         ) : (
-          <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div>
-              <div className="text-emerald-600 dark:text-emerald-400 font-medium text-sm">{t('connected')}</div>
-              <div className="text-gray-500 dark:text-gray-400 font-mono text-xs">{publicKey?.toBase58()}</div>
+            <div className="min-w-0">
+              <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">{t('connected')}</div>
+              <div className="text-gray-500 dark:text-gray-400 font-mono text-xs truncate">{publicKey?.toBase58()}</div>
             </div>
           </div>
         )}
       </div>
 
       {/* Privacy notice */}
-      <div className="bg-blue-50 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4">
+      <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <svg width="16" height="16" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -294,7 +388,7 @@ export default function CitizenRegistration() {
         <div
           onClick={() => setAgreed(!agreed)}
           className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
-            agreed ? 'bg-emerald-50 dark:bg-emerald-500 border-emerald-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-gray-400 dark:hover:border-gray-500'
+            agreed ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-gray-400 dark:group-hover:border-gray-500'
           }`}
         >
           {agreed && (
@@ -311,9 +405,9 @@ export default function CitizenRegistration() {
       {/* Submit */}
       <button
         onClick={handleSubmit}
-        disabled={!isValidIIN || !district || !connected || !agreed || step === 'registering'}
-        className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-          isValidIIN && district && connected && agreed
+        disabled={!isValidIIN || !isValidName || !isValidPhone || !district || !connected || !agreed || step === 'registering'}
+        className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+          isValidIIN && isValidName && isValidPhone && district && connected && agreed
             ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
         }`}
