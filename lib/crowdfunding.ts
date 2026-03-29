@@ -273,7 +273,7 @@ const CATEGORY_MAP: Record<string, CampaignCategory> = {
 }
 
 const TIER_MAP: Record<string, string> = {
-  NEW: 'Bronze', ACTIVE: 'Silver', TRUSTED: 'Gold', GUARDIAN: 'Gold',
+  NEW: 'Bronze', ACTIVE: 'Silver', TRUSTED: 'Gold', GUARDIAN: 'Platinum',
 }
 
 /** Normalize API response (Prisma format) to frontend Campaign shape */

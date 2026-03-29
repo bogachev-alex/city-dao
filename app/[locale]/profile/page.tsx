@@ -18,10 +18,10 @@ interface CitizenProfile {
 }
 
 const TIER_CONFIG: Record<string, { color: string; bg: string; border: string; min: number; max: number }> = {
-  NEW:      { color: 'text-gray-500 dark:text-gray-400', bg: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700', border: 'border-gray-300 dark:border-gray-600', min: 0, max: 100 },
-  ACTIVE:   { color: 'text-orange-500 dark:text-orange-400', bg: 'from-orange-50 to-orange-100', border: 'border-orange-200 dark:border-orange-500/30', min: 100, max: 200 },
-  TRUSTED:  { color: 'text-blue-500 dark:text-blue-400', bg: 'from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800', border: 'border-blue-200 dark:border-blue-500/30', min: 200, max: 350 },
-  GUARDIAN: { color: 'text-yellow-600 dark:text-yellow-400', bg: 'from-yellow-50 to-yellow-100', border: 'border-yellow-200 dark:border-yellow-500/30', min: 350, max: 1000 },
+  NEW:      { color: 'text-gray-500 dark:text-gray-400', bg: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700', border: 'border-gray-300 dark:border-gray-600', min: 0, max: 50 },
+  ACTIVE:   { color: 'text-orange-500 dark:text-orange-400', bg: 'from-orange-50 to-orange-100', border: 'border-orange-200 dark:border-orange-500/30', min: 50, max: 150 },
+  TRUSTED:  { color: 'text-blue-500 dark:text-blue-400', bg: 'from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800', border: 'border-blue-200 dark:border-blue-500/30', min: 150, max: 300 },
+  GUARDIAN: { color: 'text-yellow-600 dark:text-yellow-400', bg: 'from-yellow-50 to-yellow-100', border: 'border-yellow-200 dark:border-yellow-500/30', min: 300, max: 1000 },
 }
 
 const TIER_LABELS: Record<string, string> = {

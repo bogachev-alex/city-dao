@@ -140,7 +140,7 @@ export function normalizeContract(c: any): Contract {
     id: c.id,
     title: c.title,
     contractor: c.contractor?.name || c.contractor || '',
-    amount_usdc: Number(c.totalAmount || c.amount_usdc || 0) / 1000,
+    amount_usdc: Number(c.totalAmount || c.amount_usdc || 0),
     deadline: c.deadline,
     district: c.district,
     status: CONTRACT_STATUS_MAP[c.status] || 'active',

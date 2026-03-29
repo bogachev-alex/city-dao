@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -73,8 +74,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Must commit before reveal' }, { status: 400 })
   }
 
-  // TODO: verify hash(vote + salt) === commitHash on-chain
-  // For now, trust the client (will be enforced by smart contract)
+  // Verify commit-reveal: hash(vote + salt) must match committed hash
+  const computedHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
+  if (computedHash !== juryVote.commitHash) {
+    return NextResponse.json({ error: 'Hash mismatch: vote/salt does not match commitment' }, { status: 400 })
+  }
 
   const updated = await prisma.juryVote.update({
     where: { id: juryVote.id },
