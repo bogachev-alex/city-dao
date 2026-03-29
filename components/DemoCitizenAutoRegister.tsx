@@ -12,7 +12,6 @@
 import { useEffect, useRef } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useAuth } from './AuthContext'
-import { DemoWalletName } from '@/lib/web3/DemoKeypairAdapter'
 import { DISTRICTS } from '@/lib/contracts'
 
 const DISTRICTS_LIST = [...DISTRICTS]
@@ -34,13 +33,14 @@ async function demoCitizenHash(addr: string): Promise<string> {
 
 export function DemoCitizenAutoRegister() {
   const { user } = useAuth()
-  const { publicKey, connected, wallet } = useWallet()
+  const { publicKey, connected } = useWallet()
   const registered = useRef(false)
 
   useEffect(() => {
+    // Auto-register citizen for ANY wallet when in demo auth mode.
+    // Idempotent: 409 (already exists) is silently ignored.
     if (!user) return
     if (!connected || !publicKey) return
-    if (wallet?.adapter.name !== DemoWalletName) return
     if (registered.current) return
 
     registered.current = true

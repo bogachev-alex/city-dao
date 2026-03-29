@@ -34,8 +34,9 @@ export const SolanaProvider: FC<Props> = ({ children }) => {
 
   return (
     <ConnProvider endpoint={SOLANA_RPC_URL}>
-      {/* autoConnect=false so DemoWalletAutoConnect controls the flow */}
-      <WalletProv wallets={wallets} autoConnect={false}>
+      {/* autoConnect=true lets Phantom/Solflare reconnect; DemoWalletAutoConnect
+          falls back to demo keypair only if no real wallet is available */}
+      <WalletProv wallets={wallets} autoConnect>
         <ModalProv>
           {/* Auto-selects demo wallet when no Phantom, user is logged in */}
           <DemoWalletAutoConnect />
