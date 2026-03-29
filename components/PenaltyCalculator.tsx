@@ -52,7 +52,7 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
           <span className="text-red-500 dark:text-red-400">{t('penaltyVar')}</span>
         </div>
         <div className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-          {contract.days_overdue ?? 0} {t('days')} × 1% × {formatAmount(contract.amount_usdc)} = {formatAmount(Math.round((contract.days_overdue ?? 0) * 0.01 * contract.amount_usdc))} USDC
+          {contract.days_overdue ?? 0} {t('days')} × 1% × {formatAmount(contract.amount_usdc)} = {formatAmount(Math.round((contract.days_overdue ?? 0) * 0.01 * contract.amount_usdc))} ₸
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">{t('currentPenalty')}</span>
             <span className={`font-bold text-lg ${isOverdue ? 'text-red-500 dark:text-red-400 animate-pulse' : 'text-red-500 dark:text-red-400'}`}>
-              {formatAmount(Math.round(currentPenalty))} USDC
+              {formatAmount(Math.round(currentPenalty))} ₸
             </span>
           </div>
 
@@ -93,8 +93,8 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
               />
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-400 dark:text-gray-500">{t('remaining')} {formatAmount(Math.max(0, Math.round(contract.escrow_amount - currentPenalty)))} USDC</span>
-              <span className="text-red-500 dark:text-red-400">-{formatAmount(Math.round(currentPenalty))} USDC</span>
+              <span className="text-gray-400 dark:text-gray-500">{t('remaining')} {formatAmount(Math.max(0, Math.round(contract.escrow_amount - currentPenalty)))} ₸</span>
+              <span className="text-red-500 dark:text-red-400">-{formatAmount(Math.round(currentPenalty))} ₸</span>
             </div>
           </div>
         </>

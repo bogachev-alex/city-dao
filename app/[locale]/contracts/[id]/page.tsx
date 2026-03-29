@@ -116,7 +116,7 @@ export default function ContractDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('amount')}</div>
-                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatAmount(contract.amount_usdc)} USDC</div>
+                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatAmount(contract.amount_usdc)} ₸</div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('deadline')}</div>
@@ -228,7 +228,7 @@ export default function ContractDetailPage() {
                 {[
                   { label: t('contractId'), value: `#${contract.id.slice(0, 8)}` },
                   { label: t('coordinates'), value: `${contract.lat}, ${contract.lng}` },
-                  { label: t('escrow20'), value: `${formatAmount(contract.escrow_amount)} USDC` },
+                  { label: t('escrow20'), value: `${formatAmount(contract.escrow_amount)} ₸` },
                   { label: t('status'), value: statusConfig[contract.status].label },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between">

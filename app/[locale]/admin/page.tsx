@@ -180,7 +180,7 @@ export default function AdminPage() {
             <div className="flex justify-between text-sm">
               <span className="text-gray-400 dark:text-gray-500">{t('escrow20')}</span>
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                {form.amount_usdc ? Math.round(Number(form.amount_usdc) * 0.2).toLocaleString() : '0'} USDC
+                {form.amount_usdc ? Math.round(Number(form.amount_usdc) * 0.2).toLocaleString() : '0'} ₸
               </span>
             </div>
           </div>
@@ -298,7 +298,7 @@ export default function AdminPage() {
                   />
                   {form.amount_usdc && (
                     <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                      {t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} USDC
+                      {t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸
                     </div>
                   )}
                 </div>
