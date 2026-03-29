@@ -7,10 +7,18 @@ import { Link } from '@/i18n/routing'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 
+const KZT_PER_SOL = 80_000
+const KZT_PER_USDT = 510
+
 function formatBigAmount(val: number): string {
-  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B ₸`
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(0)}M ₸`
-  return `${val.toLocaleString('ru-KZ')} ₸`
+  let tenge: string
+  if (val >= 1_000_000_000) tenge = `${(val / 1_000_000_000).toFixed(1)}B`
+  else if (val >= 1_000_000) tenge = `${(val / 1_000_000).toFixed(0)}M`
+  else tenge = val.toLocaleString('ru-KZ')
+
+  const sol = (val / KZT_PER_SOL).toFixed(0)
+  const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(val / KZT_PER_USDT))
+  return `${tenge} ₸ (${sol} SOL)`
 }
 
 export default function HomePage() {

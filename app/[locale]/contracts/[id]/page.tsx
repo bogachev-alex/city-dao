@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
-import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, normalizeContract } from '@/lib/contracts'
+import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, formatTengeWithCrypto, normalizeContract } from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
@@ -116,7 +116,7 @@ export default function ContractDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('amount')}</div>
-                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatAmount(contract.amount_usdc)} ₸</div>
+                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatTengeWithCrypto(contract.amount_usdc)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('deadline')}</div>
@@ -228,7 +228,7 @@ export default function ContractDetailPage() {
                 {[
                   { label: t('contractId'), value: `#${contract.id.slice(0, 8)}` },
                   { label: t('coordinates'), value: `${contract.lat}, ${contract.lng}` },
-                  { label: t('escrow20'), value: `${formatAmount(contract.escrow_amount)} ₸` },
+                  { label: t('escrow20'), value: formatTengeWithCrypto(contract.escrow_amount) },
                   { label: t('status'), value: statusConfig[contract.status].label },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between">

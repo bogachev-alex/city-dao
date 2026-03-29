@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   getCitizenTarget, getStateMatch, getCampaignProgress,
-  getDonorTier, normalizeCampaign, Campaign,
+  getDonorTier, formatTenge, normalizeCampaign, Campaign,
 } from '@/lib/crowdfunding'
 
 describe('getCitizenTarget / getStateMatch', () => {
@@ -30,6 +30,15 @@ describe('getCampaignProgress', () => {
   it('0% when nothing raised', () => expect(getCampaignProgress(base)).toBe(0))
   it('50% when half raised', () => expect(getCampaignProgress({ ...base, citizen_raised: 500_000 })).toBe(50))
   it('100% when fully raised', () => expect(getCampaignProgress({ ...base, citizen_raised: 1_000_000 })).toBe(100))
+})
+
+describe('formatTenge', () => {
+  it('shows tenge with SOL and USDT equivalents', () => {
+    const result = formatTenge(8_000_000) // 8M tenge = 100 SOL = ~15686 USDT
+    expect(result).toContain('₸')
+    expect(result).toContain('SOL')
+    expect(result).toContain('USDT')
+  })
 })
 
 describe('getDonorTier', () => {

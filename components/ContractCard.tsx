@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
-import { Contract, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount } from '@/lib/contracts'
+import { Contract, getDaysUntilDeadline, getMilestoneCompletedCount, formatTengeWithCrypto } from '@/lib/contracts'
 
 interface ContractCardProps {
   contract: Contract
@@ -61,7 +61,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('contractAmount')}</div>
-            <div className="text-gray-900 dark:text-white font-semibold">{formatAmount(contract.amount_usdc)} ₸</div>
+            <div className="text-gray-900 dark:text-white font-semibold">{formatTengeWithCrypto(contract.amount_usdc)}</div>
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('deadline')}</div>
@@ -94,7 +94,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <span className="text-xs text-red-600 dark:text-red-400 font-medium animate-pulse">
-              {t('penaltyLabel')} {formatAmount(contract.penalty_amount)} ₸
+              {t('penaltyLabel')} {formatTengeWithCrypto(contract.penalty_amount)}
             </span>
           </div>
         )}

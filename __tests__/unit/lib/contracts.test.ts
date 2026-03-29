@@ -4,6 +4,7 @@ import {
   getDaysUntilDeadline,
   getContractPinColor,
   formatAmount,
+  formatTengeWithCrypto,
   getMilestoneCompletedCount,
   Contract,
 } from '@/lib/contracts'
@@ -71,6 +72,16 @@ describe('getContractPinColor', () => {
   it('penalized → red', () => expect(getContractPinColor({ ...base, status: 'penalized' })).toBe('red'))
   it('<7 days → yellow', () => expect(getContractPinColor({ ...base, deadline: new Date(Date.now() + 3 * 86400000).toISOString() })).toBe('yellow'))
   it('>7 days → green', () => expect(getContractPinColor(base)).toBe('green'))
+})
+
+describe('formatTengeWithCrypto', () => {
+  it('shows tenge with SOL and USDT equivalents', () => {
+    const result = formatTengeWithCrypto(80_000_000) // 80M tenge
+    expect(result).toContain('₸')
+    expect(result).toContain('SOL')
+    expect(result).toContain('USDT')
+    expect(result).toContain('1000.0') // 80M / 80k = 1000 SOL
+  })
 })
 
 describe('getMilestoneCompletedCount', () => {
