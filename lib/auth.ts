@@ -32,12 +32,14 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
+    { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/profile', labelKey: 'profile' },
   ],
   CONTRACTOR: [
     { href: '/', labelKey: 'map' },
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
+    { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/profile', labelKey: 'profile' },
   ],
   AKIMAT: [
@@ -45,6 +47,7 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
+    { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/admin', labelKey: 'admin' },
   ],
 }
