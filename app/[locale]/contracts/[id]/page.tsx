@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
-import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, formatTengeWithCrypto, normalizeContract } from '@/lib/contracts'
+import {
+  Contract,
+  getContractById,
+  getDaysUntilDeadline,
+  getMilestoneCompletedCount,
+  formatTengeWithCrypto,
+  normalizeContract,
+  GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+} from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
@@ -12,6 +20,7 @@ import PenaltyCalculator from '@/components/PenaltyCalculator'
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
   const t = useTranslations('contractDetail')
+  const locale = useLocale()
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -65,6 +74,14 @@ export default function ContractDetailPage() {
   const total = contract.milestones.length
   const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
   const status = statusConfig[contract.status]
+
+  const signedLabel = contract.signedAt
+    ? new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(contract.signedAt))
+    : null
 
   const PHOTO_EVIDENCE = [
     { label: t('photoStart'), date: '10.03.2026' },
@@ -129,6 +146,49 @@ export default function ContractDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {(contract.registryNumber || contract.customerName || contract.subjectType || signedLabel) && (
+                <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('goszakupBlock')}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {contract.registryNumber && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('registryNumber')}</div>
+                        <div className="font-mono text-gray-900 dark:text-white">{contract.registryNumber}</div>
+                      </div>
+                    )}
+                    {contract.customerName && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('customer')}</div>
+                        <div className="text-gray-900 dark:text-white">{contract.customerName}</div>
+                      </div>
+                    )}
+                    {contract.subjectType && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('subjectType')}</div>
+                        <div className="text-gray-900 dark:text-white">{contract.subjectType}</div>
+                      </div>
+                    )}
+                    {signedLabel && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('signedAt')}</div>
+                        <div className="text-gray-900 dark:text-white">{signedLabel}</div>
+                      </div>
+                    )}
+                  </div>
+                  <a
+                    href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    {t('goszakupOpen')}
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                    </svg>
+                  </a>
+                </div>
+              )}
 
               {/* Progress */}
               <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">

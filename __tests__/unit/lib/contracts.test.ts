@@ -50,6 +50,23 @@ describe('normalizeContract', () => {
     expect(result.milestones[0].status).toBe('accepted')
     expect(result.milestones[1].status).toBe('under_review')
   })
+
+  it('maps goszakup-style registry fields and startDate to signedAt', () => {
+    const result = normalizeContract({
+      id: '1',
+      title: 'X',
+      status: 'ACTIVE',
+      registryNumber: '24953097',
+      customerName: 'Управление строительства города Алматы',
+      subjectType: 'Работа',
+      startDate: '2026-03-27T12:00:00.000Z',
+      milestones: [],
+    })
+    expect(result.registryNumber).toBe('24953097')
+    expect(result.customerName).toContain('Алматы')
+    expect(result.subjectType).toBe('Работа')
+    expect(result.signedAt).toBe('2026-03-27T12:00:00.000Z')
+  })
 })
 
 describe('getDaysUntilDeadline', () => {

@@ -1,12 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract } from '@/lib/contracts'
+import {
+  DEMO_CONTRACTS,
+  DISTRICTS,
+  Contract,
+  ContractStatus,
+  normalizeContract,
+  GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+} from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
 import ContractCard from '@/components/ContractCard'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
+
+const STATUS_API: Record<ContractStatus, string> = {
+  active: 'ACTIVE',
+  penalized: 'PENALIZED',
+  completed: 'COMPLETED',
+  disputed: 'DISPUTED',
+}
 
 export default function ContractsPage() {
   const t = useTranslations('contracts')
@@ -15,6 +29,9 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
   const [districtFilter, setDistrictFilter] = useState<string>('all')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [subjectTypeFilter, setSubjectTypeFilter] = useState<string>('all')
+  const [amountMinFilter, setAmountMinFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
   const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
@@ -25,8 +42,16 @@ export default function ContractsPage() {
     { value: 'disputed', label: t('disputedFilter') },
   ]
 
-  useEffect(() => {
-    fetchContracts()
+  const loadContracts = useCallback(() => {
+    setLoading(true)
+    const amountMin = amountMinFilter.trim() ? Number(amountMinFilter.replace(/\s/g, '')) : undefined
+    fetchContracts({
+      district: districtFilter !== 'all' ? districtFilter : undefined,
+      status: statusFilter !== 'all' ? STATUS_API[statusFilter] : undefined,
+      customer: customerFilter.trim() || undefined,
+      subjectType: subjectTypeFilter !== 'all' ? subjectTypeFilter : undefined,
+      amountMin: amountMin != null && !Number.isNaN(amountMin) ? amountMin : undefined,
+    })
       .then((data: any[]) => {
         if (Array.isArray(data) && data.length > 0) {
           setContracts(data.map(normalizeContract))
@@ -36,14 +61,29 @@ export default function ContractsPage() {
       })
       .catch(() => setContracts(DEMO_CONTRACTS))
       .finally(() => setLoading(false))
-  }, [])
+  }, [districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
+
+  useEffect(() => {
+    loadContracts()
+  }, [loadContracts])
 
   const filtered = contracts.filter((c) => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false
-    if (districtFilter !== 'all' && c.district !== districtFilter) return false
-    if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase()) && !c.contractor.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      const inTitle = c.title.toLowerCase().includes(q)
+      const inContractor = c.contractor.toLowerCase().includes(q)
+      const inCustomer = (c.customerName || '').toLowerCase().includes(q)
+      const inRegistry = (c.registryNumber || '').toLowerCase().includes(q)
+      if (!inTitle && !inContractor && !inCustomer && !inRegistry) return false
+    }
     return true
   })
+
+  const applyGoszakupPreset = () => {
+    setCustomerFilter('Алматы')
+    setSubjectTypeFilter('Работа')
+    setAmountMinFilter('10000000')
+  }
 
   const counts = {
     active: contracts.filter((c) => c.status === 'active').length,
@@ -62,9 +102,20 @@ export default function ContractsPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {t('title')}
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
                 {t('subtitle')}
               </p>
+              <a
+                href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                {t('goszakupReference')}
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                </svg>
+              </a>
             </div>
             <div className="flex gap-3">
               {[
@@ -96,6 +147,50 @@ export default function ContractsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
             />
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('customerFilter')}</label>
+              <input
+                type="text"
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                placeholder={t('customerPlaceholder')}
+                className="w-full min-w-[180px] sm:w-52 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('subjectTypeFilter')}</label>
+              <select
+                value={subjectTypeFilter}
+                onChange={(e) => setSubjectTypeFilter(e.target.value)}
+                className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              >
+                <option value="all">{t('allSubjectTypes')}</option>
+                <option value="Работа">{t('subjectWork')}</option>
+                <option value="Товар">{t('subjectGoods')}</option>
+                <option value="Услуга">{t('subjectServices')}</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('amountFromFilter')}</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountMinFilter}
+                onChange={(e) => setAmountMinFilter(e.target.value)}
+                placeholder="10000000"
+                className="w-full min-w-[140px] sm:w-36 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={applyGoszakupPreset}
+              className="px-3 py-2 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 transition-colors"
+            >
+              {t('goszakupPreset')}
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-3">

@@ -9,11 +9,21 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const district = searchParams.get('district')
   const status = searchParams.get('status')
+  const customer = searchParams.get('customer')
+  const subjectType = searchParams.get('subjectType')
+  const amountMin = searchParams.get('amountMin')
 
   const contracts = await prisma.contract.findMany({
     where: {
       ...(district && { district }),
       ...(status && { status: status as any }),
+      ...(customer && {
+        customerName: { contains: customer, mode: 'insensitive' as const },
+      }),
+      ...(subjectType && { subjectType }),
+      ...(amountMin && !Number.isNaN(Number(amountMin)) && {
+        totalAmount: { gte: BigInt(amountMin) },
+      }),
     },
     include: {
       contractor: { select: { id: true, name: true, rating: true } },
@@ -67,6 +77,10 @@ export async function POST(req: NextRequest) {
       escrowAmount: BigInt(Math.floor(body.totalAmount * 0.2)),
       deadline: new Date(body.deadline),
       category: body.category,
+      ...(body.registryNumber && { registryNumber: String(body.registryNumber) }),
+      ...(body.customerName && { customerName: String(body.customerName) }),
+      ...(body.subjectType && { subjectType: String(body.subjectType) }),
+      ...(body.startDate && { startDate: new Date(body.startDate) }),
       ...(body.onChainPubkey && { onChainPubkey: body.onChainPubkey }),
       milestones: {
         create: body.milestones.map((m: any, i: number) => ({

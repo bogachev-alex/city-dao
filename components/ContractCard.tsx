@@ -40,6 +40,28 @@ export default function ContractCard({ contract }: ContractCardProps) {
           </span>
         </div>
 
+        {(contract.registryNumber || contract.subjectType) && (
+          <div className="flex flex-wrap items-center gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {contract.registryNumber && (
+              <span className="font-mono text-gray-600 dark:text-gray-300">
+                {t('registry')} {contract.registryNumber}
+              </span>
+            )}
+            {contract.subjectType && (
+              <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                {contract.subjectType}
+              </span>
+            )}
+          </div>
+        )}
+
+        {contract.customerName && (
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+            <span className="text-gray-400 dark:text-gray-500">{t('customer')}: </span>
+            {contract.customerName}
+          </div>
+        )}
+
         {/* Contractor & district */}
         <div className="flex items-center gap-4 mb-4 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1.5">

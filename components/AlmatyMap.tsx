@@ -142,9 +142,19 @@ export default function AlmatyMap() {
                 <div style={{ color: isDark ? '#fff' : '#111827', fontWeight: 600, fontSize: '14px', marginBottom: '6px', lineHeight: 1.4 }}>
                   {contract.title}
                 </div>
+                {contract.registryNumber && (
+                  <div style={{ color: isDark ? '#6ee7b7' : '#059669', fontSize: '11px', fontFamily: 'ui-monospace, monospace', marginBottom: '4px' }}>
+                    ЕГЗ №{contract.registryNumber}
+                  </div>
+                )}
                 <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
                   {contract.contractor}
                 </div>
+                {contract.customerName && (
+                  <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '11px', marginBottom: '4px', lineHeight: 1.35 }}>
+                    {contract.customerName.length > 80 ? `${contract.customerName.slice(0, 80)}…` : contract.customerName}
+                  </div>
+                )}
                 <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '12px', marginBottom: '12px' }}>
                   {daysLeft < 0
                     ? <span style={{ color: isDark ? '#f87171' : '#ef4444' }}>{t('overdueBy', { days: Math.abs(daysLeft) })}</span>

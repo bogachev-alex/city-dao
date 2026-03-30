@@ -23,12 +23,28 @@ export interface Contract {
   penalty_amount: number
   days_overdue?: number
   milestones: Milestone[]
+  /** Goszakup.gov.kz registry number (ЕГЗ) */
+  registryNumber?: string
+  /** Customer / заказчик (as on the national portal) */
+  customerName?: string
+  /** Subject: Работа, Товар, Услуга (ref_subject_type on goszakup) */
+  subjectType?: string
+  /** Contract signing date (startDate in DB) */
+  signedAt?: string
 }
+
+/** Same filters as goszakup.gov.kz: Алматы + «Работа» (type 2) + amount from 10M ₸ */
+export const GOSZAKUP_ALMATY_WORKS_MIN10M_URL =
+  'https://goszakup.gov.kz/ru/registry/contract?filter%5Bcustomer%5D=%D0%90%D0%BB%D0%BC%D0%B0%D1%82%D1%8B&filter%5Bref_subject_type%5D=2&filter%5Bamount_from%5D=10000000'
 
 export const DEMO_CONTRACTS: Contract[] = [
   {
     id: '1',
     title: 'Ремонт тротуара, набережная Весновки',
+    registryNumber: 'demo-10001',
+    customerName: 'Акимат города Алматы',
+    subjectType: 'Работа',
+    signedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     contractor: 'ТОО СтройАлматы',
     amount_usdc: 45000,
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -136,6 +152,9 @@ const MILESTONE_STATUS_MAP: Record<string, MilestoneStatus> = {
 
 /** Normalize API response (Prisma format) to frontend Contract shape */
 export function normalizeContract(c: any): Contract {
+  const signed =
+    c.signedAt ||
+    (c.startDate ? (typeof c.startDate === 'string' ? c.startDate : new Date(c.startDate).toISOString()) : undefined)
   return {
     id: c.id,
     title: c.title,
@@ -149,6 +168,10 @@ export function normalizeContract(c: any): Contract {
     escrow_amount: Number(c.escrowAmount || c.escrow_amount || 0),
     penalty_amount: Number(c.penaltyAmount || c.penalty_amount || 0),
     days_overdue: c.days_overdue,
+    registryNumber: c.registryNumber ?? undefined,
+    customerName: c.customerName ?? undefined,
+    subjectType: c.subjectType ?? undefined,
+    signedAt: signed,
     milestones: (c.milestones || []).map((m: any) => ({
       id: m.id,
       desc: m.description || m.desc,

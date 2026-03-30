@@ -212,17 +212,30 @@ async function main() {
       (await prisma.contractor.findFirst({ where: { name: c.supplier } })) ??
       (await prisma.contractor.create({ data: { name: c.supplier } }))
 
+    const signAt = new Date(`${c.signDate}T12:00:00.000Z`)
+
     await prisma.contract.create({
       data: {
         title: c.title,
-        description: `Контракт №${c.goszakupId} с портала госзакупок РК. Заказчик: ${c.customer}. Дата подписания: ${c.signDate}.`,
+        description: [
+          `Предмет договора: Работа (как ref_subject_type=2 на goszakup.gov.kz).`,
+          `Заказчик: ${c.customer}.`,
+          `Поставщик: ${c.supplier}.`,
+          `Номер в реестре ЕГЗ: ${c.goszakupId}.`,
+          `Дата подписания: ${c.signDate}.`,
+          `Отбор соответствует фильтрам портала: заказчик — Алматы, вид «Работа», сумма от 10 000 000 ₸.`,
+        ].join(' '),
         district,
         lat,
         lng,
         contractorId: contractor.id,
+        registryNumber: c.goszakupId,
+        customerName: c.customer,
+        subjectType: 'Работа',
         totalAmount: BigInt(c.amount),
         escrowAmount: BigInt(Math.round(c.amount * 0.2)),
-        penaltyAmount: 0n,
+        penaltyAmount: BigInt(0),
+        startDate: signAt,
         deadline,
         status: 'ACTIVE',
         category,

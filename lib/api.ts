@@ -2,10 +2,21 @@ const BASE = ''
 
 // ─── Contracts ───
 
-export async function fetchContracts(params?: { district?: string; status?: string }) {
+export async function fetchContracts(params?: {
+  district?: string
+  status?: string
+  customer?: string
+  subjectType?: string
+  amountMin?: number
+}) {
   const url = new URL('/api/contracts', window.location.origin)
   if (params?.district) url.searchParams.set('district', params.district)
   if (params?.status) url.searchParams.set('status', params.status)
+  if (params?.customer) url.searchParams.set('customer', params.customer)
+  if (params?.subjectType) url.searchParams.set('subjectType', params.subjectType)
+  if (params?.amountMin != null && !Number.isNaN(params.amountMin)) {
+    url.searchParams.set('amountMin', String(params.amountMin))
+  }
   const res = await fetch(url)
   return res.json()
 }

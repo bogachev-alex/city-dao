@@ -44,6 +44,12 @@ model Contract {
   deadline      DateTime
   status        ContractStatus @default(ACTIVE)
   category      String?
+  /// Goszakup.gov.kz registry number (ЕГЗ), e.g. 24953097
+  registryNumber String?       @unique
+  /// Customer / заказчик (full name as on the portal)
+  customerName   String?
+  /// Subject type: Работа (ref_subject_type=2), Товар, Услуга, etc.
+  subjectType    String?
   onChainPubkey String?        @unique // Solana account address
 
   milestones    Milestone[]
