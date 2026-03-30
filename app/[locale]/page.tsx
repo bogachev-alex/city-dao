@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
+import { DEMO_TRANSACTIONS, TX_TYPE_META, getTxExplorerUrl, formatTxTime, truncateSig } from '@/lib/demoTransactions'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
@@ -98,6 +99,51 @@ export default function HomePage() {
       {/* Map container */}
       <div className="flex-1 relative">
         <AlmatyMap />
+
+        {/* Blockchain Transactions Feed */}
+        <div className="absolute top-4 right-4 z-[1000] w-72 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg flex flex-col max-h-[calc(100vh-8rem)]">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Блокчейн транзакции</span>
+          </div>
+          <div className="overflow-y-auto">
+            {DEMO_TRANSACTIONS.map((tx) => {
+              const meta = TX_TYPE_META[tx.type]
+              return (
+                <a
+                  key={tx.signature}
+                  href={getTxExplorerUrl(tx.signature)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group"
+                >
+                  <span className="text-base mt-0.5 shrink-0">{meta.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`text-xs font-medium ${meta.color}`}>{meta.label}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{formatTxTime(tx.timestamp)}</span>
+                    </div>
+                    <div className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 leading-snug">{tx.description}</div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="font-mono text-[10px] text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">{truncateSig(tx.signature)}</span>
+                      <svg className="w-2.5 h-2.5 text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                      </svg>
+                    </div>
+                  </div>
+                </a>
+              )
+            })}
+          </div>
+          <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-800 shrink-0">
+            <Link
+              href="/blockchain"
+              className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+            >
+              Все on-chain операции →
+            </Link>
+          </div>
+        </div>
 
         {/* Legend */}
         <div className="absolute bottom-6 left-4 z-[1000] bg-white dark:bg-gray-950/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg">
