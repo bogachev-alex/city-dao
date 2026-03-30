@@ -15,6 +15,7 @@ import {
   saveAuth,
   clearAuth,
   encodeAuthToken,
+  authUserAfterRoleSwitch,
 } from '@/lib/auth'
 
 interface AuthContextValue {
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchRole = useCallback(
     (role: UserRole) => {
       if (!user) return
-      const updated: AuthUser = { ...user, role }
+      const updated = authUserAfterRoleSwitch(user, role)
       saveAuth(updated)
       setUser(updated)
     },

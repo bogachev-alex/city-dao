@@ -7,7 +7,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
-import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, type UserRole } from '@/lib/auth'
+import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole } from '@/lib/auth'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
@@ -151,7 +151,11 @@ export default function Navbar() {
                     {ALL_ROLES.map((role) => (
                       <button
                         key={role}
-                        onClick={() => { switchRole(role); setRoleSwitcherOpen(false) }}
+                        onClick={() => {
+                          switchRole(role)
+                          setRoleSwitcherOpen(false)
+                          router.push(HOME_PATH_BY_ROLE[role] as any)
+                        }}
                         className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
                           user.role === role
                             ? 'bg-emerald-500/10 text-emerald-400'
@@ -233,7 +237,11 @@ export default function Navbar() {
                 {ALL_ROLES.map((role) => (
                   <button
                     key={role}
-                    onClick={() => { switchRole(role); setMobileOpen(false) }}
+                    onClick={() => {
+                      switchRole(role)
+                      setMobileOpen(false)
+                      router.push(HOME_PATH_BY_ROLE[role] as any)
+                    }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
                       user.role === role
                         ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'

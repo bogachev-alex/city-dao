@@ -12,21 +12,13 @@ import {
   ROLE_LABELS,
   ROLE_ICONS,
   walletToAuthUser,
+  DEMO_AUTH_USER,
+  HOME_PATH_BY_ROLE,
 } from '@/lib/auth'
 
 const ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
-const DEMO_ACCOUNTS: Record<UserRole, AuthUser> = {
-  CITIZEN:    { role: 'CITIZEN',    id: 'demo-citizen-1',    name: 'Алибек Джаксыбеков' },
-  CONTRACTOR: { role: 'CONTRACTOR', id: 'demo-contractor-1', name: 'ТОО СтройАлматы' },
-  AKIMAT:     { role: 'AKIMAT',     id: 'demo-akimat-1',     name: 'Сотрудник акимата' },
-}
-
-const REDIRECT_AFTER_LOGIN: Record<UserRole, string> = {
-  CITIZEN:    '/',
-  CONTRACTOR: '/contractor',
-  AKIMAT:     '/akimat',
-}
+const REDIRECT_AFTER_LOGIN = HOME_PATH_BY_ROLE
 
 export default function LoginPage() {
   const { user, login } = useAuth()
@@ -97,7 +89,7 @@ export default function LoginPage() {
   }
 
   const handleDemoLogin = (role: UserRole) => {
-    login(DEMO_ACCOUNTS[role])
+    login(DEMO_AUTH_USER[role])
   }
 
   return (

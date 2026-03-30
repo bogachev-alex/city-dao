@@ -22,6 +22,7 @@ const contractorDetailInclude = {
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   const name = req.nextUrl.searchParams.get('name')
+  const roleHeader = req.headers.get('x-user-role')?.toUpperCase()
 
   if (id || name) {
     let contractor = null
@@ -44,6 +45,16 @@ export async function GET(req: NextRequest) {
         where: { name: decodeURIComponent(name) },
         include: contractorDetailInclude,
       })
+    }
+
+    // Demo session: role switcher used to leave id as demo-citizen-* while role=CONTRACTOR
+    if (
+      !contractor &&
+      roleHeader === 'CONTRACTOR' &&
+      id?.startsWith('demo-') &&
+      id !== 'demo-akimat-1'
+    ) {
+      return NextResponse.json(getDemoContractorProfileForApi())
     }
 
     if (!contractor) {

@@ -65,7 +65,7 @@ const LOG_TYPE_LABEL: Record<string, string> = {
 export default function ContractorCabinetPage() {
   const t = useTranslations('contractorPage')
   const locale = useLocale()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, authHeader } = useAuth()
   const router = useRouter()
   const [data, setData] = useState<ContractorPayload | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -84,7 +84,9 @@ export default function ContractorCabinetPage() {
 
     setLoading(true)
     setLoadError(null)
-    fetch(`/api/contractors?id=${encodeURIComponent(user.id)}`)
+    fetch(`/api/contractors?id=${encodeURIComponent(user.id)}`, {
+      headers: { ...authHeader() },
+    })
       .then(async (r) => {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}))
@@ -98,7 +100,7 @@ export default function ContractorCabinetPage() {
         setData(null)
       })
       .finally(() => setLoading(false))
-  }, [user, authLoading, router])
+  }, [user, authLoading, router, authHeader])
 
   const stats = useMemo(() => {
     if (!data?.contracts) return null
@@ -112,6 +114,20 @@ export default function ContractorCabinetPage() {
     const overdue = contracts.filter((c) => c.status === 'PENALIZED').length
     const disputed = contracts.filter((c) => c.status === 'DISPUTED').length
     return { active, atRisk, overdue, disputed, total: contracts.length }
+  }, [data])
+
+  const attention = useMemo(() => {
+    if (!data?.contracts?.length) return { reviewMilestones: 0, contractsWithReview: [] as ApiContract[] }
+    const contractsWithReview: ApiContract[] = []
+    let reviewMilestones = 0
+    for (const c of data.contracts) {
+      const n = (c.milestones || []).filter((m) => m.status === 'UNDER_REVIEW').length
+      if (n > 0) {
+        reviewMilestones += n
+        contractsWithReview.push(c)
+      }
+    }
+    return { reviewMilestones, contractsWithReview }
   }, [data])
 
   if (authLoading || loading) {
@@ -201,6 +217,70 @@ export default function ContractorCabinetPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {attention.reviewMilestones > 0 && (
+          <section
+            className="rounded-xl border border-amber-500/40 bg-amber-500/15 dark:bg-amber-500/10 px-4 py-4"
+            aria-live="polite"
+          >
+            <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('attentionTitle')}</h2>
+            <p className="text-sm text-amber-700 dark:text-amber-300/90 mb-3">
+              {t('attentionLead', { count: attention.reviewMilestones })}
+            </p>
+            <ul className="space-y-2">
+              {attention.contractsWithReview.map((c) => {
+                const n = (c.milestones || []).filter((m) => m.status === 'UNDER_REVIEW').length
+                return (
+                  <li key={c.id}>
+                    <Link
+                      href={`/contracts/${c.id}`}
+                      className="text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline"
+                    >
+                      {c.title} — {t('attentionStages', { count: n })}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
+
+        <section className="grid md:grid-cols-3 gap-4">
+          <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              {t('toolStagesTitle')}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{t('toolStagesBody')}</p>
+            <Link href="/contracts" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+              {t('toolStagesCta')} →
+            </Link>
+          </div>
+          <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              {t('toolLogTitle')}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{t('toolLogBody')}</p>
+            {data.contracts[0] ? (
+              <Link
+                href={`/contracts/${data.contracts[0].id}`}
+                className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                {t('toolLogCta')} →
+              </Link>
+            ) : (
+              <span className="text-sm text-gray-400">{t('toolLogEmpty')}</span>
+            )}
+          </div>
+          <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              {t('toolReputationTitle')}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{t('toolReputationBody')}</p>
+            <Link href="/contracts" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+              {t('toolReputationCta')} →
+            </Link>
+          </div>
+        </section>
+
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="text-emerald-500">⚡</span>
