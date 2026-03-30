@@ -7,7 +7,8 @@
     "profile": "Профиль",
     "register": "Тіркелу",
     "admin": "Әкімші",
-    "login": "Кіру"
+    "login": "Кіру",
+    "blockchain": "Блокчейн"
   },
   "home": {
     "contractsMonitored": "Бақылаудағы келісімшарттар",
@@ -337,6 +338,70 @@
       "overdueBy": "Мерзімі өткен {days} күн",
       "daysUntilDeadline": "{days} күн мерзімге дейін",
       "details": "Толығырақ →"
+    }
+  },
+  "blockchainDashboard": {
+    "title": "Қолданбада блокчейн қалай жұмыс істейді",
+    "subtitle": "Solana бағдарламалары (devnet), нұсқаулар және интерфейстен бүгінгі таңда желіге транзакция жіберетін әрекеттердің қысқаша сипаттамасы. Жюри мен келісімшарт логикасының бір бөлігі әлі демода.",
+    "network": "Желі",
+    "explorerHint": "Транзакцияны әмиянмен қол қойғаннан кейін қолтаңбаны (signature) көшіріп, Solana Explorer-да ашыңыз.",
+    "programsTitle": "Ончейн бағдарламалар",
+    "programColumn": "Бағдарлама",
+    "programIdColumn": "Program ID",
+    "statusColumn": "Қолданбада",
+    "instructionsColumn": "Нұсқаулар (Anchor)",
+    "wired": "UI шақыруы бар",
+    "plannedOnly": "Әзірге UI жоқ",
+    "frontendTxTitle": "Интерфейстен транзакциялар",
+    "frontendTxLead": "Бұл операциялар .rpc() шақырады және әмиянмен қол қойылады — блокқа бағдарлама нұсқаулары енеді.",
+    "offChainTitle": "Ончейн транзакциясыз әрекеттер",
+    "offChainLead": "Өнімде логика бар, бірақ осы қадам үшін Solana қолтаңбасы әлі қажет емес.",
+    "explorerTitle": "Транзакцияны қалай қарауға болады",
+    "explorerBody": "Devnet үшін Solana Explorer сілтемесінің үлгісі (өз қолтаңбаңызды қойыңыз):",
+    "programs": {
+      "contractRegistry": {
+        "name": "Contract Registry",
+        "desc": "Мемлекеттік келісімшарттар тізілімі, эскроу, кезеңдер және төлемдер."
+      },
+      "citizenRegistry": {
+        "name": "Citizen Registry",
+        "desc": "Азамат профилі (SBT), ЖСН хэші, аудан."
+      },
+      "juryMechanism": {
+        "name": "Jury Mechanism",
+        "desc": "Жюри сессиялары, VRF таңдау, commit–reveal дауыс беру."
+      },
+      "penaltyEngine": {
+        "name": "Penalty Engine",
+        "desc": "Эскроудан айыппұлдарды қазынаға шегеру."
+      },
+      "districtTreasury": {
+        "name": "District Treasury",
+        "desc": "Аудандық қазына және шығындарға дауыс."
+      },
+      "crowdfunding": {
+        "name": "Crowdfunding",
+        "desc": "Науқандар және бағдарлама эскроуына үлестер."
+      }
+    },
+    "actions": {
+      "register_contract": "Келісімшартты тіркеу: келісімшарт және эскроу шоттары, мердігерге байланыстыру. Акимат әкімшілік беті.",
+      "register_citizen": "Азаматты тіркеу: әмиян PDA бойынша профиль, желіге тек ЖСН хэші жіберіледі.",
+      "treasury_vote": "Қазына ұсынысына дауыс: дауыс бюллетені (PDA), «қолдау / қарсы».",
+      "cf_create": "Краудфандинг науқанын құру: науқан және бағдарлама эскроуы.",
+      "cf_contribute": "Науқанға үлес: эскроуға қаражат, донор жазбасы."
+    },
+    "offChain": {
+      "jury_ui": "Жюри дауыс беруі браузерде (commit–reveal, localStorage). Жюри ончейн нұсқаулары сәулетте жоспарланған; сессияға келісімшарт карточкасынан өтіңіз.",
+      "ai_research": "Қазына ұсынысына ИИ талдауы: POST /api/research (OpenAI), блокчейнге жазылмайды."
+    },
+    "routes": {
+      "admin": "Әкімші",
+      "register": "Тіркелу",
+      "treasury": "Қазына",
+      "crowdfundingNew": "Жаңа науқан",
+      "crowdfundingDetail": "Краудфандинг",
+      "contracts": "Келісімшарттар"
     }
   },
   "metadata": {

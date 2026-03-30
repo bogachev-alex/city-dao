@@ -7,7 +7,8 @@
     "profile": "Профиль",
     "register": "Регистрация",
     "admin": "Админ",
-    "login": "Войти"
+    "login": "Войти",
+    "blockchain": "Блокчейн"
   },
   "home": {
     "contractsMonitored": "Контрактов под мониторингом",
@@ -337,6 +338,70 @@
       "overdueBy": "Просрочен на {days} дн.",
       "daysUntilDeadline": "{days} дн. до дедлайна",
       "details": "Подробнее →"
+    }
+  },
+  "blockchainDashboard": {
+    "title": "Как блокчейн устроен в приложении",
+    "subtitle": "Сводка по программам Solana (devnet), инструкциям и тем действиям в интерфейсе, которые сегодня отправляют транзакции в сеть. Жюри и часть контрактной логики пока имитируются в демо.",
+    "network": "Сеть",
+    "explorerHint": "После подписания транзакции кошельком скопируйте подпись (signature) и откройте её в Solana Explorer.",
+    "programsTitle": "Ончейн-программы",
+    "programColumn": "Программа",
+    "programIdColumn": "Program ID",
+    "statusColumn": "В приложении",
+    "instructionsColumn": "Инструкции (Anchor)",
+    "wired": "Есть вызов из UI",
+    "plannedOnly": "Пока без UI",
+    "frontendTxTitle": "Транзакции из интерфейса",
+    "frontendTxLead": "Эти операции вызывают .rpc() и подписываются кошельком — в блок попадает одна или несколько инструкций программы.",
+    "offChainTitle": "Действия без ончейн-транзакции",
+    "offChainLead": "Логика есть в продукте, но подпись в Solana для этого шага пока не требуется.",
+    "explorerTitle": "Как посмотреть транзакцию",
+    "explorerBody": "Шаблон ссылки Solana Explorer для devnet (подставьте свою подпись):",
+    "programs": {
+      "contractRegistry": {
+        "name": "Contract Registry",
+        "desc": "Реестр госконтрактов, эскроу, этапы и выплаты."
+      },
+      "citizenRegistry": {
+        "name": "Citizen Registry",
+        "desc": "Профиль гражданина (SBT), хэш ИИН, район."
+      },
+      "juryMechanism": {
+        "name": "Jury Mechanism",
+        "desc": "Сессии жюри, VRF-отбор, commit–reveal голосование."
+      },
+      "penaltyEngine": {
+        "name": "Penalty Engine",
+        "desc": "Списание штрафов из эскроу в пользу казны."
+      },
+      "districtTreasury": {
+        "name": "District Treasury",
+        "desc": "Районная казна и голосование по тратам."
+      },
+      "crowdfunding": {
+        "name": "Crowdfunding",
+        "desc": "Кампании и взносы с эскроу на программе."
+      }
+    },
+    "actions": {
+      "register_contract": "Регистрация контракта: создаётся аккаунт контракта и эскроу, привязка к подрядчику. Страница администратора акимата.",
+      "register_citizen": "Регистрация гражданина: профиль по PDA кошелька, на сеть уходит только хэш ИИН.",
+      "treasury_vote": "Голос по предложению казны: создаётся бюллетень (PDA), фиксируется выбор за или против.",
+      "cf_create": "Создание краудфандинг-кампании: кампания и эскроу-кошелёк программы.",
+      "cf_contribute": "Взнос в кампанию: перевод средств в эскроу, запись донора."
+    },
+    "offChain": {
+      "jury_ui": "Голосование жюри в браузере (commit–reveal, localStorage). Ончейн-инструкции жюри запланированы в архитектуре; переход к сессии — с карточки контракта.",
+      "ai_research": "Запрос ИИ-анализа предложения казны: POST /api/research (OpenAI), без записи в блокчейн."
+    },
+    "routes": {
+      "admin": "Админ",
+      "register": "Регистрация",
+      "treasury": "Казна",
+      "crowdfundingNew": "Новая кампания",
+      "crowdfundingDetail": "Краудфандинг",
+      "contracts": "Контракты"
     }
   },
   "metadata": {
