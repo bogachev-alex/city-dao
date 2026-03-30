@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getDemoContractorProfileForApi } from '@/lib/demoContractorProfile'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,9 @@ export async function GET(req: NextRequest) {
         where: { name: 'ТОО СтройАлматы' },
         include: contractorDetailInclude,
       })
+      if (!contractor) {
+        return NextResponse.json(getDemoContractorProfileForApi())
+      }
     } else if (id) {
       contractor = await prisma.contractor.findUnique({
         where: { id },
