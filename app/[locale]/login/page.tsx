@@ -24,7 +24,7 @@ const DEMO_ACCOUNTS: Record<UserRole, AuthUser> = {
 
 const REDIRECT_AFTER_LOGIN: Record<UserRole, string> = {
   CITIZEN:    '/',
-  CONTRACTOR: '/',
+  CONTRACTOR: '/contractor',
   AKIMAT:     '/admin',
 }
 

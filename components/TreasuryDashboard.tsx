@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import ProposalResearch from './ProposalResearch'
+import TransactionFeed from './TransactionFeed'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
 import { formatTengeWithCrypto } from '@/lib/contracts'
 
@@ -284,6 +285,16 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
             })}
           </div>
         )}
+      </div>
+
+      <div>
+        <h3 className="text-gray-900 dark:text-white font-semibold mb-3 flex items-center gap-2">
+          <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          {t('recentTransactions')}
+        </h3>
+        <TransactionFeed district={district} maxItems={12} variant="embedded" />
       </div>
     </div>
   )

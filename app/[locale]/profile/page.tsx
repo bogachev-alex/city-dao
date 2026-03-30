@@ -57,6 +57,11 @@ export default function ProfilePage() {
       return
     }
 
+    if (user.role === 'CONTRACTOR') {
+      router.replace('/contractor' as any)
+      return
+    }
+
     // Demo users: id looks like 'demo-citizen-1'
     if (user.id.startsWith('demo-')) {
       setIsDemo(true)

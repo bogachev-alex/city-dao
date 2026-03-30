@@ -14,7 +14,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   CITIZEN: 'Голосуйте в жюри, следите за контрактами, участвуйте в краудфандинге',
-  CONTRACTOR: 'Управляйте своими контрактами и репутацией',
+  CONTRACTOR: 'Кабинет подрядчика: ваши контракты, этапы, дневники работ и репутация',
   AKIMAT: 'Регистрируйте контракты, управляйте казной',
 }
 
@@ -36,7 +36,7 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: '/profile', labelKey: 'profile' },
   ],
   CONTRACTOR: [
-    { href: '/', labelKey: 'map' },
+    { href: '/contractor', labelKey: 'contractorDesk' },
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/blockchain', labelKey: 'blockchain' },
