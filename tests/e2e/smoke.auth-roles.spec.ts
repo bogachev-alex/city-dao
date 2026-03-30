@@ -5,8 +5,7 @@ test.describe('Role-gated areas (demo auth)', () => {
   test('contractor cabinet loads', async ({ page }) => {
     await seedLocalStorageAuth(page, AUTH_JSON.contractor)
     await page.goto('/ru/contractor')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await expect(page.getByText(/ТОО СтройАлматы|СтройАлматы/)).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /СтройАлматы/ })).toBeVisible()
   })
 
   test('akimat cabinet loads', async ({ page }) => {
