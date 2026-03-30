@@ -1,7 +1,8 @@
 import { PublicKey } from '@solana/web3.js'
 
 // Solana cluster
-export const SOLANA_NETWORK = 'devnet'
+export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
+export const SOLANA_NETWORK: SolanaCluster = 'devnet'
 export const SOLANA_RPC_URL = 'https://api.devnet.solana.com'
 
 // Program IDs — generated keypairs, will be active after `anchor deploy`
