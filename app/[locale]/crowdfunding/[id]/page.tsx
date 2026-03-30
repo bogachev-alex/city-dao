@@ -19,6 +19,7 @@ import {
 import { fetchCampaign, fetchCitizen, contributeToCampaign } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { PublicKey } from '@solana/web3.js'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -35,6 +36,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [txInfo, setTxInfo] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
   const { contribute: contributeOnChain, loading: solanaLoading } = useCrowdfunding()
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
 
   useEffect(() => {
     fetchCampaign(params.id)
@@ -47,6 +49,14 @@ export default function CampaignDetailPage({ params }: PageProps) {
       })
       .catch(() => setCampaign(getCampaignById(params.id) || null))
   }, [params.id])
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (campaign === undefined) {
     return (

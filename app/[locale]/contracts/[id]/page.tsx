@@ -16,11 +16,14 @@ import {
 import { fetchContract } from '@/lib/api'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
+import { useAuth } from '@/components/AuthContext'
 
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
   const t = useTranslations('contractDetail')
   const locale = useLocale()
+  const { user } = useAuth()
+  const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -213,7 +216,11 @@ export default function ContractDetailPage() {
                 </svg>
                 {t('executionStages')}
               </h2>
-              <MilestoneTracker milestones={contract.milestones} contractId={contract.id} />
+              <MilestoneTracker
+                milestones={contract.milestones}
+                contractId={contract.id}
+                showCitizenJuryVote={showCitizenJuryVote}
+              />
             </div>
 
             {/* Photo evidence */}
@@ -249,19 +256,30 @@ export default function ContractDetailPage() {
             {/* Penalty calculator */}
             <PenaltyCalculator contract={contract} />
 
-            {/* Jury status */}
+            {/* Jury / acceptance (citizens vote; contractors only observe) */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <h3 className="text-gray-900 dark:text-white font-semibold mb-4 flex items-center gap-2">
                 <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {t('jury')}
+                {showCitizenJuryVote
+                  ? t('jury')
+                  : user?.role === 'CONTRACTOR'
+                    ? t('juryContractorTitle')
+                    : t('juryObserverTitle')}
               </h3>
               {activeReviewMilestone ? (
                 <div className="space-y-3">
                   <div className="bg-yellow-50 dark:bg-yellow-500/20 border border-yellow-200 dark:border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-700 dark:text-yellow-300">
                     {t('activeReview')}
                   </div>
+                  {!showCitizenJuryVote && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {user?.role === 'CONTRACTOR'
+                        ? t('juryContractorLead')
+                        : t('juryObserverLead')}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">{t('voted')}</span>
                     <span className="text-gray-900 dark:text-white font-medium">7 / 9</span>
@@ -269,12 +287,21 @@ export default function ContractDetailPage() {
                   <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: '78%' }} />
                   </div>
-                  <Link
-                    href={`/jury/${contract.id}-${activeReviewMilestone.id}`}
-                    className="block w-full text-center py-2.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
-                  >
-                    {t('participateVoting')}
-                  </Link>
+                  {showCitizenJuryVote ? (
+                    <Link
+                      href={`/jury/${contract.id}-${activeReviewMilestone.id}`}
+                      className="block w-full text-center py-2.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
+                    >
+                      {t('participateVoting')}
+                    </Link>
+                  ) : !user ? (
+                    <Link
+                      href="/login"
+                      className="block w-full text-center py-2.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:border-emerald-500/40 transition-colors"
+                    >
+                      {t('loginToVote')}
+                    </Link>
+                  ) : null}
                 </div>
               ) : (
                 <div className="text-sm text-gray-400 dark:text-gray-500">{t('noActiveSessions')}</div>

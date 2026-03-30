@@ -5,11 +5,21 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import TreasuryDashboard from '@/components/TreasuryDashboard'
 import { DISTRICTS } from '@/lib/contracts'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 export default function TreasuryPage() {
   const params = useParams<{ district: string }>()
   const t = useTranslations('treasury')
   const district = decodeURIComponent(params.district)
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">

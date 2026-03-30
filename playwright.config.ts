@@ -4,7 +4,12 @@ import path from 'path'
 /**
  * E2E for AI agents: traces + HTML report + custom markdown summary.
  * Run: npm run test:e2e  (starts dev server unless PORT busy / CI)
+ *
+ * Against an already running app (e.g. production on :3000):
+ *   PLAYWRIGHT_SKIP_WEBSERVER=1 CI=1 npm run test:e2e
  */
+const skipWebServer = !!process.env.PLAYWRIGHT_SKIP_WEBSERVER
+
 export default defineConfig({
   testDir: path.join(__dirname, 'tests/e2e'),
   /** Dev server cold-compiles routes; serial runs reduce compile contention and timeouts */
@@ -29,12 +34,16 @@ export default defineConfig({
     navigationTimeout: 90_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  ...(skipWebServer
+    ? {}
+    : {
+        webServer: {
+          command: 'npm run dev',
+          url: 'http://127.0.0.1:3000',
+          reuseExistingServer: !process.env.CI,
+          timeout: 180_000,
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      }),
 })

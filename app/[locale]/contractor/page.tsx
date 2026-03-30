@@ -64,6 +64,7 @@ const LOG_TYPE_LABEL: Record<string, string> = {
 
 export default function ContractorCabinetPage() {
   const t = useTranslations('contractorPage')
+  const tNav = useTranslations('nav')
   const locale = useLocale()
   const { user, loading: authLoading, authHeader } = useAuth()
   const router = useRouter()
@@ -300,10 +301,10 @@ export default function ContractorCabinetPage() {
               {t('actionBlockchain')}
             </Link>
             <Link
-              href="/crowdfunding"
+              href="/"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium hover:border-emerald-500/40 transition-colors"
             >
-              {t('actionCrowdfunding')}
+              {tNav('map')}
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 max-w-2xl">{t('actionsHint')}</p>

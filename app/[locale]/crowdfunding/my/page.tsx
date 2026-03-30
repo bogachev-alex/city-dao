@@ -15,6 +15,7 @@ import {
   normalizeCampaign,
 } from '@/lib/crowdfunding'
 import { fetchCampaigns } from '@/lib/api'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 // Mock: user has donated to campaigns cf-1, cf-3, cf-5
 const MY_DONATIONS = [
@@ -26,6 +27,7 @@ const MY_DONATIONS = [
 type TabId = 'donations' | 'created'
 
 export default function MyCrowdfundingPage() {
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
   const [activeTab, setActiveTab] = useState<TabId>('donations')
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>(DEMO_CAMPAIGNS)
 
@@ -52,6 +54,14 @@ export default function MyCrowdfundingPage() {
     { id: 'donations', label: 'Мои взносы' },
     { id: 'created', label: 'Мои кампании' },
   ]
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">

@@ -68,7 +68,7 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   CONTRACTOR: [
     { href: '/contractor', labelKey: 'contractorDesk' },
     { href: '/contracts', labelKey: 'contracts' },
-    { href: '/crowdfunding', labelKey: 'crowdfunding' },
+    { href: '/', labelKey: 'map' },
     { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/profile', labelKey: 'profile' },
   ],

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   DEMO_CONTRACTS,
@@ -33,6 +33,14 @@ export default function ContractsPage() {
   const [subjectTypeFilter, setSubjectTypeFilter] = useState<string>('all')
   const [amountMinFilter, setAmountMinFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [contractorScope, setContractorScope] = useState<'mine' | 'all'>('mine')
+
+  const isContractor = user?.role === 'CONTRACTOR'
+  const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
+
+  useEffect(() => {
+    if (user?.role !== 'CONTRACTOR') setContractorScope('mine')
+  }, [user?.role])
 
   const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
     { value: 'all', label: t('all') },
@@ -79,6 +87,18 @@ export default function ContractsPage() {
     return true
   })
 
+  const filteredForDisplay = useMemo(() => {
+    if (!isContractor || contractorScope === 'all') return filtered
+    return filtered.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
+  }, [filtered, isContractor, contractorScope, contractorNameNorm])
+
+  const contractsForStats = useMemo(() => {
+    if (isContractor && contractorScope === 'mine') {
+      return contracts.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
+    }
+    return contracts
+  }, [contracts, isContractor, contractorScope, contractorNameNorm])
+
   const applyGoszakupPreset = () => {
     setCustomerFilter('Алматы')
     setSubjectTypeFilter('Работа')
@@ -86,10 +106,10 @@ export default function ContractsPage() {
   }
 
   const counts = {
-    active: contracts.filter((c) => c.status === 'active').length,
-    penalized: contracts.filter((c) => c.status === 'penalized').length,
-    completed: contracts.filter((c) => c.status === 'completed').length,
-    disputed: contracts.filter((c) => c.status === 'disputed').length,
+    active: contractsForStats.filter((c) => c.status === 'active').length,
+    penalized: contractsForStats.filter((c) => c.status === 'penalized').length,
+    completed: contractsForStats.filter((c) => c.status === 'completed').length,
+    disputed: contractsForStats.filter((c) => c.status === 'disputed').length,
   }
 
   return (
@@ -133,6 +153,41 @@ export default function ContractsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {isContractor && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-0.5">
+              <button
+                type="button"
+                onClick={() => setContractorScope('mine')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  contractorScope === 'mine'
+                    ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                {t('contractorScopeMine')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setContractorScope('all')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  contractorScope === 'all'
+                    ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                {t('contractorScopeAll')}
+              </button>
+            </div>
+            <Link
+              href="/contractor"
+              className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              {t('contractorDeskLink')} →
+            </Link>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6 space-y-4">
           {/* Search */}
@@ -228,7 +283,9 @@ export default function ContractsPage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {t('found')} <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> {t('contractsCount')}
+            {t('found')}{' '}
+            <span className="text-gray-900 dark:text-white font-medium">{filteredForDisplay.length}</span>{' '}
+            {t('contractsCount')}
           </div>
           {user?.role === 'AKIMAT' && (
             <Link
@@ -244,9 +301,9 @@ export default function ContractsPage() {
         </div>
 
         {/* Contract grid */}
-        {filtered.length > 0 ? (
+        {filteredForDisplay.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((contract) => (
+            {filteredForDisplay.map((contract) => (
               <ContractCard key={contract.id} contract={contract} />
             ))}
           </div>
@@ -258,6 +315,9 @@ export default function ContractsPage() {
               </svg>
             </div>
             <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">{t('notFound')}</div>
+            {isContractor && contractorScope === 'mine' && filtered.length > 0 ? (
+              <p className="text-gray-400 dark:text-gray-500 text-sm max-w-md mx-auto mb-3">{t('contractorMineEmpty')}</p>
+            ) : null}
             <div className="text-gray-400 dark:text-gray-500 text-sm">{t('tryChangeFilters')}</div>
           </div>
         )}

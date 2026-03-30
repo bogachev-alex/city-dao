@@ -13,6 +13,7 @@ import {
 import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { DISTRICTS } from '@/lib/contracts'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 // Category key to Prisma enum
 const CATEGORY_ENUM: Record<CampaignCategory, string> = {
@@ -35,6 +36,7 @@ export default function NewCampaignPage() {
   const [txInfo, setTxInfo] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
   const { createCampaign: createOnChain } = useCrowdfunding()
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
 
   const totalAmount = parseInt(targetAmount) || 0
   const citizenTarget = getCitizenTarget(totalAmount, category)
@@ -99,6 +101,14 @@ export default function NewCampaignPage() {
     }
 
     setSubmitted(true)
+  }
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   if (submitted) {

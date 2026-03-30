@@ -18,7 +18,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "test:e2e:agent": "tsx scripts/ai-playwright-agent.ts",
-    "test:e2e:agent:bg": "tsx scripts/ai-playwright-agent.ts --background"
+    "test:e2e:agent:bg": "tsx scripts/ai-playwright-agent.ts --background",
+    "test:e2e:server": "PLAYWRIGHT_SKIP_WEBSERVER=1 CI=1 playwright test"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

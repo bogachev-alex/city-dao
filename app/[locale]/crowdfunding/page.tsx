@@ -15,6 +15,7 @@ import {
 import { fetchCampaigns } from '@/lib/api'
 import { DISTRICTS } from '@/lib/contracts'
 import CampaignCard from '@/components/CampaignCard'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 const STATUS_FILTERS: { value: CampaignStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Все' },
@@ -34,6 +35,7 @@ const CATEGORY_FILTERS: { value: CampaignCategory | 'all'; label: string }[] = [
 ]
 
 export default function CrowdfundingPage() {
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | 'all'>('all')
@@ -66,6 +68,14 @@ export default function CrowdfundingPage() {
   const totalRaised = campaigns.reduce((sum, c) => sum + c.citizen_raised, 0)
   const totalDonors = campaigns.reduce((sum, c) => sum + c.donor_count, 0)
   const fundedCount = campaigns.filter((c) => c.status === 'funded' || c.status === 'in_progress' || c.status === 'completed').length
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
