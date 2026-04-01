@@ -81,7 +81,7 @@ export default function NewCampaignPage() {
     }
 
     if (!walletConnected || !publicKey) {
-      setError('Подключите кошелёк: создание краудфандинг-кампании теперь обязательно выполняется on-chain (testnet).')
+      setError('Подключите кошелёк: создание краудфандинг-кампании теперь обязательно выполняется on-chain (devnet).')
       return
     }
 

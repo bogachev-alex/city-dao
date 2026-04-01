@@ -152,17 +152,17 @@ export default function CitizenRegistration() {
           const lowered = msg.toLowerCase()
           if (msg.includes('429') || lowered.includes('airdrop limit') || lowered.includes('faucet')) {
             setRegError(
-              `Лимит testnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
+              `Лимит devnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
             )
           } else {
-            setRegError(`Не удалось получить testnet airdrop: ${msg || 'неизвестная ошибка'}`)
+            setRegError(`Не удалось получить devnet airdrop: ${msg || 'неизвестная ошибка'}`)
           }
           setStep('form')
           return
         }
       }
       if (balance < minFeeReserveLamports) {
-        setRegError('Недостаточно SOL в testnet даже после airdrop. Повторите попытку через 10-20 секунд.')
+        setRegError('Недостаточно SOL в devnet даже после airdrop. Повторите попытку через 10-20 секунд.')
         setStep('form')
         return
       }
