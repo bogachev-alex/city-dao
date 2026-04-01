@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getDemoContractorProfileForApi } from '@/lib/demoContractorProfile'
+import type { JurySessionStatus } from '@/lib/generated/prisma'
 
 export const dynamic = 'force-dynamic'
+
+const ACTIVE_JURY_STATUSES: JurySessionStatus[] = [
+  'SELECTING',
+  'COMMIT_PHASE',
+  'REVEAL_PHASE',
+  'FINALIZED',
+]
 
 const contractorDetailInclude = {
   contracts: {
@@ -10,7 +18,7 @@ const contractorDetailInclude = {
       milestones: { orderBy: { sortOrder: 'asc' as const } },
       penalties: { orderBy: { createdAt: 'desc' as const }, take: 5 },
       jurySessions: {
-        where: { status: { in: ['SELECTING', 'COMMIT_PHASE', 'REVEAL_PHASE', 'FINALIZED'] } },
+        where: { status: { in: ACTIVE_JURY_STATUSES } },
         orderBy: { createdAt: 'desc' as const },
         take: 3,
       },
