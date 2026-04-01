@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { PublicKey, SystemProgram } from '@solana/web3.js'
+import { AccountMeta, PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/crowdfunding.json'
@@ -166,6 +166,125 @@ export function useCrowdfunding() {
     }
   }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getDonorPDA, toReadableError])
 
+  /// Akimat deposits state matching (signer must hold `state_match` lamports).
+  const matchFunds = useCallback(
+    async (campaignCreator: PublicKey, campaignTitle: string) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+      try {
+        const [campaignPDA] = getCampaignPDA(campaignCreator, campaignTitle)
+        const [escrowPDA] = getEscrowPDA(campaignPDA)
+        const tx = await (program.methods as any)
+          .matchFunds()
+          .accounts({
+            campaign: campaignPDA,
+            escrow: escrowPDA,
+            akimat: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+        return { tx }
+      } catch (err: any) {
+        const msg = err?.message || 'match_funds failed'
+        setError(msg)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA],
+  )
+
+  /**
+   * Refund after deadline if citizen target not met.
+   * Pass every donor wallet that contributed; builds donor_record + donor pairs as remaining accounts.
+   */
+  const refundAll = useCallback(
+    async (campaignCreator: PublicKey, campaignTitle: string, donorWallets: PublicKey[]) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+      try {
+        const [campaignPDA] = getCampaignPDA(campaignCreator, campaignTitle)
+        const [escrowPDA] = getEscrowPDA(campaignPDA)
+
+        const remainingAccounts: AccountMeta[] = donorWallets.flatMap((w) => {
+          const [dr] = getDonorPDA(campaignPDA, w)
+          return [
+            { pubkey: dr, isSigner: false, isWritable: true },
+            { pubkey: w, isSigner: false, isWritable: true },
+          ]
+        })
+
+        const tx = await (program.methods as any)
+          .refundAll()
+          .accounts({
+            campaign: campaignPDA,
+            escrow: escrowPDA,
+            caller: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .remainingAccounts(remainingAccounts)
+          .rpc()
+
+        return { tx }
+      } catch (err: any) {
+        const msg = err?.message || 'refund_all failed'
+        setError(msg)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getDonorPDA],
+  )
+
+  /// Send pooled escrow to a contract destination (e.g. contract_registry escrow PDA) after match_funds.
+  const finalizeCampaign = useCallback(
+    async (
+      campaignCreator: PublicKey,
+      campaignTitle: string,
+      contractPubkey: PublicKey,
+      contractDestination: PublicKey,
+    ) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+      try {
+        const [campaignPDA] = getCampaignPDA(campaignCreator, campaignTitle)
+        const [escrowPDA] = getEscrowPDA(campaignPDA)
+        const tx = await (program.methods as any)
+          .finalizeCampaign(contractPubkey)
+          .accounts({
+            campaign: campaignPDA,
+            escrow: escrowPDA,
+            contract: contractDestination,
+            authority: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+        return { tx }
+      } catch (err: any) {
+        const msg = err?.message || 'finalize_campaign failed'
+        setError(msg)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA],
+  )
+
   // Fetch campaign account from chain
   const fetchCampaignAccount = useCallback(async (creator: PublicKey, title: string) => {
     const program = getProgram()
@@ -183,6 +302,9 @@ export function useCrowdfunding() {
   return {
     createCampaign,
     contribute,
+    matchFunds,
+    refundAll,
+    finalizeCampaign,
     fetchCampaignAccount,
     getCampaignPDA,
     getEscrowPDA,

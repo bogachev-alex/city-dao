@@ -20,7 +20,8 @@
     "test:e2e:agent": "tsx scripts/ai-playwright-agent.ts",
     "test:e2e:agent:bg": "tsx scripts/ai-playwright-agent.ts --background",
     "test:e2e:server": "PLAYWRIGHT_SKIP_WEBSERVER=1 CI=1 playwright test",
-    "seed:devnet": "tsx scripts/seed-devnet.ts"
+    "seed:devnet": "tsx scripts/seed-devnet.ts",
+    "idl:verify": "node scripts/verify-crowdfunding-idl.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
