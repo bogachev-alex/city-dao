@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+*.log
+.env
+.env.*
+!.env.example
+coverage
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+tsconfig.tsbuildinfo
+target
+.vscode
+.cursor
