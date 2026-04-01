@@ -10,6 +10,54 @@ function toJsonSafe<T>(value: T): T {
   ) as T
 }
 
+async function ensureJurySessionForTesting(contractId: string) {
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    include: {
+      milestones: { orderBy: { sortOrder: 'asc' } },
+      jurySessions: {
+        where: { status: { in: ['SELECTING', 'COMMIT_PHASE', 'REVEAL_PHASE'] } },
+        select: { id: true },
+      },
+    },
+  })
+  if (!contract) return
+  if ((contract.jurySessions || []).length > 0) return
+
+  const milestone = (contract.milestones || []).find(
+    (m) => m.status === 'PENDING' || m.status === 'SUBMITTED' || m.status === 'UNDER_REVIEW'
+  )
+  if (!milestone) return
+
+  const jurors = await prisma.citizen.findMany({
+    where: { district: contract.district },
+    orderBy: { reputationScore: 'desc' },
+    take: 5,
+  })
+  if (jurors.length === 0) return
+
+  const now = new Date()
+  const commitDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+  const revealDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000)
+
+  await prisma.jurySession.create({
+    data: {
+      contractId: contract.id,
+      milestoneId: milestone.id,
+      status: 'COMMIT_PHASE',
+      commitDeadline,
+      revealDeadline,
+      votes: {
+        create: jurors.map((c, idx) => ({
+          citizenId: c.id,
+          weight: idx === 0 ? 2 : 1,
+          isExpert: idx === 0,
+        })),
+      },
+    },
+  })
+}
+
 // GET /api/contracts/[id] — contract detail with milestones, jury, penalties, work logs
 export async function GET(
   req: NextRequest,
@@ -45,6 +93,18 @@ export async function GET(
         take: idx,
       })
       contract = list[idx - 1] || null
+    }
+  }
+
+  if (contract) {
+    try {
+      await ensureJurySessionForTesting(contract.id)
+      contract = await prisma.contract.findUnique({
+        where: { id: contract.id },
+        include,
+      })
+    } catch {
+      // Keep response working even if bootstrap fails.
     }
   }
 
