@@ -35,6 +35,7 @@ function postReq(headers: Record<string, string> = {}) {
       district: 'Медеуский',
       lat: 43.2,
       lng: 76.9,
+      onChainPubkey: '11111111111111111111111111111111',
       milestones: [{ description: 'M1', deadlineDays: 30, tranchePct: 100 }],
     }),
   })
