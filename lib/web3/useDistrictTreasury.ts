@@ -48,6 +48,7 @@ export function useDistrictTreasury() {
   // Vote on a proposal on-chain
   const voteOnProposal = useCallback(async (
     district: string,
+    proposalId: string,
     proposalTitle: string,
     inFavor: boolean,
   ) => {
@@ -60,10 +61,11 @@ export function useDistrictTreasury() {
 
     try {
       const [treasuryPDA] = getTreasuryPDA(district)
+      const onChainProposalKey = `offchain:${proposalId}`
 
       let proposalPDA: PublicKey | null = null
 
-      // 1) Try to find existing on-chain proposal in this treasury by title.
+      // 1) Try to find existing on-chain proposal in this treasury by a stable key.
       try {
         const all = await (program.account as any).spendingProposalAccount.all([
           {
@@ -73,7 +75,7 @@ export function useDistrictTreasury() {
             },
           },
         ])
-        const found = all.find((x: any) => String(x.account?.title || '') === proposalTitle)
+        const found = all.find((x: any) => String(x.account?.title || '') === onChainProposalKey)
         if (found?.publicKey) proposalPDA = found.publicKey as PublicKey
       } catch {
         // Ignore scan errors; we'll attempt lazy creation below.
@@ -87,7 +89,7 @@ export function useDistrictTreasury() {
 
         await (program.methods as any)
           .createProposal(
-            proposalTitle,
+            onChainProposalKey,
             proposalTitle,
             new BN(0), // allow bootstrap even when treasury balance is zero
             'GENERAL',

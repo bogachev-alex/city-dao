@@ -198,6 +198,11 @@ export async function POST(req: NextRequest) {
 // PATCH /api/jury — reveal vote
 export async function PATCH(req: NextRequest) {
   const { sessionId, citizenId, vote, salt } = await req.json()
+  const normalizedVote = String(vote).toLowerCase()
+  if (normalizedVote !== 'accept' && normalizedVote !== 'reject') {
+    return NextResponse.json({ error: 'Invalid vote value' }, { status: 400 })
+  }
+  const voteEnum = normalizedVote === 'accept' ? 'ACCEPT' : 'REJECT'
 
   const juryVote = await prisma.juryVote.findFirst({
     where: { sessionId, citizenId },
@@ -210,7 +215,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Verify commit-reveal: normalize vote to lowercase to match client commit format.
-  const normalizedVote = String(vote).toLowerCase()
   const computedHash = createHash('sha256').update(`${normalizedVote}:${salt}`).digest('hex')
   if (computedHash !== juryVote.commitHash) {
     return NextResponse.json({ error: 'Hash mismatch: vote/salt does not match commitment' }, { status: 400 })
@@ -218,7 +222,7 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await prisma.juryVote.update({
     where: { id: juryVote.id },
-    data: { revealedVote: String(vote).toUpperCase(), revealedSalt: salt },
+    data: { revealedVote: voteEnum, revealedSalt: salt },
   })
 
   // Check if all votes revealed — if so, finalize

@@ -96,7 +96,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
     setVoteError(null)
     let txSignature: string
     try {
-      const result = await voteOnChain(district, proposalTitle, inFavor)
+      const result = await voteOnChain(district, proposalId, proposalTitle, inFavor)
       txSignature = result.tx
       setTxInfo(result.tx)
     } catch (err: any) {

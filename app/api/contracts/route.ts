@@ -42,8 +42,87 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(toJsonSafe(contracts))
   } catch (err: any) {
-    // Production fallback: keep registry page usable even if DB schema/data is temporarily broken.
-    return NextResponse.json(toJsonSafe(DEMO_CONTRACTS))
+    // Compatibility fallback for partially migrated production DBs:
+    // fetch contracts with a reduced field set and join related data manually.
+    try {
+      const baseContracts = await prisma.contract.findMany({
+        where: {
+          ...(district && { district }),
+          ...(status && { status: status as any }),
+          ...(subjectType && { subjectType }),
+          ...(amountMin && !Number.isNaN(Number(amountMin)) && {
+            totalAmount: { gte: BigInt(amountMin) },
+          }),
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          district: true,
+          lat: true,
+          lng: true,
+          contractorId: true,
+          totalAmount: true,
+          escrowAmount: true,
+          penaltyAmount: true,
+          deadline: true,
+          category: true,
+          status: true,
+          onChainPubkey: true,
+          registryNumber: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      const contractorIds = Array.from(new Set(baseContracts.map((c) => c.contractorId).filter(Boolean)))
+      const contractors = contractorIds.length
+        ? await prisma.contractor.findMany({
+            where: { id: { in: contractorIds } },
+            select: { id: true, name: true },
+          })
+        : []
+      const contractorById = new Map(contractors.map((c) => [c.id, c]))
+
+      const milestones = baseContracts.length
+        ? await prisma.milestone.findMany({
+            where: { contractId: { in: baseContracts.map((c) => c.id) } },
+            select: {
+              id: true,
+              contractId: true,
+              description: true,
+              deadlineDays: true,
+              tranchePct: true,
+              sortOrder: true,
+              status: true,
+            },
+            orderBy: [{ contractId: 'asc' }, { sortOrder: 'asc' }],
+          })
+        : []
+      const milestonesByContract = new Map<string, typeof milestones>()
+      for (const m of milestones) {
+        if (!milestonesByContract.has(m.contractId)) milestonesByContract.set(m.contractId, [])
+        milestonesByContract.get(m.contractId)!.push(m)
+      }
+
+      const merged = baseContracts
+        .filter((c) => {
+          if (!customer) return true
+          // customerName may be unavailable on legacy DB schema, so we cannot filter by it here.
+          // Keep contracts visible instead of failing hard.
+          return true
+        })
+        .map((c) => ({
+          ...c,
+          contractor: contractorById.get(c.contractorId) || null,
+          milestones: milestonesByContract.get(c.id) || [],
+        }))
+
+      return NextResponse.json(toJsonSafe(merged))
+    } catch {
+      // Last-resort fallback: keep registry page usable even if DB is unavailable.
+      return NextResponse.json(toJsonSafe(DEMO_CONTRACTS))
+    }
   }
 }
 
