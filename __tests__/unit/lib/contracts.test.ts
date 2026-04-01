@@ -6,6 +6,7 @@ import {
   formatAmount,
   formatTengeWithCrypto,
   getMilestoneCompletedCount,
+  getContractExplorerAddress,
   Contract,
 } from '@/lib/contracts'
 
@@ -98,6 +99,38 @@ describe('formatTengeWithCrypto', () => {
     expect(result).toContain('SOL')
     expect(result).toContain('USDT')
     expect(result).toContain('1000.0') // 80M / 80k = 1000 SOL
+  })
+})
+
+describe('getContractExplorerAddress', () => {
+  const minimal = (over: Partial<Contract>): Contract => ({
+    id: 'clxid',
+    title: 'T',
+    contractor: 'C',
+    amount_usdc: 1,
+    deadline: '',
+    district: 'D',
+    status: 'active',
+    lat: 0,
+    lng: 0,
+    escrow_amount: 0,
+    penalty_amount: 0,
+    milestones: [],
+    ...over,
+  })
+
+  it('uses onChainPubkey when set', () => {
+    const pk = 'FPyLxTSo9huzRov1GU8HxwUxNSxXX3ATwHT7MTSi6Khu'
+    expect(getContractExplorerAddress(minimal({ onChainPubkey: pk }))).toBe(pk)
+  })
+
+  it('uses id when it is a Solana address', () => {
+    const pk = 'Dd1hMrmDjKjwxetPb62UmBKLqxWDetGLLxeFJgrn2x3Q'
+    expect(getContractExplorerAddress(minimal({ id: pk }))).toBe(pk)
+  })
+
+  it('returns null for opaque DB id without pubkey', () => {
+    expect(getContractExplorerAddress(minimal({ id: 'cm123abc', onChainPubkey: null }))).toBeNull()
   })
 })
 

@@ -8,6 +8,8 @@ import { formatTengeWithCrypto, getContractDetailHref } from '@/lib/contracts'
 
 type Overview = {
   totalContracts: number
+  /** Аккаунты GovernmentContract в Solana (как в реестре при режиме on-chain). */
+  contractsOnChain: number | null
   activeContracts: number
   disputedContracts: number
   penalizedContracts: number
@@ -136,7 +138,12 @@ export default function AkimatCabinetPage() {
           <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
               <div className="text-2xl font-bold text-white">{data.totalContracts}</div>
-              <div className="text-xs text-gray-400 mt-1">{t('kpiContracts')}</div>
+              <div className="text-xs text-gray-400 mt-1">{t('kpiContractsDb')}</div>
+              {data.contractsOnChain != null && (
+                <div className="text-xs text-emerald-300/80 mt-2 leading-snug">
+                  {t('kpiContractsChain', { count: data.contractsOnChain })}
+                </div>
+              )}
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
               <div className="text-2xl font-bold text-emerald-400">{data.activeContracts}</div>

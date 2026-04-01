@@ -4,11 +4,13 @@ import {
   fetchDistrictTreasuryBalanceOnChain,
   getReadOnlySolanaConnection,
 } from '@/lib/web3/fetchDistrictTreasuryBalance'
+import { fetchGovernmentContractsOnChainCount } from '@/lib/web3/fetchGovernmentContractsCount'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/akimat/overview — сводка для кабинета акимата: контракты, казны, граждане, последние контракты */
 export async function GET() {
+  const connection = getReadOnlySolanaConnection()
   const [
     totalContracts,
     activeContracts,
@@ -41,14 +43,16 @@ export async function GET() {
     }),
   ])
 
-  const connection = getReadOnlySolanaConnection()
-  const onChainByDistrict = await Promise.all(
-    treasuries.map((t) => fetchDistrictTreasuryBalanceOnChain(connection, t.district))
-  )
+  const [contractsOnChain, districtTreasuryBalancesOnChain] = await Promise.all([
+    fetchGovernmentContractsOnChainCount(connection),
+    Promise.all(
+      treasuries.map((t) => fetchDistrictTreasuryBalanceOnChain(connection, t.district))
+    ),
+  ])
 
   let totalBalance = BigInt(0)
   const treasuryRows = treasuries.map((t, i) => {
-    const onChain = onChainByDistrict[i]
+    const onChain = districtTreasuryBalancesOnChain[i]
     const balance = onChain !== null ? onChain : t.balance
     totalBalance += balance
     return {
@@ -62,6 +66,7 @@ export async function GET() {
 
   return NextResponse.json({
     totalContracts,
+    contractsOnChain,
     activeContracts,
     disputedContracts,
     penalizedContracts,

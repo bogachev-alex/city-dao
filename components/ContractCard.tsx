@@ -8,6 +8,7 @@ import {
   getMilestoneCompletedCount,
   formatTengeWithCrypto,
   getContractDetailHref,
+  getContractExplorerAddress,
   formatContractTitleForDisplay,
 } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
@@ -138,7 +139,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
             {t('openContract')}
           </Link>
           <OnChainLink
-            address={contract.onChainPubkey}
+            address={getContractExplorerAddress(contract)}
             label={t('onChain')}
             className="text-indigo-600 dark:text-indigo-400 hover:underline"
           />

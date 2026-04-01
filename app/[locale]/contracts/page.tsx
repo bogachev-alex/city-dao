@@ -295,12 +295,6 @@ export default function ContractsPage() {
     return contracts
   }, [contracts, isContractor, contractorScope, contractorNameNorm])
 
-  const applyGoszakupPreset = () => {
-    setCustomerFilter('Алматы')
-    setSubjectTypeFilter('Работа')
-    setAmountMinFilter('10000000')
-  }
-
   const counts = {
     active: contractsForStats.filter((c) => c.status === 'active').length,
     penalized: contractsForStats.filter((c) => c.status === 'penalized').length,
@@ -421,13 +415,6 @@ export default function ContractsPage() {
                 className="w-full min-w-[140px] sm:w-36 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
               />
             </div>
-            <button
-              type="button"
-              onClick={applyGoszakupPreset}
-              className="px-3 py-2 rounded-lg text-xs font-medium bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 transition-colors"
-            >
-              {t('goszakupPreset')}
-            </button>
           </div>
 
           <div className="flex flex-wrap gap-3">

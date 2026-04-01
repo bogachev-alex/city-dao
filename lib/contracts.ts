@@ -92,6 +92,21 @@ export function resolveContractOnChainPubkey(contractId: string, dbPubkey?: stri
   return mapped || null
 }
 
+/** Base58-encoded Solana public key (typical length 32–44). */
+function isLikelySolanaAddress(s: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s)
+}
+
+/**
+ * Solana Explorer address for this contract: DB `onChainPubkey`, env map, or `id` when it is already a pubkey.
+ */
+export function getContractExplorerAddress(contract: Contract): string | null {
+  const resolved = resolveContractOnChainPubkey(contract.id, contract.onChainPubkey)
+  if (resolved) return resolved
+  if (isLikelySolanaAddress(contract.id)) return contract.id
+  return null
+}
+
 export function getContractDetailHref(contractId: string, dbPubkey?: string | null): string {
   const base = `/contracts/${contractId}`
   const onChainPubkey = resolveContractOnChainPubkey(contractId, dbPubkey)
