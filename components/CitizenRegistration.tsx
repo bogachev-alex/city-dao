@@ -93,9 +93,23 @@ export default function CitizenRegistration() {
       const minFeeReserveLamports = Math.floor(0.0002 * LAMPORTS_PER_SOL)
       let balance = await connection.getBalance(publicKey)
       if (balance < minFeeReserveLamports) {
-        const airdropSig = await connection.requestAirdrop(publicKey, Math.floor(0.01 * LAMPORTS_PER_SOL))
-        await connection.confirmTransaction(airdropSig, 'confirmed')
-        balance = await connection.getBalance(publicKey)
+        try {
+          const airdropSig = await connection.requestAirdrop(publicKey, Math.floor(0.01 * LAMPORTS_PER_SOL))
+          await connection.confirmTransaction(airdropSig, 'confirmed')
+          balance = await connection.getBalance(publicKey)
+        } catch (airdropErr: any) {
+          const msg = String(airdropErr?.message || '')
+          const lowered = msg.toLowerCase()
+          if (msg.includes('429') || lowered.includes('airdrop limit') || lowered.includes('faucet')) {
+            setRegError(
+              `Лимит devnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
+            )
+          } else {
+            setRegError(`Не удалось получить devnet airdrop: ${msg || 'неизвестная ошибка'}`)
+          }
+          setStep('form')
+          return
+        }
       }
       if (balance < minFeeReserveLamports) {
         setRegError('Недостаточно SOL в devnet даже после airdrop. Повторите попытку через 10-20 секунд.')
