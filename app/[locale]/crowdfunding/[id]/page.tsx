@@ -404,7 +404,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Общий бюджет проекта</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(campaign.target_amount)}</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(displayCampaign.target_amount)}</span>
                 </div>
               </div>
 
@@ -413,7 +413,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Доля граждан ({100 - category.statePercent}%)</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {formatTenge(campaign.citizen_raised)} / {formatTenge(campaign.citizen_target)}
+                    {formatTenge(displayCampaign.citizen_raised)} / {formatTenge(displayCampaign.citizen_target)}
                   </span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -432,16 +432,16 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Гос. субсидия ({category.statePercent}%)</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(campaign.state_match)}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(displayCampaign.state_match)}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${campaign.state_deposited ? 'bg-emerald-500' : 'bg-gray-300'}`}
-                    style={{ width: campaign.state_deposited ? '100%' : '0%' }}
+                    className={`h-full rounded-full transition-all duration-500 ${displayCampaign.state_deposited ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                    style={{ width: displayCampaign.state_deposited ? '100%' : '0%' }}
                   />
                 </div>
                 <div className="text-xs mt-1">
-                  {campaign.state_deposited ? (
+                  {displayCampaign.state_deposited ? (
                     <span className="text-emerald-600 dark:text-emerald-400">Перечислено акиматом</span>
                   ) : progress >= 100 ? (
                     <span className="text-yellow-600 dark:text-yellow-400">Ожидает перечисления от акимата</span>
@@ -454,7 +454,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-gray-900 dark:text-white">{campaign.donor_count}</div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white">{displayCampaign.donor_count}</div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">участников</div>
                 </div>
                 <div className="text-center">
