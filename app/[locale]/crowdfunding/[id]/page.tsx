@@ -13,6 +13,7 @@ import {
   CATEGORY_CONFIG,
   CAMPAIGN_STATUS_CONFIG,
   DONOR_TIER_CONFIG,
+  DonorTier,
   getDonorTier,
   normalizeCampaign,
 } from '@/lib/crowdfunding'
@@ -41,14 +42,15 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [publishError, setPublishError] = useState<string | null>(null)
   const [onChainInfo, setOnChainInfo] = useState<any | null>(null)
   const [onChainInfoError, setOnChainInfoError] = useState<string | null>(null)
-  /** First on-chain fetch finished (avoids flashing «опубликовать» while RPC reads account). */
   const [onChainChecked, setOnChainChecked] = useState(false)
+  const [onChainDonors, setOnChainDonors] = useState<any[]>([])
   const { publicKey, connected: walletConnected } = useWallet()
   const {
     contribute: contributeOnChain,
     createCampaign: createCampaignOnChain,
     fetchCampaignAccount,
     fetchCampaignAccountByAddress,
+    fetchDonorRecords,
     getCampaignPDA,
     loading: solanaLoading,
   } = useCrowdfunding()
@@ -66,17 +68,25 @@ export default function CampaignDetailPage({ params }: PageProps) {
       .catch(() => setCampaign(getCampaignById(params.id) || null))
   }, [params.id])
 
-  const derivedCampaignPda = useMemo(() => {
-    if (!campaign?.creator_wallet || !campaign?.title) return null
-    try {
-      const [pda] = getCampaignPDA(new PublicKey(campaign.creator_wallet), campaign.title)
-      return pda.toBase58()
-    } catch {
-      return null
+  const resolvedCampaignPda = useMemo(() => {
+    if (campaign?.onChainPubkey) return campaign.onChainPubkey
+    if (!campaign?.title) return null
+    if (onChainInfo?.creator) {
+      try {
+        const [pda] = getCampaignPDA(new PublicKey(onChainInfo.creator), campaign.title)
+        return pda.toBase58()
+      } catch { /* ignore */ }
     }
-  }, [campaign?.creator_wallet, campaign?.title, getCampaignPDA])
+    if (campaign?.creator_wallet) {
+      try {
+        const [pda] = getCampaignPDA(new PublicKey(campaign.creator_wallet), campaign.title)
+        return pda.toBase58()
+      } catch { /* ignore */ }
+    }
+    return null
+  }, [campaign?.onChainPubkey, campaign?.title, campaign?.creator_wallet, onChainInfo?.creator, getCampaignPDA])
 
-  const displayOnChainAddress = campaign?.onChainPubkey || derivedCampaignPda
+  const displayOnChainAddress = resolvedCampaignPda
 
   useEffect(() => {
     let cancelled = false
@@ -140,6 +150,19 @@ export default function CampaignDetailPage({ params }: PageProps) {
       cancelled = true
     }
   }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, publicKey, fetchCampaignAccount, fetchCampaignAccountByAddress])
+
+  useEffect(() => {
+    if (!resolvedCampaignPda) {
+      setOnChainDonors([])
+      return
+    }
+    let cancelled = false
+    const pda = new PublicKey(resolvedCampaignPda)
+    fetchDonorRecords(pda).then((donors) => {
+      if (!cancelled) setOnChainDonors(donors)
+    })
+    return () => { cancelled = true }
+  }, [resolvedCampaignPda, fetchDonorRecords, donated])
 
   if (holdUi) {
     return (
@@ -441,40 +464,56 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </svg>
                 Последние доноры
               </h2>
-              {campaign.donors.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-                  Пока нет взносов. Станьте первым!
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {campaign.donors.map((donor) => {
-                    const tierConfig = DONOR_TIER_CONFIG[donor.tier]
-                    const timeAgo = getTimeAgo(donor.timestamp)
-                    return (
-                      <div key={donor.id} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                            {donor.anonymous ? '?' : donor.name.charAt(0)}
+              {(() => {
+                const donors = onChainDonors.length > 0
+                  ? onChainDonors.map((d: any) => {
+                      const addr = d.donor.toBase58()
+                      const short = `${addr.slice(0, 4)}...${addr.slice(-4)}`
+                      return {
+                        id: d.publicKey.toBase58(),
+                        name: d.anonymous ? '' : short,
+                        amount: d.amount,
+                        timestamp: d.createdAt > 0 ? new Date(d.createdAt * 1000).toISOString() : new Date().toISOString(),
+                        tier: getDonorTier(d.amount),
+                        anonymous: d.anonymous,
+                      }
+                    })
+                  : campaign.donors
+                return donors.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                    Пока нет взносов. Станьте первым!
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {donors.map((donor: any) => {
+                      const tierConfig = DONOR_TIER_CONFIG[donor.tier as DonorTier]
+                      const timeAgo = getTimeAgo(donor.timestamp)
+                      return (
+                        <div key={donor.id} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                              {donor.anonymous ? '?' : donor.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-900 dark:text-white font-medium">
+                                {donor.anonymous ? 'Анонимный донор' : donor.name}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                                <span className={tierConfig.color}>{tierConfig.label}</span>
+                                <span>·</span>
+                                <span>{timeAgo}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-sm text-gray-900 dark:text-white font-medium">
-                              {donor.anonymous ? 'Анонимный донор' : donor.name}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                              <span className={tierConfig.color}>{tierConfig.label}</span>
-                              <span>·</span>
-                              <span>{timeAgo}</span>
-                            </div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {formatTenge(donor.amount)}
                           </div>
                         </div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatTenge(donor.amount)}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Anti-corruption info */}

@@ -324,6 +324,32 @@ export function useCrowdfunding() {
     [readOnlyProgram, getCampaignPDA],
   )
 
+  // Fetch all DonorRecord accounts for a given campaign PDA
+  const fetchDonorRecords = useCallback(
+    async (campaignPda: PublicKey) => {
+      try {
+        const accounts = await (readOnlyProgram.account as any).donorRecord.all([
+          { memcmp: { offset: 40, bytes: campaignPda.toBase58() } },
+        ])
+        return (accounts as any[])
+          .map((a: any) => ({
+            publicKey: a.publicKey as PublicKey,
+            donor: a.account.donor as PublicKey,
+            campaign: a.account.campaign as PublicKey,
+            amount: Number(a.account.amount),
+            lamports: Number(a.account.lamports ?? 0),
+            anonymous: a.account.anonymous as boolean,
+            createdAt: Number(a.account.createdAt ?? a.account.created_at ?? 0),
+            bump: a.account.bump as number,
+          }))
+          .sort((a: any, b: any) => b.createdAt - a.createdAt)
+      } catch {
+        return []
+      }
+    },
+    [readOnlyProgram],
+  )
+
   return {
     createCampaign,
     contribute,
@@ -332,6 +358,7 @@ export function useCrowdfunding() {
     finalizeCampaign,
     fetchCampaignAccount,
     fetchCampaignAccountByAddress,
+    fetchDonorRecords,
     getCampaignPDA,
     getEscrowPDA,
     getDonorPDA,
