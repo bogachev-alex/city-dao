@@ -22,6 +22,8 @@ import { PublicKey } from '@solana/web3.js'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
 import { useAuth } from '@/components/AuthContext'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useContractRegistry } from '@/lib/web3/useContractRegistry'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
@@ -72,6 +74,8 @@ export default function ContractDetailPage() {
   const t = useTranslations('contractDetail')
   const locale = useLocale()
   const { user, authHeader } = useAuth()
+  const wallet = useWallet()
+  const { registerContract: registerContractOnChain } = useContractRegistry()
   const dataSource = useDataSource()
   const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
@@ -79,6 +83,8 @@ export default function ContractDetailPage() {
   const [loading, setLoading] = useState(true)
   const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
 
   const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
     let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
@@ -275,6 +281,41 @@ export default function ContractDetailPage() {
   const juryRejections =
     contract.jurySessions?.filter((s) => s.result === 'REJECT' || s.result === 'reject') ?? []
 
+  const canPublishOnChain = !contract.onChainPubkey && !!wallet.publicKey
+
+  const handlePublishOnChain = async () => {
+    if (!contract || !wallet.publicKey) return
+    setPublishLoading(true)
+    setPublishError(null)
+    try {
+      const result = await registerContractOnChain(
+        contract.title,
+        contract.district,
+        Number(contract.amount_usdc || 0),
+        Math.floor(new Date(contract.deadline).getTime() / 1000),
+        contract.milestones.map((m) => ({
+          description: m.desc,
+          deadlineDays: m.deadline_days,
+          tranchePct: m.tranche_pct,
+        })),
+        Number(contract.lat),
+        Number(contract.lng),
+        wallet.publicKey
+      )
+
+      await fetch(`/api/contracts/${encodeURIComponent(contract.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ onChainPubkey: result.pda }),
+      })
+      await loadContract()
+    } catch (err: any) {
+      setPublishError(err?.message || t('onChainPublishError'))
+    } finally {
+      setPublishLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Back nav */}
@@ -417,7 +458,25 @@ export default function ContractDetailPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{t('onChainMissing')}</div>
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('onChainMissing')}</div>
+                    {canPublishOnChain && (
+                      <button
+                        type="button"
+                        onClick={() => void handlePublishOnChain()}
+                        disabled={publishLoading}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 disabled:opacity-60"
+                      >
+                        {publishLoading ? t('onChainPublishLoading') : t('onChainPublish')}
+                      </button>
+                    )}
+                    {!wallet.publicKey && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500">{t('onChainConnectWallet')}</div>
+                    )}
+                    {publishError && (
+                      <div className="text-xs text-red-500 dark:text-red-400">{publishError}</div>
+                    )}
+                  </div>
                 )}
               </div>
 

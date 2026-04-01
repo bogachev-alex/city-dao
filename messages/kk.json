@@ -103,6 +103,10 @@
     "onChainStatus": "On-chain мәртебе",
     "onChainEscrow": "On-chain эскроу",
     "onChainMilestones": "On-chain кезеңдер",
+    "onChainPublish": "On-chain-ге қосу",
+    "onChainPublishLoading": "On-chain-ге жариялануда...",
+    "onChainConnectWallet": "On-chain-ге тест жариялау үшін әмиянды қосыңыз.",
+    "onChainPublishError": "Келісімшартты on-chain-ге жариялау мүмкін болмады.",
     "contractId": "Келісімшарт ID",
     "coordinates": "Координаталар",
     "escrow20": "Эскроу (20%)",
@@ -156,7 +160,8 @@
     "connectWalletHint": "Блокчейнге тіркеу үшін әмиянды қосыңыз",
     "submitButton": "Келісімшартты тіркеу",
     "escrow20": "Эскроу (20%)",
-    "districtLabel": "Аудан"
+    "districtLabel": "Аудан",
+    "fillTestData": "Тест деректерімен толтыру"
   },
   "register": {
     "title": "Amanat азаматы болу",

@@ -1,10 +1,30 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import CitizenRegistration from '@/components/CitizenRegistration'
+import { useAuth } from '@/components/AuthContext'
+import { useRouter } from '@/i18n/routing'
 
 export default function RegisterPage() {
   const t = useTranslations('register')
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+    if (user) {
+      router.replace('/profile' as any)
+    }
+  }, [user, loading, router])
+
+  if (loading || user) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">

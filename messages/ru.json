@@ -103,6 +103,10 @@
     "onChainStatus": "On-chain статус",
     "onChainEscrow": "On-chain эскроу",
     "onChainMilestones": "On-chain этапов",
+    "onChainPublish": "Добавить в on-chain",
+    "onChainPublishLoading": "Публикация в on-chain...",
+    "onChainConnectWallet": "Подключите кошелек для тестовой публикации в on-chain.",
+    "onChainPublishError": "Не удалось опубликовать контракт в on-chain.",
     "contractId": "ID контракта",
     "coordinates": "Координаты",
     "escrow20": "Эскроу (20%)",
@@ -156,7 +160,8 @@
     "connectWalletHint": "Подключите кошелек для регистрации контракта в блокчейне",
     "submitButton": "Зарегистрировать контракт",
     "escrow20": "Эскроу (20%)",
-    "districtLabel": "Район"
+    "districtLabel": "Район",
+    "fillTestData": "Заполнить тестовыми данными"
   },
   "register": {
     "title": "Стать гражданином",

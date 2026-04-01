@@ -65,22 +65,24 @@ export default function NewCampaignPage() {
       return
     }
 
-    let onChainPubkey: string | undefined
+    if (!walletConnected || !publicKey) {
+      setError('Подключите кошелёк: создание краудфандинг-кампании теперь обязательно выполняется on-chain (devnet).')
+      return
+    }
 
-    // Try on-chain creation if wallet connected
-    if (walletConnected) {
-      try {
-        const deadlineTimestamp = Math.floor((Date.now() + deadline * 24 * 60 * 60 * 1000) / 1000)
-        const result = await createOnChain(
-          title, description, district, category,
-          totalAmount, deadlineTimestamp,
-          43.25, 76.91, // default Almaty coordinates
-        )
-        setTxInfo(result.tx)
-        onChainPubkey = result.pda
-      } catch (err: any) {
-        console.warn('On-chain creation failed (continuing with DB):', err.message)
-      }
+    let onChainPubkey: string
+    try {
+      const deadlineTimestamp = Math.floor((Date.now() + deadline * 24 * 60 * 60 * 1000) / 1000)
+      const result = await createOnChain(
+        title, description, district, category,
+        totalAmount, deadlineTimestamp,
+        43.25, 76.91, // default Almaty coordinates
+      )
+      setTxInfo(result.tx)
+      onChainPubkey = result.pda
+    } catch (err: any) {
+      setError(`On-chain создание кампании не выполнено: ${err?.message || 'неизвестная ошибка'}`)
+      return
     }
 
     // Save to database

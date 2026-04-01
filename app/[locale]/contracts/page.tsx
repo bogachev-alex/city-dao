@@ -8,14 +8,12 @@ import {
   Contract,
   ContractStatus,
   normalizeContract,
-  GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
   resolveContractOnChainPubkey,
 } from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import ContractCard from '@/components/ContractCard'
-import ExternalLink from '@/components/ExternalLink'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
 
@@ -24,6 +22,27 @@ const STATUS_API: Record<ContractStatus, string> = {
   penalized: 'PENALIZED',
   completed: 'COMPLETED',
   disputed: 'DISPUTED',
+}
+
+function normalizeText(v: string): string {
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()"]/g, ' ')
+    .replace(/\s+/g, ' ')
+}
+
+function tokenSet(v: string): Set<string> {
+  return new Set(normalizeText(v).split(' ').filter((s) => s.length > 2))
+}
+
+function overlapScore(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let inter = 0
+  a.forEach((t) => {
+    if (b.has(t)) inter++
+  })
+  return inter / Math.max(a.size, b.size)
 }
 
 export default function ContractsPage() {
@@ -44,13 +63,43 @@ export default function ContractsPage() {
   const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
 
   const applyOnChainOverlay = useCallback(async (baseContracts: Contract[]): Promise<Contract[]> => {
-    const indexed = baseContracts.filter((c) => !!resolveContractOnChainPubkey(c.id, c.onChainPubkey))
-    if (indexed.length === 0) return baseContracts
     try {
       const onChain = await fetchAllContractsOnChain()
       const byPda = new Map(onChain.map((c) => [c.id, c]))
       return baseContracts.map((c) => {
-        const resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
+        let resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
+        if (!resolvedPubkey) {
+          const title = normalizeText(c.title)
+          const titleTokens = tokenSet(c.title)
+          const district = normalizeText(c.district)
+          const amount = Number(c.amount_usdc || 0)
+
+          let best: { id: string; score: number } | null = null
+          for (const chainItem of onChain) {
+            const cDistrict = normalizeText(chainItem.district)
+            const cAmount = Number(chainItem.amount_usdc || 0)
+            const cTitle = normalizeText(chainItem.title)
+            const cTokens = tokenSet(chainItem.title)
+
+            const districtScore = cDistrict === district ? 1 : 0
+            const textScore =
+              cTitle === title
+                ? 1
+                : (cTitle.includes(title) || title.includes(cTitle) ? 0.85 : overlapScore(titleTokens, cTokens))
+
+            let amountScore = 0
+            if (amount > 0 && cAmount > 0) {
+              const rel = Math.abs(cAmount - amount) / Math.max(amount, cAmount)
+              if (rel <= 0.01) amountScore = 1
+              else if (rel <= 0.05) amountScore = 0.7
+              else if (rel <= 0.15) amountScore = 0.35
+            }
+
+            const score = districtScore * 0.35 + textScore * 0.5 + amountScore * 0.15
+            if (!best || score > best.score) best = { id: chainItem.id, score }
+          }
+          if (best && best.score >= 0.72) resolvedPubkey = best.id
+        }
         if (!resolvedPubkey) return c
         const live = byPda.get(resolvedPubkey)
         if (!live) return c
@@ -177,15 +226,6 @@ export default function ContractsPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {t('title')}
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-                {t('subtitle')}
-              </p>
-              <ExternalLink
-                href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
-                label={t('goszakupReference')}
-                withIcon
-                className="inline-flex items-center gap-1.5 mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
-              />
             </div>
             <div className="flex gap-3">
               {[
