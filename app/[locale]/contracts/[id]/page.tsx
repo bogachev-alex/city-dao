@@ -54,7 +54,9 @@ function tokenSet(v: string): Set<string> {
 function overlapScore(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 || b.size === 0) return 0
   let inter = 0
-  for (const t of a) if (b.has(t)) inter++
+  a.forEach((t) => {
+    if (b.has(t)) inter++
+  })
   return inter / Math.max(a.size, b.size)
 }
 
