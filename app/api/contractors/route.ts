@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getDemoContractorProfileForApi } from '@/lib/demoContractorProfile'
 import type { JurySessionStatus } from '@/lib/generated/prisma'
+import { getAuthPayload } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   const name = req.nextUrl.searchParams.get('name')
   const roleHeader = req.headers.get('x-user-role')?.toUpperCase()
+  const auth = getAuthPayload(req)
 
   if (id || name) {
     let contractor = null
@@ -52,8 +54,14 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(getDemoContractorProfileForApi())
       }
     } else if (id) {
-      contractor = await prisma.contractor.findUnique({
-        where: { id },
+      contractor = await prisma.contractor.findFirst({
+        where: {
+          OR: [
+            { id },
+            { walletAddress: id },
+            { name: id },
+          ],
+        },
         include: contractorDetailInclude,
       })
     } else if (name) {
@@ -70,6 +78,12 @@ export async function GET(req: NextRequest) {
       id?.startsWith('demo-') &&
       id !== 'demo-akimat-1'
     ) {
+      return NextResponse.json(getDemoContractorProfileForApi())
+    }
+
+    // Wallet-based contractor sessions can have non-DB ids in auth token.
+    // For those, return demo payload instead of hard 404 to keep contractor desk usable.
+    if (!contractor && auth?.role === 'CONTRACTOR' && auth.id && id === auth.id) {
       return NextResponse.json(getDemoContractorProfileForApi())
     }
 

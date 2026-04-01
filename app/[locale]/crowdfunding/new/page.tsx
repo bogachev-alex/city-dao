@@ -45,6 +45,21 @@ export default function NewCampaignPage() {
 
   const canSubmit = title.length >= 10 && description.length >= 50 && totalAmount >= 100000
 
+  const fillTestData = () => {
+    const now = Date.now()
+    const suffix = String(now).slice(-4)
+    setTitle(`Тестовая кампания #${suffix}: освещение дворов`)
+    setDescription(
+      'Жители района регулярно жалуются на недостаточное освещение во дворах. ' +
+      'Проект предусматривает установку LED-фонарей, подключение к сети и базовое благоустройство территории.'
+    )
+    setCategory('landscaping')
+    setDistrict(DISTRICTS[2] || DISTRICTS[0])
+    setTargetAmount('3500000')
+    setDeadline(45)
+    setError(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
@@ -157,7 +172,16 @@ export default function NewCampaignPage() {
             <span>/</span>
             <span className="text-gray-600 dark:text-gray-300">Новая кампания</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Создать кампанию</h1>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Создать кампанию</h1>
+            <button
+              type="button"
+              onClick={fillTestData}
+              className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors"
+            >
+              Заполнить тестовыми данными
+            </button>
+          </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
             Опишите проект, укажите бюджет — система рассчитает долю граждан и государственную субсидию автоматически.
           </p>

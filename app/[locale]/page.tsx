@@ -8,6 +8,7 @@ import TransactionFeed from '@/components/TransactionFeed'
 import { useDataSource } from '@/lib/web3/useDataSource'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import { DEMO_CONTRACTS } from '@/lib/contracts'
+import { useAuth } from '@/components/AuthContext'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
@@ -29,6 +30,7 @@ function formatBigAmount(val: number): string {
 export default function HomePage() {
   const t = useTranslations('home')
   const dataSource = useDataSource()
+  const { user } = useAuth()
   const [stats, setStats] = useState({ contracts: 0, totalAmount: 0, penalized: 0, citizens: 0 })
 
   useEffect(() => {
@@ -113,12 +115,14 @@ export default function HomePage() {
               >
                 {t('allContracts')}
               </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                {t('becomeJuror')}
-              </Link>
+              {!user && (
+                <Link
+                  href="/register"
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {t('becomeJuror')}
+                </Link>
+              )}
             </div>
           </div>
         </div>
