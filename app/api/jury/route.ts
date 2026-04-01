@@ -209,15 +209,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Must commit before reveal' }, { status: 400 })
   }
 
-  // Verify commit-reveal: hash(vote + salt) must match committed hash
-  const computedHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
+  // Verify commit-reveal: normalize vote to lowercase to match client commit format.
+  const normalizedVote = String(vote).toLowerCase()
+  const computedHash = createHash('sha256').update(`${normalizedVote}:${salt}`).digest('hex')
   if (computedHash !== juryVote.commitHash) {
     return NextResponse.json({ error: 'Hash mismatch: vote/salt does not match commitment' }, { status: 400 })
   }
 
   const updated = await prisma.juryVote.update({
     where: { id: juryVote.id },
-    data: { revealedVote: vote, revealedSalt: salt },
+    data: { revealedVote: String(vote).toUpperCase(), revealedSalt: salt },
   })
 
   // Check if all votes revealed — if so, finalize

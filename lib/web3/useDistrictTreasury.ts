@@ -89,7 +89,7 @@ export function useDistrictTreasury() {
           .createProposal(
             proposalTitle,
             proposalTitle,
-            new BN(1), // u64 in Anchor expects BN
+            new BN(0), // allow bootstrap even when treasury balance is zero
             'GENERAL',
           )
           .accounts({
