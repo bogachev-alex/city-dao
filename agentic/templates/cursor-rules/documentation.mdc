@@ -1,0 +1,47 @@
+---
+description: Documentation and changelog requirements. Apply when creating or modifying any module, function, or feature.
+globs: ["**/*.py", "**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"]
+alwaysApply: false
+---
+
+# Documentation Requirements
+
+## Inline Docs
+- Every exported function/class must have a concise docstring:
+  - **Python:** Google-style docstring with Args, Returns, Raises
+  - **TypeScript/JS:** JSDoc with @param, @returns
+- Document the **"Why"**, not the **"How"**
+- No obvious comments like `# increment i`
+
+---
+
+## README
+- If a new feature or architectural change is made → suggest specific text to add to `README.md`
+
+---
+
+## CHANGELOG.md (Mandatory)
+
+Every non-trivial change must be recorded in `CHANGELOG.md` at project root.
+
+**Format** ([Keep a Changelog](https://keepachangelog.com/) style):
+
+```markdown
+## [Unreleased]
+
+### Added
+- [2025-02-25] Description of new feature
+
+### Changed
+- [2025-02-25] Description of change
+
+### Fixed
+- [2025-02-25] Description of fix
+```
+
+**Rules:**
+- Update CHANGELOG before committing or after code edits
+- Each line starts with `[YYYY-MM-DD]` timestamp
+- Sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
+- All agents (Registrar, Auditor, Executor) must verify changelog matches code changes
+- If code changed without changelog entry → add entry or flag the omission

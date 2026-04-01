@@ -1,0 +1,16 @@
+{
+  "baseUrl": "http://127.0.0.1:3000",
+  "days": 10,
+  "agents": [
+    { "role": "AKIMAT", "id": "Алмалинский", "name": "Akimat (Almaly)" },
+    { "role": "AKIMAT", "id": "Бостандыкский", "name": "Akimat (Bostandyk)" },
+
+    { "role": "CITIZEN", "id": "demo-citizen-1", "name": "Alibek", "district": "Алмалинский" },
+    { "role": "CITIZEN", "id": "demo-citizen-2", "name": "Marat", "district": "Алмалинский" },
+    { "role": "CITIZEN", "id": "demo-citizen-3", "name": "Aruzhan", "district": "Бостандыкский" },
+
+    { "role": "CONTRACTOR", "id": "demo-contractor-1", "name": "StroyAlmaty" },
+    { "role": "CONTRACTOR", "id": "demo-contractor-2", "name": "BystroStroy" }
+  ]
+}
+

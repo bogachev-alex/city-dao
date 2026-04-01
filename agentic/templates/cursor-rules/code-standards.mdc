@@ -1,0 +1,59 @@
+---
+description: Code quality standards, modularity rules, and directory structure. Apply to all code generation and refactoring.
+globs: ["**/*.py", "**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"]
+alwaysApply: false
+---
+
+# Code Standards
+
+## Communication Style
+- No "Sure," "I can help," or "Here is the code." Jump straight to the solution.
+- Explain ONLY complex logic, architectural decisions, or breaking changes.
+- Never rewrite an entire file if only a small part changes — provide diffs or targeted function updates.
+
+---
+
+## File & Function Limits
+
+| Rule | Limit |
+|------|-------|
+| Lines per file | Max 250 |
+| Lines per function | Max 40 |
+| Nesting depth | Max 3 levels |
+
+- If a change exceeds 250 lines → propose decomposition plan BEFORE writing code.
+- Use guard clauses (early returns) to flatten nesting.
+- If file must exceed 250 lines → add: `# AI-NOTE: File length justified by [Reason]`
+
+---
+
+## Feature-First Directory Structure
+
+```
+[FeatureName]/
+├── index.[ext]      # Public API / Entry point
+├── core.[ext]       # Main business logic
+├── types.[ext]      # Interfaces, schemas, data structures
+├── utils.[ext]      # Internal helpers
+├── constants.[ext]  # Config, magic numbers, strings
+└── api.[ext]        # External I/O (HTTP, DB, FS)
+```
+
+---
+
+## Coding Standards
+
+- **Naming:** Descriptive, self-documenting names.
+- **DRY:** Extract duplicate logic into `@/utils` or `@/shared`.
+- **Error Handling:** No empty catch blocks. Use structured error handling and logging.
+- **Types:** Strict typing — TypeScript types, Python type hints everywhere.
+- **Refactor First:** If a file is large or messy, suggest refactor BEFORE adding features.
+
+---
+
+## Refactoring Protocol
+
+1. Identify sub-concerns: Data / Logic / UI / I/O
+2. Move into Feature-First structure
+3. Keep main module's public interface stable
+4. Provide change log at end of response: what was moved where

@@ -8,6 +8,33 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
+// GAME SIMULATION (tick clock + event log)
+// ─────────────────────────────────────────────
+
+model GameState {
+  /// Single row: always use id "singleton" in application code.
+  id        String   @id
+  gameDay   Int      @default(0)
+  startDate DateTime @default(now())
+  isPaused  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+model GameEvent {
+  id        String   @id @default(cuid())
+  gameDay   Int
+  type      String
+  entityId  String?
+  actorId   String?
+  actorRole String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([gameDay])
+  @@index([type])
+}
+
+// ─────────────────────────────────────────────
 // MODULE 1: CONTRACT REGISTRY
 // ─────────────────────────────────────────────
 
@@ -28,6 +55,12 @@ enum MilestoneStatus {
   OVERDUE
 }
 
+enum BidRoundStatus {
+  OPEN
+  CLOSED
+  AWARDED
+}
+
 model Contract {
   id            String         @id @default(cuid())
   title         String
@@ -35,8 +68,8 @@ model Contract {
   district      String
   lat           Float
   lng           Float
-  contractorId  String
-  contractor    Contractor     @relation(fields: [contractorId], references: [id])
+  contractorId  String?
+  contractor    Contractor?    @relation(fields: [contractorId], references: [id])
   totalAmount   BigInt         // in tenge
   escrowAmount  BigInt         // 20% of totalAmount
   penaltyAmount BigInt         @default(0)
@@ -57,9 +90,44 @@ model Contract {
   penalties     Penalty[]
   workLogs      WorkLog[]
   crowdfunding  CrowdfundingCampaign?
+  bidRounds     BidRound[]
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+}
+
+model BidRound {
+  id                 String          @id @default(cuid())
+  contractId         String
+  contract           Contract        @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  status             BidRoundStatus  @default(OPEN)
+  openedDay          Int
+  closesDay          Int
+  winnerContractorId String?
+  winner             Contractor?     @relation("BidRoundWinner", fields: [winnerContractorId], references: [id])
+  bids               Bid[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([contractId])
+  @@index([status])
+}
+
+model Bid {
+  id              String     @id @default(cuid())
+  bidRoundId      String
+  bidRound        BidRound   @relation(fields: [bidRoundId], references: [id], onDelete: Cascade)
+  contractorId    String
+  contractor      Contractor @relation(fields: [contractorId], references: [id])
+  amount          BigInt
+  daysToComplete  Int
+  qualityPledge   String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([bidRoundId, contractorId])
+  @@index([bidRoundId])
 }
 
 model Milestone {
@@ -106,12 +174,26 @@ model Citizen {
   suggestions     CitizenSuggestion[]
   proposalVotes   ProposalVote[]
   suggestionVotes SuggestionVote[]
+  satisfactionVotes SatisfactionVote[]
   nfts            CitizenNft[]
   contributions   CampaignContribution[]
   campaigns       CrowdfundingCampaign[]  // campaigns created by this citizen
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+}
+
+model SatisfactionVote {
+  id         String   @id @default(cuid())
+  citizenId  String
+  citizen    Citizen  @relation(fields: [citizenId], references: [id])
+  gameDay    Int
+  score      Int      // 1-5
+  district   String
+  createdAt  DateTime @default(now())
+
+  @@unique([citizenId, gameDay])
+  @@index([district, gameDay])
 }
 
 // ─────────────────────────────────────────────
@@ -144,6 +226,10 @@ model JurySession {
   result         VoteValue?        // final outcome after finalization
   weightedAccept Int               @default(0)
   weightedReject Int               @default(0)
+  /// Game-day simulation: set when entering COMMIT_PHASE (tick initializes if null)
+  commitPhaseStartedGameDay  Int?
+  /// Game-day when REVEAL_PHASE started (tick advances phases)
+  revealPhaseStartedGameDay Int?
 
   votes          JuryVote[]
 
@@ -159,6 +245,7 @@ model JuryVote {
   citizen      Citizen      @relation(fields: [citizenId], references: [id])
   isExpert     Boolean      @default(false) // expert vote weight = 2
   commitHash   String?      // SHA-256(vote + salt)
+  agentCommitSalt String?   // agent API: salt for reveal after commit
   revealedVote VoteValue?
   revealedSalt String?
   weight       Int          @default(1) // 1 for citizen, 2 for expert
@@ -310,6 +397,8 @@ model Contractor {
 
   contracts       Contract[]
   workLogs        WorkLog[]
+  bids            Bid[]
+  bidRoundsWon    BidRound[]       @relation("BidRoundWinner")
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

@@ -42,9 +42,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
 
-  // Resolve contractor: use contractorId directly, or find-or-create by contractorName
-  let contractorId = body.contractorId as string | undefined
-  if (!contractorId && body.contractorName) {
+  let contractorId: string | null =
+    body.contractorId !== undefined && body.contractorId !== null ? String(body.contractorId) : null
+
+  if (body.awaitingBids === true) {
+    contractorId = null
+  } else if (!contractorId && body.contractorName) {
     const existing = await prisma.contractor.findFirst({
       where: { name: body.contractorName },
     })
@@ -58,9 +61,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!contractorId) {
+  if (!contractorId && body.awaitingBids !== true) {
     return NextResponse.json(
-      { error: 'contractorId or contractorName is required' },
+      { error: 'contractorId or contractorName is required (or awaitingBids: true for open bidding)' },
       { status: 400 }
     )
   }

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Zsh-friendly entrypoint — runs all workflow helpers in bash (same as workflow.ps1 on Windows).
+# Usage from repo root:
+#   ./agentic/agentic watch
+#   ./agentic/agentic wait
+#   ./agentic/agentic setup
+#
+# Add an alias in ~/.zshrc:
+#   alias agentic='/path/to/city-dao/agentic/agentic'
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT" || exit 1
+# shellcheck source=agentic/scripts/workflow.sh
+source "$REPO_ROOT/agentic/scripts/workflow.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: agentic <command> [arguments]
+
+  setup              One-time OpenCode + ZhipuAI GLM-5 (same as setup-opencode.sh)
+  install [path]     Scaffold: copy rules, tasks/, CHANGELOG.md, .gitignore (Install-Workflow)
+  watch [path] [min] Start background watcher (default timeout 20 min)
+  stop-watcher [path]  Stop watcher (reads tasks/.workflow_watcher.pid)
+  wait [path] [sec]  Poll tasks/done.md for OPENCODE_DONE (default 90s poll window)
+  run [path]         Run OpenCode once (fallback if watcher is off)
+  update-templates [dir]  Copy .mdc from .cursor/rules to agentic/templates/cursor-rules
+
+In bash you can instead: source agentic/scripts/workflow.sh
+Then use: start_workflow_watcher, wait_opencode, run_opencode, install_workflow
+Or underscore wrappers (bash cannot use hyphens like PowerShell): Start_WorkflowWatcher, Wait_OpenCode, Run_OpenCode, Install_Workflow
+
+EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 0
+fi
+
+cmd="$1"
+shift || true
+
+case "$cmd" in
+  setup | setup-opencode)
+    exec bash "$REPO_ROOT/agentic/scripts/setup-opencode.sh" "$@"
+    ;;
+  install | install-workflow)
+    install_workflow "$@"
+    ;;
+  watch | start-watcher | start-workflow-watcher)
+    start_workflow_watcher "$@"
+    ;;
+  stop | stop-watcher)
+    stop_workflow_watcher "$@"
+    ;;
+  wait | wait-opencode)
+    wait_opencode "$@"
+    ;;
+  run | run-opencode)
+    run_opencode "$@"
+    ;;
+  update-templates | update-workflow-templates)
+    update_workflow_templates "$@"
+    ;;
+  help | -h | --help)
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

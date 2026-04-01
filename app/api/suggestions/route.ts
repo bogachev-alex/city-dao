@@ -3,6 +3,26 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+async function triggerSuggestionResearch(payload: {
+  title: string
+  amount: number
+  category: string
+  district: string
+}) {
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL
+  if (!baseUrl) return false
+  try {
+    await fetch(`${baseUrl.replace(/\/$/, '')}/api/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal: payload }),
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // GET /api/suggestions — list suggestions with filters
 export async function GET(req: NextRequest) {
   const district = req.nextUrl.searchParams.get('district')
@@ -60,6 +80,22 @@ export async function POST(req: NextRequest) {
       status: upvotesNeeded === 0 ? 'AI_RESEARCH' : 'PENDING_UPVOTES',
     },
   })
+  const shouldTriggerResearch = suggestion.status === 'AI_RESEARCH'
+  let researchTriggered = false
+  if (shouldTriggerResearch) {
+    const fallbackAmount = Number(
+      suggestion.budgetMax ?? suggestion.budgetMin ?? BigInt(1_000_000)
+    )
+    researchTriggered = await triggerSuggestionResearch({
+      title: suggestion.title,
+      amount: Number.isFinite(fallbackAmount) ? fallbackAmount : 1_000_000,
+      category: 'CITIZEN_SUGGESTION',
+      district: suggestion.district,
+    })
+  }
 
-  return NextResponse.json(suggestion, { status: 201 })
+  return NextResponse.json(
+    { ...suggestion, researchTriggered },
+    { status: 201 }
+  )
 }

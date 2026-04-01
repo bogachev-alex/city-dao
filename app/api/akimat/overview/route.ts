@@ -66,7 +66,7 @@ export async function GET() {
       status: c.status,
       totalAmount: c.totalAmount.toString(),
       createdAt: c.createdAt.toISOString(),
-      contractorName: c.contractor.name,
+      contractorName: c.contractor?.name ?? null,
     })),
   })
 }

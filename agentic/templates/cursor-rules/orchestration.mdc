@@ -1,0 +1,439 @@
+---
+description: AI agent hierarchy and orchestration workflow. Apply when user asks to plan, build, implement, or refactor code.
+globs:
+alwaysApply: true
+---
+
+# AI Hierarchy
+
+| Role | Model | Responsibility |
+|------|-------|----------------|
+| ARCHITECT | **claude-opus-4-5** | Decompose plan into tasks, orchestrate build loop, audit |
+| EXECUTOR | GLM-5 via OpenCode | Implement one task at a time |
+| REGISTRAR | **claude-opus-4-5** | Verify each task after OpenCode completes |
+
+---
+
+## Model Requirement
+
+**All phases except execution MUST be done by `claude-opus-4-5`.**
+
+If you are not `claude-opus-4-5`, stop and tell the user:
+> "Switch the model to claude-opus-4-5 in Cursor (top-right model picker)."
+
+---
+
+## Delegation Triggers
+
+| User says | Action |
+|-----------|--------|
+| plan / design / analyze | Phase 1 only — Cursor creates a plan, stops |
+| build / implement / run / go | Phase 2 build loop (reads existing plan) |
+| review / audit / check | Phase 3+4 only on current result |
+
+---
+
+## Phase 1 — Planning
+
+The user creates the plan using **Cursor's native Plan UI**.
+Plans are saved automatically under the user Cursor directory:
+- **macOS / Linux:** `~/.cursor/plans/`
+- **Windows:** `%USERPROFILE%\.cursor\plans\`
+- **Project-local (optional):** `.cursor/plans/*.md`
+
+Your job during Phase 1:
+1. Scan the project structure — architecture, naming, dependencies.
+2. Help the user articulate what needs to be built.
+3. Write a clear plan inside Cursor's Plan UI. Each plan section = one task.
+4. **Stop after planning.** Wait for the user to say "build".
+
+**You do NOT write `tasks/current-task.md` during Phase 1.**
+
+---
+
+## Phase 2 — Build Loop
+
+### Trigger
+User says **"build"** (or "implement", "run", "execute", "go", "start").
+
+### Before starting: locate the plan
+
+Read the most recently modified plan from `~/.cursor/plans/` (Unix) or `%USERPROFILE%\.cursor\plans\` (Windows), or `.cursor/plans/` in the repo if present.
+Parse it into an ordered list of tasks — each task is a self-contained unit of work.
+
+### Initialize progress tracker
+
+Before the first task, create `tasks/progress.md` and ensure the watcher is running.
+
+**Windows (PowerShell):**
+
+```powershell
+New-Item -Force -Path '.\tasks' -ItemType Directory | Out-Null
+Set-Content -Path '.\tasks\progress.md' -Encoding utf8 -Value "# Build Progress`n"
+Add-Content -Path '.\tasks\progress.md' -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] BUILD STARTED" -Encoding utf8
+```
+
+**macOS / Linux (bash):**
+
+```bash
+mkdir -p tasks
+printf '# Build Progress\n' > tasks/progress.md
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] BUILD STARTED" >> tasks/progress.md
+```
+
+Check that the background watcher is active.
+
+**Windows (PowerShell):**
+
+```powershell
+Get-Job -Name "WorkflowWatcher" -ErrorAction SilentlyContinue | Select-Object Id, Name, State
+```
+
+**macOS / Linux:** `tasks/.workflow_watcher.pid` exists and the process is alive:
+
+```bash
+test -f tasks/.workflow_watcher.pid && ps -p "$(cat tasks/.workflow_watcher.pid)" >/dev/null && echo "watcher OK"
+```
+
+Or from the repo root: `./agentic/agentic watch` was started in another terminal (see `agentic/README.md`).
+
+**If no job is listed or State is not `Running`:** output this message and stop:
+
+> ▶ **Start the watcher first (once per session):**
+> ```powershell
+> Set-Location "C:\path\to\project"
+> Start-WorkflowWatcher
+> ```
+> **macOS / Linux (bash):** `source agentic/scripts/workflow.sh` then `start_workflow_watcher` from the project root.
+> Reply `WATCHER_READY` when you see "WorkflowWatcher started".
+
+**Wait** for `WATCHER_READY` before continuing. Once the watcher is running, it fires automatically for every task — no further manual steps needed.
+
+---
+
+### Rules — NON-NEGOTIABLE
+
+- **ONE task at a time.** Never put more than one task into `current-task.md`.
+- **Do NOT ask the user between tasks.** The loop runs automatically to completion.
+- **Do NOT advance to task N+1 until task N audit passes.**
+- **Do NOT run OpenCode with the full plan at once.**
+
+### Loop — repeat for each task
+
+Each task goes through **4 steps**: implement → test → audit → changelog+commit+advance.
+
+---
+
+**Step A — Implement: write `tasks/current-task.md` for this task only**
+
+**Windows (PowerShell):**
+
+```powershell
+New-Item -Force -Path '.\tasks' -ItemType Directory | Out-Null
+$task = @"
+## Context
+[Architecture and existing code relevant to THIS task only]
+
+## Task
+[Exactly what OpenCode must implement — specific and unambiguous]
+
+## Files
+- path/to/file.py -- what to change
+
+## Requirements
+- [requirement specific to this task]
+
+## Constraints
+- Max 250 lines/file, 40 lines/function
+- Max 3 levels of nesting, use guard clauses
+- No hardcoded secrets
+"@
+Set-Content -Path '.\tasks\current-task.md' -Encoding utf8 -Value $task
+Test-Path .\tasks\current-task.md
+Add-Content -Path '.\tasks\progress.md' -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Task [N]: [short name] -- STARTED (impl)" -Encoding utf8
+```
+
+**macOS / Linux (bash, from project root):**
+
+```bash
+mkdir -p tasks
+cat > tasks/current-task.md << 'EOF'
+## Context
+[Architecture and existing code relevant to THIS task only]
+
+## Task
+[Exactly what OpenCode must implement — specific and unambiguous]
+
+## Files
+- path/to/file.py -- what to change
+
+## Requirements
+- [requirement specific to this task]
+
+## Constraints
+- Max 250 lines/file, 40 lines/function
+- Max 3 levels of nesting, use guard clauses
+- No hardcoded secrets
+EOF
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Task [N]: [short name] -- STARTED (impl)" >> tasks/progress.md
+```
+
+The watcher detects the file change and launches OpenCode automatically. Poll for completion:
+
+```powershell
+Wait-OpenCode
+```
+
+**macOS / Linux:** `./agentic/agentic wait` or (in bash after `source agentic/scripts/workflow.sh`) `Wait_OpenCode` / `wait_opencode`.
+
+If the output is `STILL_RUNNING`, run the wait command again. Repeat until `OPENCODE_DONE` appears.
+Do NOT proceed to Step B until `OPENCODE_DONE` is seen in the terminal.
+
+---
+
+**Step B — Test: write `tasks/current-task.md` for the test task**
+
+After `OPENCODE_DONE` from Step A, immediately write a new `current-task.md` covering tests for what was just implemented.
+
+**Windows (PowerShell):**
+
+```powershell
+$tests = @"
+## Context
+[Same context as Step A — what was just implemented and where]
+
+## Task
+Write tests for the code implemented in the previous step.
+- Cover: happy path, edge cases, error cases
+- Mirror source structure: tests/unit/path/to/test_file.py
+- Use the existing test framework and fixtures already in the project
+- Do NOT delete or modify any existing test files
+
+## Files
+- tests/unit/path/to/test_file.py -- create or extend, never delete
+
+## Requirements
+- Every new public function/method must have at least one test
+- Tests must be runnable and pass with the current implementation
+- No mocks for logic that can be tested directly
+
+## Constraints
+- Max 250 lines/file, 40 lines/function
+- Max 3 levels of nesting, use guard clauses
+- NEVER delete existing tests
+- NEVER modify existing test files — only add new ones
+"@
+Set-Content -Path '.\tasks\current-task.md' -Encoding utf8 -Value $tests
+Test-Path .\tasks\current-task.md
+```
+
+**macOS / Linux (bash):**
+
+```bash
+cat > tasks/current-task.md << 'EOF'
+## Context
+[Same context as Step A — what was just implemented and where]
+
+## Task
+Write tests for the code implemented in the previous step.
+- Cover: happy path, edge cases, error cases
+- Mirror source structure: tests/unit/path/to/test_file.py
+- Use the existing test framework and fixtures already in the project
+- Do NOT delete or modify any existing test files
+
+## Files
+- tests/unit/path/to/test_file.py -- create or extend, never delete
+
+## Requirements
+- Every new public function/method must have at least one test
+- Tests must be runnable and pass with the current implementation
+- No mocks for logic that can be tested directly
+
+## Constraints
+- Max 250 lines/file, 40 lines/function
+- Max 3 levels of nesting, use guard clauses
+- NEVER delete existing tests
+- NEVER modify existing test files — only add new ones
+EOF
+```
+
+The watcher fires automatically. Poll for completion with `Wait-OpenCode` (Windows) or `./agentic/agentic wait` / `wait_opencode` (macOS / Linux).
+
+If `STILL_RUNNING`, run the wait command again. Repeat until `OPENCODE_DONE`.
+Do NOT proceed to Step C until `OPENCODE_DONE` is seen.
+
+---
+
+**Step C — Run tests + Audit (Phase 3+4)**
+
+After `OPENCODE_DONE` from Step B, do these sub-steps **in order**:
+
+**C1 — Verify test files were created:**
+
+Before running anything, confirm that OpenCode actually wrote test files.
+Run in terminal:
+
+**Windows (PowerShell):**
+
+```powershell
+# Python
+Get-ChildItem tests/unit/ -Recurse -Filter "test_*.py" | Select-Object FullName
+
+# JS/TS
+Get-ChildItem src/ -Recurse -Filter "*.test.*" | Select-Object FullName
+```
+
+**macOS / Linux (bash):**
+
+```bash
+# Python
+find tests/unit -name 'test_*.py' -type f 2>/dev/null
+
+# JS/TS
+find src -name '*.test.*' -type f 2>/dev/null
+```
+
+**If the expected test file does NOT exist:**
+- Do NOT proceed.
+- Re-run Step B for this task (write a new `current-task.md` for tests; on macOS / Linux use `./agentic/agentic run` only if the watcher is off — normally the watcher runs OpenCode automatically).
+- Repeat until the test file is confirmed to exist.
+
+**C2 — Run the tests:**
+
+Detect the test runner from the project (check `pyproject.toml`, `pytest.ini`, `package.json`, `Makefile`).
+Run only the tests related to this task — do not run the full suite unless necessary:
+
+```bash
+# Python
+pytest tests/unit/path/to/test_file.py -x -q
+
+# JS/TS
+npm test -- --testPathPattern=path/to/test_file
+```
+
+(Same commands in PowerShell — run from project root.)
+
+**If tests fail: fix the issue before proceeding.**
+- If the implementation is wrong: re-run Step A for this task.
+- If the test is wrong: re-run Step B for this task.
+- Do NOT advance to the next task with failing tests.
+
+**C3 — Static audit:**
+
+- Read `tasks/result.md` and all files modified in Steps A and B.
+- Verify every new import exists in the local environment.
+- Check for hallucinated library methods or non-existent APIs.
+- Confirm test files were only added, never deleted or overwritten.
+- Security: secrets in `.env`, no exposed credentials.
+
+If issues found: fix inline or re-run the relevant step. Do not advance until C1 (files exist) + C2 (tests pass) + C3 (audit clean) are all satisfied.
+
+---
+
+**Step D — Changelog + Advance**
+
+Before moving to the next task, append an entry to `CHANGELOG.md` in the project root.
+
+**Windows (PowerShell):**
+
+```powershell
+$ts    = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+$entry = @"
+
+## $ts — Task [N]: [short task name]
+### Implemented
+- [bullet: what was added/changed and in which file]
+
+### Tests
+- [bullet: test file created/extended and what is covered]
+
+### Audit
+- Imports: OK
+- APIs: OK
+- Tests: passed
+- Security: OK
+"@
+Add-Content -Path '.\CHANGELOG.md' -Value $entry -Encoding utf8
+
+# Update progress tracker
+Add-Content -Path '.\tasks\progress.md' -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Task [N]: [short name] -- DONE (impl + tests + audit)" -Encoding utf8
+
+# Git commit
+git add -A
+git commit -m "Task [N]: [short name] - impl + tests"
+```
+
+**macOS / Linux (bash):**
+
+```bash
+ts=$(date '+%Y-%m-%d %H:%M:%S')
+cat >> CHANGELOG.md << EOF
+
+## $ts — Task [N]: [short task name]
+### Implemented
+- [bullet: what was added/changed and in which file]
+
+### Tests
+- [bullet: test file created/extended and what is covered]
+
+### Audit
+- Imports: OK
+- APIs: OK
+- Tests: passed
+- Security: OK
+EOF
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Task [N]: [short name] -- DONE (impl + tests + audit)" >> tasks/progress.md
+git add -A
+git commit -m "Task [N]: [short name] - impl + tests"
+```
+
+Then print: `Task [N] complete (impl + tests + changelog + commit). Moving to task [N+1].`
+Repeat from Step A with the next task.
+
+---
+
+**Step E — All tasks done**
+
+**Windows (PowerShell):**
+
+```powershell
+Add-Content -Path '.\tasks\progress.md' -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] BUILD COMPLETE -- all tasks done" -Encoding utf8
+```
+
+**macOS / Linux (bash):**
+
+```bash
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] BUILD COMPLETE -- all tasks done" >> tasks/progress.md
+```
+
+```
+All tasks complete. Audit complete. Fixed [X] issues.
+```
+or
+```
+All tasks complete. Audit complete. No issues found.
+```
+
+---
+
+## Terminal Rules
+
+- **Windows:** From the project root, dot-source `agentic/powershell/workflow.ps1` so `Run-OpenCode`, `Wait-OpenCode`, `Start-WorkflowWatcher`, `Install-Workflow`, and `Setup-OpenCode` are available.
+- **macOS / Linux (zsh or any shell):** From the project root, use **`./agentic/agentic <command>`** (recommended — no need to use bash interactively). Commands: `setup`, `install`, `watch`, `stop-watcher`, `wait`, `run`, `update-templates`. See `agentic/README.md`.
+- **macOS / Linux (bash only):** `source agentic/scripts/workflow.sh` — then `start_workflow_watcher`, `wait_opencode`, `run_opencode`, `install_workflow`, or underscore wrappers that mirror PowerShell: `Start_WorkflowWatcher`, `Wait_OpenCode`, `Run_OpenCode`, `Install_Workflow`, `Setup_OpenCode` (bash cannot use hyphens in names like `Wait-OpenCode`).
+- NEVER use `cd /d` — CMD syntax, fails in PowerShell.
+- NEVER use `&` as a command separator in PowerShell — use `;`.
+- If not in project root: `cd` to the project root first (`Set-Location` on Windows).
+
+---
+
+## What You Must NEVER Do
+
+- Never write or edit source files directly — only via OpenCode
+- Never put more than one task into `current-task.md`
+- Never run OpenCode with the full plan at once
+- Never skip the test step (Step B) — every implementation task requires a test task
+- Never advance to the next task before the current audit passes
+- **Never call `Run-OpenCode` / `run_opencode` / `./agentic/agentic run` directly while the watcher is running** — the watcher runs OpenCode when `current-task.md` changes. Use manual `run` only if the watcher is off.
+- **Never proceed past Steps A or B without seeing `OPENCODE_DONE` in the wait output** (`Wait-OpenCode` on Windows, `wait_opencode` or `./agentic/agentic wait` on macOS / Linux)
+- Never delete, overwrite, or modify existing test files

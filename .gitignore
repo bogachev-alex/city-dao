@@ -14,3 +14,12 @@ tsconfig.tsbuildinfo
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Agentic coding workflow — ephemeral local task loop (see agentic/README.md)
+/tasks/
+tasks/
+
+# Local SQLite / IDE
+*.db
+.cursor/
+.claude/

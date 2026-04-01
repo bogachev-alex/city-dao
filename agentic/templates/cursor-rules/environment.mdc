@@ -1,0 +1,51 @@
+---
+description: Environment setup, dependency management, and secrets handling. Apply for new projects or when adding dependencies.
+globs: ["requirements.txt", "package.json", "pyproject.toml", "*.env*", ".gitignore"]
+alwaysApply: false
+---
+
+# Environment & Secrets
+
+## New Project Setup
+- **Python:** Initialize `.venv` and provide setup command:
+  ```bash
+  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+  ```
+- **JS/TS:** Use `npm install` or `bun install`, ensure `package-lock.json` / `bun.lockb` is committed.
+- All packages installed within project-specific environment — never globally.
+
+---
+
+## Dependency Tracking
+- Update lockfiles immediately after installation:
+  - Python: `requirements.txt` or `poetry.lock`
+  - JS/TS: `package-lock.json` or `yarn.lock`
+
+---
+
+## Secrets Management
+
+| Rule | Detail |
+|------|--------|
+| Zero hardcoding | Never hardcode API keys, tokens, passwords, DB URIs |
+| Use `.env` | Always for local development |
+| Provide `.env.example` | With dummy values for every new project |
+| `.gitignore` | Must explicitly include `.env` and other sensitive files |
+
+**Access pattern:**
+- Python: `python-dotenv` → `os.environ.get("KEY")`
+- JS/TS: `dotenv` → `process.env.KEY`
+
+---
+
+## .gitignore Minimum
+
+```gitignore
+.env
+.env.local
+.env.*.local
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+```
