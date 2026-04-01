@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
@@ -30,6 +32,7 @@ function formatPhone(raw: string): string {
 export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
+  const { connection } = useConnection()
   const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
   const { login } = useAuth()
 
@@ -87,6 +90,19 @@ export default function CitizenRegistration() {
     const walletAddress = publicKey.toBase58()
 
     try {
+      const minFeeReserveLamports = Math.floor(0.0002 * LAMPORTS_PER_SOL)
+      let balance = await connection.getBalance(publicKey)
+      if (balance < minFeeReserveLamports) {
+        const airdropSig = await connection.requestAirdrop(publicKey, Math.floor(0.01 * LAMPORTS_PER_SOL))
+        await connection.confirmTransaction(airdropSig, 'confirmed')
+        balance = await connection.getBalance(publicKey)
+      }
+      if (balance < minFeeReserveLamports) {
+        setRegError('Недостаточно SOL в devnet даже после airdrop. Повторите попытку через 10-20 секунд.')
+        setStep('form')
+        return
+      }
+
       const hashBytes = new Uint8Array(32)
       for (let i = 0; i < 32; i++) {
         hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
@@ -95,7 +111,10 @@ export default function CitizenRegistration() {
       setTxSignature(result.tx)
       setOnChain(true)
     } catch (err: any) {
-      console.warn('On-chain registration failed (continuing with DB only):', err.message)
+      setOnChain(false)
+      setRegError(`On-chain регистрация не выполнена: ${err?.message || 'неизвестная ошибка'}`)
+      setStep('form')
+      return
     }
 
     try {

@@ -61,8 +61,7 @@ export const GOSZAKUP_ALMATY_WORKS_MIN10M_URL =
   'https://goszakup.gov.kz/ru/registry/contract?filter%5Bcustomer%5D=%D0%90%D0%BB%D0%BC%D0%B0%D1%82%D1%8B&filter%5Bref_subject_type%5D=2&filter%5Bamount_from%5D=10000000'
 
 export function getSolanaExplorerAddressUrl(address: string): string {
-  const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || 'devnet'
-  return `https://explorer.solana.com/address/${address}?cluster=${encodeURIComponent(cluster)}`
+  return `https://explorer.solana.com/address/${address}?cluster=devnet`
 }
 
 let contractOnChainMapCache: Record<string, string> | null = null

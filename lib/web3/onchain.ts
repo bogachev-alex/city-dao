@@ -42,8 +42,7 @@ function enumVariant(obj: Record<string, unknown>): string {
 
 /** Create a read-only Connection (no wallet needed) */
 export function getReadOnlyConnection(): Connection {
-  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || SOLANA_RPC_URL
-  return new Connection(rpc, 'confirmed')
+  return new Connection(SOLANA_RPC_URL, 'confirmed')
 }
 
 /** Create a read-only Program instance (no wallet, only for .account.*.all/fetch) */

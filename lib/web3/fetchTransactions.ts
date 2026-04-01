@@ -63,7 +63,7 @@ export async function fetchOnChainTransactions(
   connection?: Connection,
 ): Promise<OnChainTx[]> {
   const conn = connection || new Connection(
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || SOLANA_RPC_URL,
+    SOLANA_RPC_URL,
     'confirmed',
   )
 
@@ -132,7 +132,7 @@ export async function fetchParsedTransactions(
   connection?: Connection,
 ): Promise<OnChainTx[]> {
   const conn = connection || new Connection(
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || SOLANA_RPC_URL,
+    SOLANA_RPC_URL,
     'confirmed',
   )
 
