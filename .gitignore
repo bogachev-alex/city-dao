@@ -14,3 +14,9 @@ tsconfig.tsbuildinfo
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Local DB / IDE / agentic task loop (when using wip branch workflow locally)
+*.db
+.cursor/
+.claude/
+tasks/
