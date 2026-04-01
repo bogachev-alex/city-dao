@@ -7,6 +7,17 @@ import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS } from './constants'
 import idl from './idl/crowdfunding.json'
 
+const MAX_SEED_BYTES = 32
+
+function normalizeSeedString(input: string): string {
+  // Solana seed max length is 32 bytes, not 32 chars.
+  let out = input
+  while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
+    out = out.slice(0, -1)
+  }
+  return out
+}
+
 // Category enum matching on-chain representation
 const CATEGORY_MAP = {
   playground: { playground: {} },
@@ -30,8 +41,9 @@ export function useCrowdfunding() {
 
   // Derive campaign PDA
   const getCampaignPDA = useCallback((creator: PublicKey, title: string) => {
+    const seedTitle = normalizeSeedString(title)
     return PublicKey.findProgramAddressSync(
-      [SEEDS.campaign, creator.toBuffer(), Buffer.from(title)],
+      [SEEDS.campaign, creator.toBuffer(), Buffer.from(seedTitle)],
       PROGRAM_IDS.crowdfunding
     )
   }, [])
@@ -71,12 +83,13 @@ export function useCrowdfunding() {
     setError(null)
 
     try {
-      const [campaignPDA] = getCampaignPDA(wallet.publicKey, title)
+      const onChainTitle = normalizeSeedString(title)
+      const [campaignPDA] = getCampaignPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(campaignPDA)
 
       const tx = await (program.methods as any)
         .initCampaign(
-          title,
+          onChainTitle,
           description,
           district,
           CATEGORY_MAP[category],

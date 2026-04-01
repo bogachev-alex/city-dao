@@ -7,6 +7,17 @@ import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { getContractPDA, getEscrowPDA } from './pda'
 import idl from './idl/contract_registry.json'
 
+const MAX_SEED_BYTES = 32
+
+function normalizeSeedString(input: string): string {
+  // Solana seed max length is 32 bytes, not 32 chars.
+  let out = input
+  while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
+    out = out.slice(0, -1)
+  }
+  return out
+}
+
 interface MilestoneInput {
   description: string
   deadlineDays: number
@@ -29,7 +40,8 @@ export function useContractRegistry() {
     const program = getProgram()
     if (!program) return null
 
-    const [pda] = getContractPDA(authority, title)
+    const onChainTitle = normalizeSeedString(title)
+    const [pda] = getContractPDA(authority, onChainTitle)
     try {
       const account = await (program.account as any).governmentContract.fetch(pda)
       return account
@@ -56,7 +68,8 @@ export function useContractRegistry() {
     setError(null)
 
     try {
-      const [contractPDA] = getContractPDA(wallet.publicKey, title)
+      const onChainTitle = normalizeSeedString(title)
+      const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(contractPDA)
 
       const milestoneInputs = milestones.map((m) => ({
@@ -67,7 +80,7 @@ export function useContractRegistry() {
 
       const tx = await (program.methods as any)
         .registerContract(
-          title,
+          onChainTitle,
           district,
           new BN(totalAmount),
           new BN(deadline),
