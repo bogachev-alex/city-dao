@@ -1,5 +1,5 @@
 {
-  "address": "CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ",
+  "address": "3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj",
   "metadata": {
     "name": "crowdfunding",
     "version": "0.1.0",
@@ -8,62 +8,17 @@
   },
   "instructions": [
     {
-      "name": "init_campaign",
-      "docs": [
-        "Create a crowdfunding campaign. Citizen target and state match are auto-calculated from category.",
-        "Only citizens with tier >= ACTIVE can create campaigns."
-      ],
-      "discriminator": [154, 188, 249, 244, 226, 210, 253, 109],
-      "accounts": [
-        {
-          "name": "campaign",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {"kind": "const", "value": [99, 97, 109, 112, 97, 105, 103, 110]},
-              {"kind": "account", "path": "creator"},
-              {"kind": "arg", "path": "title"}
-            ]
-          }
-        },
-        {
-          "name": "escrow",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {"kind": "const", "value": [99, 102, 95, 101, 115, 99, 114, 111, 119]},
-              {"kind": "account", "path": "campaign"}
-            ]
-          }
-        },
-        {
-          "name": "creator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {"name": "title", "type": "string"},
-        {"name": "description", "type": "string"},
-        {"name": "district", "type": "string"},
-        {"name": "category", "type": {"defined": {"name": "CampaignCategory"}}},
-        {"name": "target_amount", "type": "u64"},
-        {"name": "deadline", "type": "i64"},
-        {"name": "lat", "type": "f64"},
-        {"name": "lng", "type": "f64"}
-      ]
-    },
-    {
       "name": "contribute",
-      "docs": [
-        "Contribute funds to a campaign. Min 500 tenge, max 500000 tenge.",
-        "Funds are held in escrow until campaign succeeds or expires."
+      "discriminator": [
+        82,
+        33,
+        68,
+        131,
+        32,
+        0,
+        205,
+        95
       ],
-      "discriminator": [82, 33, 68, 131, 32, 0, 205, 95],
       "accounts": [
         {
           "name": "campaign",
@@ -74,8 +29,24 @@
           "writable": true,
           "pda": {
             "seeds": [
-              {"kind": "const", "value": [99, 102, 95, 101, 115, 99, 114, 111, 119]},
-              {"kind": "account", "path": "campaign"}
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
             ]
           }
         },
@@ -84,9 +55,24 @@
           "writable": true,
           "pda": {
             "seeds": [
-              {"kind": "const", "value": [100, 111, 110, 111, 114]},
-              {"kind": "account", "path": "campaign"},
-              {"kind": "account", "path": "donor"}
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  110,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "donor"
+              }
             ]
           }
         },
@@ -101,17 +87,28 @@
         }
       ],
       "args": [
-        {"name": "amount", "type": "u64"},
-        {"name": "anonymous", "type": "bool"}
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "anonymous",
+          "type": "bool"
+        }
       ]
     },
     {
-      "name": "match_funds",
-      "docs": [
-        "Akimat deposits state matching funds after citizen target is reached.",
-        "Campaign status transitions from FUNDED to MATCHED."
+      "name": "finalize_campaign",
+      "discriminator": [
+        241,
+        76,
+        201,
+        221,
+        33,
+        222,
+        220,
+        138
       ],
-      "discriminator": [27, 210, 246, 35, 195, 126, 75, 207],
       "accounts": [
         {
           "name": "campaign",
@@ -122,8 +119,205 @@
           "writable": true,
           "pda": {
             "seeds": [
-              {"kind": "const", "value": [99, 102, 95, 101, 115, 99, 114, 111, 119]},
-              {"kind": "account", "path": "campaign"}
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contract_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "contract_pubkey",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "init_campaign",
+      "discriminator": [
+        154,
+        188,
+        249,
+        244,
+        226,
+        210,
+        253,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "title"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "district",
+          "type": "string"
+        },
+        {
+          "name": "category",
+          "type": {
+            "defined": {
+              "name": "CampaignCategory"
+            }
+          }
+        },
+        {
+          "name": "target_amount",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        },
+        {
+          "name": "lat",
+          "type": "f64"
+        },
+        {
+          "name": "lng",
+          "type": "f64"
+        }
+      ]
+    },
+    {
+      "name": "match_funds",
+      "discriminator": [
+        27,
+        210,
+        246,
+        35,
+        195,
+        126,
+        75,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
             ]
           }
         },
@@ -141,11 +335,16 @@
     },
     {
       "name": "refund_all",
-      "docs": [
-        "Refund all contributions if campaign expired without reaching target.",
-        "Can be called by anyone after deadline passes. 100% refund, 0% fees."
+      "discriminator": [
+        174,
+        87,
+        222,
+        126,
+        23,
+        59,
+        189,
+        155
       ],
-      "discriminator": [174, 87, 222, 126, 23, 59, 189, 155],
       "accounts": [
         {
           "name": "campaign",
@@ -156,113 +355,199 @@
           "writable": true,
           "pda": {
             "seeds": [
-              {"kind": "const", "value": [99, 102, 95, 101, 115, 99, 114, 111, 119]},
-              {"kind": "account", "path": "campaign"}
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
             ]
           }
         },
         {
           "name": "caller",
           "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
-    },
-    {
-      "name": "finalize_campaign",
-      "docs": [
-        "Link the campaign to a government contract after matching is complete.",
-        "Funds are transferred to the contract escrow. Status → IN_PROGRESS."
-      ],
-      "discriminator": [241, 76, 201, 221, 33, 222, 220, 138],
-      "accounts": [
-        {
-          "name": "campaign",
-          "writable": true
-        },
-        {
-          "name": "escrow",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {"kind": "const", "value": [99, 102, 95, 101, 115, 99, 114, 111, 119]},
-              {"kind": "account", "path": "campaign"}
-            ]
-          }
-        },
-        {
-          "name": "contract",
-          "writable": true
-        },
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {"name": "contract_pubkey", "type": "pubkey"}
-      ]
     }
   ],
   "accounts": [
     {
-      "name": "CrowdfundingCampaignAccount",
-      "discriminator": [16, 6, 176, 121, 254, 151, 129, 57]
+      "name": "CampaignEscrow",
+      "discriminator": [
+        192,
+        220,
+        203,
+        27,
+        197,
+        195,
+        229,
+        70
+      ]
     },
     {
-      "name": "CampaignEscrow",
-      "discriminator": [192, 220, 203, 27, 197, 195, 229, 70]
+      "name": "CrowdfundingCampaignAccount",
+      "discriminator": [
+        16,
+        6,
+        176,
+        121,
+        254,
+        151,
+        129,
+        57
+      ]
     },
     {
       "name": "DonorRecord",
-      "discriminator": [204, 101, 15, 37, 82, 141, 165, 40]
+      "discriminator": [
+        204,
+        101,
+        15,
+        37,
+        82,
+        141,
+        165,
+        40
+      ]
     }
   ],
   "events": [
     {
       "name": "CampaignCreated",
-      "discriminator": [9, 98, 69, 61, 53, 131, 64, 152]
-    },
-    {
-      "name": "ContributionReceived",
-      "discriminator": [44, 213, 88, 200, 186, 42, 248, 117]
+      "discriminator": [
+        9,
+        98,
+        69,
+        61,
+        53,
+        131,
+        64,
+        152
+      ]
     },
     {
       "name": "CampaignFunded",
-      "discriminator": [46, 83, 210, 201, 110, 227, 24, 212]
+      "discriminator": [
+        46,
+        83,
+        210,
+        201,
+        110,
+        227,
+        24,
+        212
+      ]
     },
     {
-      "name": "StateMatched",
-      "discriminator": [165, 95, 194, 126, 113, 64, 40, 66]
+      "name": "ContributionReceived",
+      "discriminator": [
+        44,
+        213,
+        88,
+        200,
+        186,
+        42,
+        248,
+        117
+      ]
     },
     {
       "name": "RefundExecuted",
-      "discriminator": [185, 181, 113, 76, 125, 111, 112, 24]
+      "discriminator": [
+        185,
+        181,
+        113,
+        76,
+        125,
+        111,
+        112,
+        24
+      ]
+    },
+    {
+      "name": "StateMatched",
+      "discriminator": [
+        165,
+        95,
+        194,
+        126,
+        113,
+        64,
+        40,
+        66
+      ]
     }
   ],
   "errors": [
-    {"code": 6000, "name": "Overflow", "msg": "Arithmetic overflow"},
-    {"code": 6001, "name": "CampaignNotActive", "msg": "Campaign is not in active state"},
-    {"code": 6002, "name": "DeadlinePassed", "msg": "Campaign deadline has passed"},
-    {"code": 6003, "name": "DeadlineNotPassed", "msg": "Campaign deadline has not passed yet"},
-    {"code": 6004, "name": "AmountTooLow", "msg": "Contribution below minimum (500 tenge)"},
-    {"code": 6005, "name": "AmountTooHigh", "msg": "Contribution above maximum (500000 tenge)"},
-    {"code": 6006, "name": "TargetNotReached", "msg": "Citizen target has not been reached"},
-    {"code": 6007, "name": "TargetAlreadyReached", "msg": "Citizen target already reached"},
-    {"code": 6008, "name": "AlreadyMatched", "msg": "State funds already deposited"},
-    {"code": 6009, "name": "NotMatched", "msg": "State has not matched funds yet"},
-    {"code": 6010, "name": "InvalidCategory", "msg": "Invalid campaign category"},
-    {"code": 6011, "name": "InvalidString", "msg": "Invalid string length"},
-    {"code": 6012, "name": "InvalidRefundAccounts", "msg": "Invalid refund remaining accounts"}
+    {
+      "code": 6000,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6001,
+      "name": "CampaignNotActive",
+      "msg": "Campaign is not in active state"
+    },
+    {
+      "code": 6002,
+      "name": "DeadlinePassed",
+      "msg": "Campaign deadline has passed"
+    },
+    {
+      "code": 6003,
+      "name": "DeadlineNotPassed",
+      "msg": "Campaign deadline has not passed yet"
+    },
+    {
+      "code": 6004,
+      "name": "AmountTooLow",
+      "msg": "Contribution below minimum (500 tenge)"
+    },
+    {
+      "code": 6005,
+      "name": "AmountTooHigh",
+      "msg": "Contribution above maximum (500000 tenge)"
+    },
+    {
+      "code": 6006,
+      "name": "TargetNotReached",
+      "msg": "Citizen target has not been reached"
+    },
+    {
+      "code": 6007,
+      "name": "TargetAlreadyReached",
+      "msg": "Citizen target already reached"
+    },
+    {
+      "code": 6008,
+      "name": "AlreadyMatched",
+      "msg": "State funds already deposited"
+    },
+    {
+      "code": 6009,
+      "name": "NotMatched",
+      "msg": "State has not matched funds yet"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidCategory",
+      "msg": "Invalid campaign category"
+    }
   ],
   "types": [
     {
@@ -270,11 +555,93 @@
       "type": {
         "kind": "enum",
         "variants": [
-          {"name": "Playground"},
-          {"name": "School"},
-          {"name": "Roads"},
-          {"name": "Landscaping"},
-          {"name": "Commercial"}
+          {
+            "name": "Playground"
+          },
+          {
+            "name": "School"
+          },
+          {
+            "name": "Roads"
+          },
+          {
+            "name": "Landscaping"
+          },
+          {
+            "name": "Commercial"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CampaignCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "target_amount",
+            "type": "u64"
+          },
+          {
+            "name": "citizen_target",
+            "type": "u64"
+          },
+          {
+            "name": "state_match",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CampaignEscrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CampaignFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "citizen_raised",
+            "type": "u64"
+          },
+          {
+            "name": "citizen_target",
+            "type": "u64"
+          }
         ]
       }
     },
@@ -283,77 +650,24 @@
       "type": {
         "kind": "enum",
         "variants": [
-          {"name": "Active"},
-          {"name": "Funded"},
-          {"name": "Matched"},
-          {"name": "InProgress"},
-          {"name": "Completed"},
-          {"name": "Expired"}
-        ]
-      }
-    },
-    {
-      "name": "CrowdfundingCampaignAccount",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {"name": "creator", "type": "pubkey"},
-          {"name": "title", "type": "string"},
-          {"name": "description", "type": "string"},
-          {"name": "district", "type": "string"},
-          {"name": "category", "type": {"defined": {"name": "CampaignCategory"}}},
-          {"name": "status", "type": {"defined": {"name": "CampaignStatus"}}},
-          {"name": "target_amount", "type": "u64"},
-          {"name": "citizen_target", "type": "u64"},
-          {"name": "state_match", "type": "u64"},
-          {"name": "citizen_raised", "type": "u64"},
-          {"name": "state_deposited", "type": "bool"},
-          {"name": "donor_count", "type": "u32"},
-          {"name": "deadline", "type": "i64"},
-          {"name": "lat", "type": "f64"},
-          {"name": "lng", "type": "f64"},
-          {"name": "contract_pubkey", "type": {"option": "pubkey"}},
-          {"name": "created_at", "type": "i64"},
-          {"name": "bump", "type": "u8"}
-        ]
-      }
-    },
-    {
-      "name": "CampaignEscrow",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "total_deposited", "type": "u64"},
-          {"name": "bump", "type": "u8"}
-        ]
-      }
-    },
-    {
-      "name": "DonorRecord",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {"name": "donor", "type": "pubkey"},
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "amount", "type": "u64"},
-          {"name": "anonymous", "type": "bool"},
-          {"name": "created_at", "type": "i64"},
-          {"name": "bump", "type": "u8"}
-        ]
-      }
-    },
-    {
-      "name": "CampaignCreated",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "creator", "type": "pubkey"},
-          {"name": "title", "type": "string"},
-          {"name": "target_amount", "type": "u64"},
-          {"name": "citizen_target", "type": "u64"},
-          {"name": "state_match", "type": "u64"}
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "Matched"
+          },
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Completed"
+          },
+          {
+            "name": "Expired"
+          }
         ]
       }
     },
@@ -362,33 +676,148 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "donor", "type": "pubkey"},
-          {"name": "amount", "type": "u64"},
-          {"name": "total_raised", "type": "u64"},
-          {"name": "donor_count", "type": "u32"}
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "donor",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_raised",
+            "type": "u64"
+          },
+          {
+            "name": "donor_count",
+            "type": "u32"
+          }
         ]
       }
     },
     {
-      "name": "CampaignFunded",
+      "name": "CrowdfundingCampaignAccount",
       "type": {
         "kind": "struct",
         "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "citizen_raised", "type": "u64"},
-          {"name": "citizen_target", "type": "u64"}
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": {
+              "defined": {
+                "name": "CampaignCategory"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "CampaignStatus"
+              }
+            }
+          },
+          {
+            "name": "target_amount",
+            "type": "u64"
+          },
+          {
+            "name": "citizen_target",
+            "type": "u64"
+          },
+          {
+            "name": "state_match",
+            "type": "u64"
+          },
+          {
+            "name": "citizen_raised",
+            "type": "u64"
+          },
+          {
+            "name": "state_deposited",
+            "type": "bool"
+          },
+          {
+            "name": "donor_count",
+            "type": "u32"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "lat",
+            "type": "f64"
+          },
+          {
+            "name": "lng",
+            "type": "f64"
+          },
+          {
+            "name": "contract_pubkey",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
     {
-      "name": "StateMatched",
+      "name": "DonorRecord",
       "type": {
         "kind": "struct",
         "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "state_amount", "type": "u64"},
-          {"name": "total_funds", "type": "u64"}
+          {
+            "name": "donor",
+            "type": "pubkey"
+          },
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "anonymous",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
@@ -397,9 +826,38 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {"name": "campaign", "type": "pubkey"},
-          {"name": "total_refunded", "type": "u64"},
-          {"name": "donor_count", "type": "u32"}
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_refunded",
+            "type": "u64"
+          },
+          {
+            "name": "donor_count",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StateMatched",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "state_amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_funds",
+            "type": "u64"
+          }
         ]
       }
     }

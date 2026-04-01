@@ -75,7 +75,7 @@ jobs:
       - name: Verify program id matches expected
         shell: bash
         run: |
-          EXPECTED="CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ"
+          EXPECTED="3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj"
           ACTUAL="$(solana-keygen pubkey target/deploy/crowdfunding-keypair.json)"
           if [ "$EXPECTED" != "$ACTUAL" ]; then
             echo "Program keypair mismatch. Expected $EXPECTED, got $ACTUAL"
@@ -88,7 +88,7 @@ jobs:
 
       - name: Confirm deployed program
         shell: bash
-        run: solana program show CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ --url "${{ inputs.cluster }}"
+        run: solana program show 3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj --url "${{ inputs.cluster }}"
 
       - name: Sync IDL to frontend path
         if: ${{ inputs.sync_idl == 'true' }}

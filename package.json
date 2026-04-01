@@ -21,7 +21,10 @@
     "test:e2e:agent:bg": "tsx scripts/ai-playwright-agent.ts --background",
     "test:e2e:server": "PLAYWRIGHT_SKIP_WEBSERVER=1 CI=1 playwright test",
     "seed:devnet": "tsx scripts/seed-devnet.ts",
-    "idl:verify": "node scripts/verify-crowdfunding-idl.mjs"
+    "idl:verify": "node scripts/verify-crowdfunding-idl.mjs",
+    "crowdfunding:keypair": "node scripts/generate-crowdfunding-keypair.mjs",
+    "crowdfunding:sync-id": "node scripts/sync-crowdfunding-program-id.mjs",
+    "crowdfunding:deploy": "bash scripts/deploy-crowdfunding-devnet.sh"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
