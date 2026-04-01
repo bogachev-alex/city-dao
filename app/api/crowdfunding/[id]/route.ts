@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { DEMO_CAMPAIGNS } from '@/lib/crowdfunding'
 
 export const dynamic = 'force-dynamic'
+
+function findDemoCampaign(id: string) {
+  return DEMO_CAMPAIGNS.find((c) => c.id === id) || null
+}
 
 // GET /api/crowdfunding/[id] — campaign detail with contributions
 export async function GET(
@@ -24,11 +29,16 @@ export async function GET(
     },
   })
 
-  if (!campaign) {
-    return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+  if (campaign) {
+    return NextResponse.json(campaign)
   }
 
-  return NextResponse.json(campaign)
+  const demo = findDemoCampaign(id)
+  if (demo) {
+    return NextResponse.json(demo)
+  }
+
+  return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 }
 
 // POST /api/crowdfunding/[id] — contribute to a campaign
