@@ -17,7 +17,10 @@ export async function GET(
       contractor: true,
       milestones: { orderBy: { sortOrder: 'asc' } },
       jurySessions: {
-        include: { votes: { include: { citizen: { select: { id: true, walletAddress: true, tier: true } } } } },
+        include: {
+          milestone: { select: { id: true, description: true } },
+          votes: { include: { citizen: { select: { id: true, walletAddress: true, tier: true } } } },
+        },
         orderBy: { createdAt: 'desc' },
       },
       penalties: { orderBy: { createdAt: 'desc' } },

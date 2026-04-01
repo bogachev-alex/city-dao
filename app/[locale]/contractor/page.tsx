@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
+import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
+import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import { formatTengeWithCrypto } from '@/lib/contracts'
 
 type Milestone = {
   id: string
   status: string
   description: string
+  sortOrder: number
 }
 
 type ApiContract = {
@@ -19,6 +22,7 @@ type ApiContract = {
   status: string
   deadline: string
   totalAmount: string | bigint
+  onChainPubkey?: string | null
   milestones: Milestone[]
 }
 
@@ -35,6 +39,7 @@ type ApiWorkLog = {
 type ContractorPayload = {
   id: string
   name: string
+  walletAddress?: string | null
   rating: string
   reputationScore: number
   onTimeRate: number
@@ -71,6 +76,30 @@ export default function ContractorCabinetPage() {
   const [data, setData] = useState<ContractorPayload | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
+  const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+
+  const loadContractor = useCallback(async () => {
+    if (!user || user.role !== 'CONTRACTOR') return
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const r = await fetch(`/api/contractors?id=${encodeURIComponent(user.id)}`, {
+        headers: { ...authHeader() },
+      })
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'not_found')
+      }
+      const json = (await r.json()) as ContractorPayload
+      setData(json)
+    } catch {
+      setLoadError('not_found')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, authHeader])
 
   useEffect(() => {
     if (authLoading) return
@@ -82,26 +111,8 @@ export default function ContractorCabinetPage() {
       router.replace('/' as any)
       return
     }
-
-    setLoading(true)
-    setLoadError(null)
-    fetch(`/api/contractors?id=${encodeURIComponent(user.id)}`, {
-      headers: { ...authHeader() },
-    })
-      .then(async (r) => {
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}))
-          throw new Error(err.error || 'not_found')
-        }
-        return r.json()
-      })
-      .then((json: ContractorPayload) => setData(json))
-      .catch(() => {
-        setLoadError('not_found')
-        setData(null)
-      })
-      .finally(() => setLoading(false))
-  }, [user, authLoading, router, authHeader])
+    void loadContractor()
+  }, [user, authLoading, router, loadContractor])
 
   const stats = useMemo(() => {
     if (!data?.contracts) return null
@@ -288,6 +299,22 @@ export default function ContractorCabinetPage() {
             {t('actionsTitle')}
           </h2>
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setWorkLogModalOpen(true)}
+              disabled={!data.contracts.length}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 transition-colors border border-slate-600 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {t('addReport')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMilestoneModalOpen(true)}
+              disabled={!data.contracts.length}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {t('submitMilestone')}
+            </button>
             <Link
               href="/contracts"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
@@ -433,6 +460,27 @@ export default function ContractorCabinetPage() {
           )}
         </section>
       </div>
+
+      <WorkLogFormModal
+        open={workLogModalOpen}
+        onClose={() => setWorkLogModalOpen(false)}
+        contracts={data.contracts.map((c) => ({ id: c.id, title: c.title }))}
+        authHeader={authHeader}
+        onSuccess={() => void loadContractor()}
+      />
+      <MilestoneSubmitModal
+        open={milestoneModalOpen}
+        onClose={() => setMilestoneModalOpen(false)}
+        contracts={data.contracts.map((c) => ({
+          id: c.id,
+          title: c.title,
+          onChainPubkey: c.onChainPubkey,
+          milestones: c.milestones,
+        }))}
+        contractorWalletAddress={data.walletAddress}
+        authHeader={authHeader}
+        onSuccess={() => void loadContractor()}
+      />
     </div>
   )
 }

@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   Contract,
+  Milestone,
   getContractById,
   getDaysUntilDeadline,
   getMilestoneCompletedCount,
@@ -17,15 +18,47 @@ import { fetchContract } from '@/lib/api'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
 import { useAuth } from '@/components/AuthContext'
+import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
+import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
+
+function milestoneStatusForApi(m: Milestone): string {
+  const map: Record<Milestone['status'], string> = {
+    pending: 'PENDING',
+    submitted: 'SUBMITTED',
+    under_review: 'UNDER_REVIEW',
+    accepted: 'ACCEPTED',
+    rejected: 'REJECTED',
+    overdue: 'OVERDUE',
+  }
+  return map[m.status] || 'PENDING'
+}
 
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
   const t = useTranslations('contractDetail')
   const locale = useLocale()
-  const { user } = useAuth()
+  const { user, authHeader } = useAuth()
   const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
+  const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
+  const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+
+  const loadContract = useCallback(async () => {
+    if (!params.id) return
+    try {
+      const data = await fetchContract(params.id)
+      if (data && !data.error) {
+        setContract(normalizeContract(data))
+      } else {
+        const demo = getContractById(params.id)
+        setContract(demo || null)
+      }
+    } catch {
+      const demo = getContractById(params.id)
+      setContract(demo || null)
+    }
+  }, [params.id])
 
   const statusConfig = {
     active: { label: t('statusActive'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
@@ -36,22 +69,9 @@ export default function ContractDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-
-    fetchContract(params.id)
-      .then((data: any) => {
-        if (data && !data.error) {
-          setContract(normalizeContract(data))
-        } else {
-          const demo = getContractById(params.id)
-          setContract(demo || null)
-        }
-      })
-      .catch(() => {
-        const demo = getContractById(params.id)
-        setContract(demo || null)
-      })
-      .finally(() => setLoading(false))
-  }, [params.id])
+    setLoading(true)
+    void loadContract().finally(() => setLoading(false))
+  }, [params.id, loadContract])
 
   if (loading) {
     return (
@@ -93,6 +113,12 @@ export default function ContractDetailPage() {
   ]
 
   const activeReviewMilestone = contract.milestones.find((m) => m.status === 'under_review')
+
+  const isContractorView =
+    user?.role === 'CONTRACTOR' && !!contract.contractorId && user.id === contract.contractorId
+
+  const juryRejections =
+    contract.jurySessions?.filter((s) => s.result === 'REJECT' || s.result === 'reject') ?? []
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
@@ -207,6 +233,79 @@ export default function ContractDetailPage() {
                 </div>
               </div>
             </div>
+
+            {isContractorView && (
+              <div className="bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6 space-y-5">
+                <h2 className="text-gray-900 dark:text-white font-semibold">{t('contractorPanelTitle')}</h2>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('juryFeedbackTitle')}</h3>
+                  {juryRejections.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('noJuryFeedback')}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {juryRejections.map((s) => {
+                        const ms = contract.milestones.find((m) => m.id === s.milestoneId)
+                        const label = s.milestoneDescription || ms?.desc || s.milestoneId
+                        return (
+                          <li
+                            key={s.id}
+                            className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2"
+                          >
+                            {t('juryRejectLine', { milestone: label })}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('penaltyCountdownTitle')}</h3>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">
+                    {t('daysUntilDeadlineLabel')}:{' '}
+                    <span className={daysLeft < 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'font-semibold'}>
+                      {daysLeft}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t('penaltyAccrued', { count: contract.penalties?.length ?? 0 })}
+                  </p>
+                  {(contract.penalties?.length ?? 0) > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                      {contract.penalties!.slice(0, 5).map((p) => (
+                        <li key={p.id}>
+                          {t('penaltyLine', {
+                            type: p.type,
+                            amount: new Intl.NumberFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ').format(p.amountTenge),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('contractorActions')}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWorkLogModalOpen(true)}
+                      className="inline-flex px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+                    >
+                      {t('addReport')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMilestoneModalOpen(true)}
+                      className="inline-flex px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500"
+                    >
+                      {t('submitMilestone')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Milestone tracker */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
@@ -328,6 +427,38 @@ export default function ContractDetailPage() {
           </div>
         </div>
       </div>
+
+      {isContractorView && contract.contractorId && (
+        <>
+          <WorkLogFormModal
+            open={workLogModalOpen}
+            onClose={() => setWorkLogModalOpen(false)}
+            contracts={[{ id: contract.id, title: contract.title }]}
+            authHeader={authHeader}
+            onSuccess={() => void loadContract()}
+          />
+          <MilestoneSubmitModal
+            open={milestoneModalOpen}
+            onClose={() => setMilestoneModalOpen(false)}
+            contracts={[
+              {
+                id: contract.id,
+                title: contract.title,
+                onChainPubkey: contract.onChainPubkey,
+                milestones: contract.milestones.map((m) => ({
+                  id: m.id,
+                  description: m.desc,
+                  sortOrder: m.sortOrder ?? 0,
+                  status: milestoneStatusForApi(m),
+                })),
+              },
+            ]}
+            contractorWalletAddress={contract.contractorWalletAddress}
+            authHeader={authHeader}
+            onSuccess={() => void loadContract()}
+          />
+        </>
+      )}
     </div>
   )
 }

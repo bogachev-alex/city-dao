@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { PROGRAM_IDS } from './constants'
 import { getContractPDA, getEscrowPDA } from './pda'
 import idl from './idl/contract_registry.json'
 
@@ -96,9 +95,43 @@ export function useContractRegistry() {
     }
   }, [wallet.publicKey, getProgram])
 
+  /**
+   * Contractor submits milestone on-chain with IPFS evidence hash (see IDL submit_milestone).
+   */
+  const submitMilestone = useCallback(
+    async (contractPubkey: PublicKey, milestoneIndex: number, evidenceHash: string) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .submitMilestone(milestoneIndex, evidenceHash)
+          .accounts({
+            governmentContract: contractPubkey,
+            contractor: wallet.publicKey,
+          })
+          .rpc()
+
+        return tx
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'submit_milestone failed'
+        setError(msg)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey]
+  )
+
   return {
     registerContract,
     fetchContract,
+    submitMilestone,
     loading,
     error,
     connected: !!wallet.publicKey,

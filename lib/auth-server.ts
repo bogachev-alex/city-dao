@@ -3,6 +3,24 @@ import type { UserRole } from './auth'
 
 const VALID_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
+export type AuthPayload = { role: UserRole; id: string | null }
+
+/**
+ * Parses Authorization Bearer token (same shape as encodeAuthToken in lib/auth.ts).
+ */
+function parseBearerPayload(req: NextRequest): { role?: string; id?: string } | null {
+  const auth = req.headers.get('authorization')
+  if (!auth?.startsWith('Bearer ')) return null
+  try {
+    return JSON.parse(Buffer.from(auth.slice(7), 'base64').toString('utf8')) as {
+      role?: string
+      id?: string
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * Extracts the user role from the incoming request.
  * Checks (in order):
@@ -10,25 +28,35 @@ const VALID_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
  *  2. Authorization: Bearer <base64({role, id})> token
  */
 export function getRoleFromRequest(req: NextRequest): UserRole | null {
-  // 1. explicit header (simplest for tests / internal calls)
   const roleHeader = req.headers.get('x-user-role')
   if (roleHeader && VALID_ROLES.includes(roleHeader as UserRole)) {
     return roleHeader as UserRole
   }
 
-  // 2. Bearer token
-  const auth = req.headers.get('authorization')
-  if (auth?.startsWith('Bearer ')) {
-    try {
-      const payload = JSON.parse(
-        Buffer.from(auth.slice(7), 'base64').toString('utf8')
-      ) as { role?: string }
-      if (payload.role && VALID_ROLES.includes(payload.role as UserRole)) {
-        return payload.role as UserRole
-      }
-    } catch {
-      // malformed token — fall through
+  const payload = parseBearerPayload(req)
+  if (payload?.role && VALID_ROLES.includes(payload.role as UserRole)) {
+    return payload.role as UserRole
+  }
+
+  return null
+}
+
+/**
+ * Full auth payload including user id (contractor / citizen DB id or demo id).
+ * Prefer Bearer token so id is always available for ownership checks.
+ */
+export function getAuthPayload(req: NextRequest): AuthPayload | null {
+  const bearer = parseBearerPayload(req)
+  if (bearer?.role && VALID_ROLES.includes(bearer.role as UserRole)) {
+    return {
+      role: bearer.role as UserRole,
+      id: typeof bearer.id === 'string' ? bearer.id : null,
     }
+  }
+
+  const roleHeader = req.headers.get('x-user-role')
+  if (roleHeader && VALID_ROLES.includes(roleHeader as UserRole)) {
+    return { role: roleHeader as UserRole, id: null }
   }
 
   return null

@@ -101,7 +101,18 @@
     "statusActive": "Активный",
     "statusPenalized": "Штраф",
     "statusCompleted": "Завершён",
-    "statusDisputed": "Спор"
+    "statusDisputed": "Спор",
+    "contractorPanelTitle": "Управление контрактом (подрядчик)",
+    "juryFeedbackTitle": "Замечания жюри",
+    "juryRejectLine": "Этап отклонён: {milestone}",
+    "noJuryFeedback": "Отклонений жюри по этому контракту нет.",
+    "penaltyCountdownTitle": "Сроки и штрафы",
+    "daysUntilDeadlineLabel": "Дней до дедлайна контракта",
+    "penaltyAccrued": "Начислено штрафов (записей): {count}",
+    "penaltyLine": "{type}: {amount} ₸",
+    "contractorActions": "Действия",
+    "addReport": "Добавить отчёт",
+    "submitMilestone": "Сдать этап"
   },
   "admin": {
     "contractRegistered": "Контракт зарегистрирован!",
@@ -213,7 +224,69 @@
     "toolLogEmpty": "Нет контрактов для привязки",
     "toolReputationTitle": "Репутация в реестре",
     "toolReputationBody": "Рейтинг и метрики видны заказчику и гражданам. Поддерживайте сроки и прозрачность обновлений.",
-    "toolReputationCta": "Смотреть контракты на карте"
+    "toolReputationCta": "Смотреть контракты на карте",
+    "addReport": "Добавить отчёт",
+    "submitMilestone": "Сдать этап",
+    "workLogForm": {
+      "title": "Новая запись в журнале",
+      "close": "Закрыть",
+      "noContracts": "Нет контрактов для привязки записи.",
+      "contract": "Контракт",
+      "type": "Тип записи",
+      "types": {
+        "DAILY_LOG": "Дневной отчёт",
+        "BLOCKER": "Блокер",
+        "MATERIAL_DELIVERY": "Поставка материалов",
+        "MILESTONE_CLAIM": "Заявка на этап"
+      },
+      "entryTitle": "Заголовок",
+      "entryTitlePlaceholder": "Кратко о событии",
+      "description": "Описание",
+      "descriptionPlaceholder": "Детали (необязательно)",
+      "completion": "% выполнения",
+      "optional": "необязательно",
+      "workers": "Рабочих на объекте",
+      "equipment": "Единиц техники",
+      "gpsHint": "Перед отправкой запрашивается геолокация для проверки (до 500 м от объекта). Можно отправить без GPS — тогда проверка не пройдёт.",
+      "gpsRefresh": "Обновить координаты",
+      "gpsOk": "Координаты: {lat}, {lng}",
+      "gpsError": "Геолокация: {message}",
+      "submit": "Отправить с GPS",
+      "submitWithoutGps": "Отправить без GPS",
+      "sending": "Отправка…",
+      "errorNoContract": "Выберите контракт",
+      "errorTitle": "Укажите заголовок",
+      "errorSubmit": "Не удалось сохранить запись"
+    },
+    "photoEvidence": {
+      "label": "Фото (IPFS)",
+      "hint": "Перетащите изображения сюда или нажмите для выбора",
+      "uploading": "Загрузка в IPFS…",
+      "count": "{current} / {max} файлов",
+      "maxFiles": "Не более {max} файлов",
+      "imagesOnly": "Только изображения",
+      "uploadFailed": "Не удалось загрузить"
+    },
+    "milestoneSubmit": {
+      "title": "Сдача этапа на проверку",
+      "close": "Закрыть",
+      "noContracts": "Нет контрактов.",
+      "noMilestones": "Нет этапов в статусе «ожидает» или «подан» для сдачи.",
+      "contract": "Контракт",
+      "milestone": "Этап",
+      "note": "Комментарий к материалам",
+      "notePlaceholder": "Необязательно",
+      "chainHint": "Контракт в блокчейне: после сохранения будет предложено подписать транзакцию submit_milestone.",
+      "connectWallet": "Подключите кошелёк (Phantom), чтобы отправить хэш доказательств в сеть.",
+      "lowSol": "Низкий баланс SOL (~{balance}). Рекомендуется не менее {min} SOL на комиссию.",
+      "walletMismatch": "Кошелёк не совпадает с привязанным к подрядчику ({expected}).",
+      "sending": "Отправка…",
+      "submit": "Сдать работу",
+      "errorPick": "Выберите контракт и этап",
+      "errorIndex": "Не удалось определить индекс этапа",
+      "errorApi": "Не удалось отправить заявку",
+      "errorChain": "Ошибка транзакции в блокчейне"
+    }
   },
   "akimatPage": {
     "badge": "Акимат города",
@@ -238,7 +311,11 @@
     "openContract": "Открыть",
     "loadErrorTitle": "Не удалось загрузить сводку",
     "loadErrorLead": "Проверьте подключение к серверу или повторите попытку.",
-    "retry": "Обновить страницу"
+    "retry": "Обновить страницу",
+    "blockersTitle": "Блокеры на объектах",
+    "blockersHint": "Записи типа «блокер» от подрядчиков по выбранному району (простой, материалы, документы).",
+    "blockersEmpty": "Нет записей-блокеров за выбранный район.",
+    "blockersDistrict": "Район"
   },
   "jury": {
     "citizensOnlyTitle": "Только для граждан-присяжных",

@@ -7,12 +7,33 @@ export interface Milestone {
   deadline_days: number
   tranche_pct: number
   status: MilestoneStatus
+  sortOrder?: number
+}
+
+export interface JurySessionSummary {
+  id: string
+  status: string
+  result: string | null
+  milestoneId: string
+  milestoneDescription?: string
+}
+
+export interface PenaltySummary {
+  id: string
+  type: string
+  amountTenge: number
+  daysOverdue?: number | null
+  createdAt?: string
 }
 
 export interface Contract {
   id: string
   title: string
   contractor: string
+  /** Prisma contractor id — for matching logged-in contractor */
+  contractorId?: string
+  contractorWalletAddress?: string | null
+  onChainPubkey?: string | null
   amount_usdc: number
   deadline: string
   district: string
@@ -23,6 +44,8 @@ export interface Contract {
   penalty_amount: number
   days_overdue?: number
   milestones: Milestone[]
+  jurySessions?: JurySessionSummary[]
+  penalties?: PenaltySummary[]
   /** Goszakup.gov.kz registry number (ЕГЗ) */
   registryNumber?: string
   /** Customer / заказчик (as on the national portal) */
@@ -155,12 +178,18 @@ export function normalizeContract(c: any): Contract {
   const signed =
     c.signedAt ||
     (c.startDate ? (typeof c.startDate === 'string' ? c.startDate : new Date(c.startDate).toISOString()) : undefined)
+  const penaltiesRaw = c.penalties || []
+  const juryRaw = c.jurySessions || []
+
   return {
     id: c.id,
     title: c.title,
     contractor: c.contractor?.name || c.contractor || '',
+    contractorId: c.contractor?.id,
+    contractorWalletAddress: c.contractor?.walletAddress ?? null,
+    onChainPubkey: c.onChainPubkey ?? null,
     amount_usdc: Number(c.totalAmount || c.amount_usdc || 0),
-    deadline: c.deadline,
+    deadline: typeof c.deadline === 'string' ? c.deadline : new Date(c.deadline).toISOString(),
     district: c.district,
     status: CONTRACT_STATUS_MAP[c.status] || 'active',
     lat: c.lat,
@@ -178,6 +207,21 @@ export function normalizeContract(c: any): Contract {
       deadline_days: m.deadlineDays || m.deadline_days,
       tranche_pct: m.tranchePct || m.tranche_pct,
       status: MILESTONE_STATUS_MAP[m.status] || 'pending',
+      sortOrder: m.sortOrder ?? 0,
+    })),
+    jurySessions: juryRaw.map((s: any) => ({
+      id: s.id,
+      status: s.status,
+      result: s.result ?? null,
+      milestoneId: s.milestoneId,
+      milestoneDescription: s.milestone?.description,
+    })),
+    penalties: penaltiesRaw.map((p: any) => ({
+      id: p.id,
+      type: p.type,
+      amountTenge: typeof p.amountTenge === 'bigint' ? Number(p.amountTenge) : Number(p.amountTenge || 0),
+      daysOverdue: p.daysOverdue ?? null,
+      createdAt: p.createdAt ? (typeof p.createdAt === 'string' ? p.createdAt : new Date(p.createdAt).toISOString()) : undefined,
     })),
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
@@ -29,11 +29,27 @@ type Overview = {
 export default function AkimatCabinetPage() {
   const t = useTranslations('akimatPage')
   const locale = useLocale()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, authHeader } = useAuth()
   const router = useRouter()
   const [data, setData] = useState<Overview | null>(null)
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [blockers, setBlockers] = useState<
+    Array<{
+      id: string
+      title: string
+      createdAt: string
+      description: string | null
+      contract: { id: string; title: string; district: string }
+      contractor: { id: string; name: string }
+    }>
+  >([])
+  const [blockersDistrict, setBlockersDistrict] = useState<string>('')
+
+  const districtOptions = useMemo(() => {
+    if (!data?.treasuries?.length) return ['Ауэзовский', 'Медеуский', 'Бостандыкский']
+    return data.treasuries.map((t) => t.district)
+  }, [data])
 
   useEffect(() => {
     if (authLoading) return
@@ -60,6 +76,23 @@ export default function AkimatCabinetPage() {
       })
       .finally(() => setLoading(false))
   }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (!data?.treasuries?.length || blockersDistrict) return
+    setBlockersDistrict(data.treasuries[0].district)
+  }, [data, blockersDistrict])
+
+  useEffect(() => {
+    if (!user || user.role !== 'AKIMAT') return
+    const d = blockersDistrict || data?.treasuries?.[0]?.district
+    if (!d) return
+    fetch(`/api/work-logs?type=BLOCKER&district=${encodeURIComponent(d)}`, {
+      headers: { ...authHeader() },
+    })
+      .then(async (r) => (r.ok ? r.json() : []))
+      .then((json) => setBlockers(Array.isArray(json) ? json : []))
+      .catch(() => setBlockers([]))
+  }, [user, blockersDistrict, data?.treasuries, authHeader])
 
   if (authLoading || loading) {
     return (
@@ -165,6 +198,62 @@ export default function AkimatCabinetPage() {
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 max-w-2xl">{t('actionsHint')}</p>
+        </section>
+
+        <section>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('blockersTitle')}</h2>
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('blockersDistrict')}</span>
+              <select
+                value={blockersDistrict || districtOptions[0] || ''}
+                onChange={(e) => setBlockersDistrict(e.target.value)}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
+              >
+                {districtOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{t('blockersHint')}</p>
+          {blockers.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+              {t('blockersEmpty')}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {blockers.map((b) => (
+                <div
+                  key={b.id}
+                  className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/40 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                >
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{b.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {b.contract.title} · {b.contract.district} · {b.contractor.name}
+                    </div>
+                    {b.description && (
+                      <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{b.description}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-gray-400">
+                      {new Date(b.createdAt).toLocaleString(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                    <Link href={`/contracts/${b.contract.id}`} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                      {t('openContract')}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section>

@@ -101,7 +101,18 @@
     "statusActive": "Белсенді",
     "statusPenalized": "Айыппұл",
     "statusCompleted": "Аяқталған",
-    "statusDisputed": "Дау"
+    "statusDisputed": "Дау",
+    "contractorPanelTitle": "Келісімшартты басқару (мердігер)",
+    "juryFeedbackTitle": "Жюри ескертулері",
+    "juryRejectLine": "Кезең қабылданбады: {milestone}",
+    "noJuryFeedback": "Бұл келісімшарт бойынша жюри қабылдамағаны жоқ.",
+    "penaltyCountdownTitle": "Мерзімдер мен айыппұл",
+    "daysUntilDeadlineLabel": "Келісімшарт дедлайнына дейін күн",
+    "penaltyAccrued": "Есептелген айыппұл жазбалары: {count}",
+    "penaltyLine": "{type}: {amount} ₸",
+    "contractorActions": "Әрекеттер",
+    "addReport": "Есеп қосу",
+    "submitMilestone": "Кезеңді тапсыру"
   },
   "admin": {
     "contractRegistered": "Келісімшарт тіркелді!",
@@ -213,7 +224,69 @@
     "toolLogEmpty": "Байланыстыруға келісімшарт жоқ",
     "toolReputationTitle": "Тізілімдегі бедел",
     "toolReputationBody": "Рейтинг пен метрикаларды тапсырыс беруші және азаматтар көреді. Мерзімдер мен ашық жаңартуларды сақтаңыз.",
-    "toolReputationCta": "Картадағы келісімшарттар"
+    "toolReputationCta": "Картадағы келісімшарттар",
+    "addReport": "Есеп қосу",
+    "submitMilestone": "Кезеңді тапсыру",
+    "workLogForm": {
+      "title": "Журналға жаңа жазба",
+      "close": "Жабу",
+      "noContracts": "Жазбаны байланыстыруға келісімшарт жоқ.",
+      "contract": "Келісімшарт",
+      "type": "Жазба түрі",
+      "types": {
+        "DAILY_LOG": "Күнделікті есеп",
+        "BLOCKER": "Кедергі",
+        "MATERIAL_DELIVERY": "Материал жеткізу",
+        "MILESTONE_CLAIM": "Кезеңді талап ету"
+      },
+      "entryTitle": "Тақырып",
+      "entryTitlePlaceholder": "Қысқаша",
+      "description": "Сипаттама",
+      "descriptionPlaceholder": "Толығырақ (міндетті емес)",
+      "completion": "Орындалу %",
+      "optional": "міндетті емес",
+      "workers": "Нысандағы жұмысшылар",
+      "equipment": "Техника бірлігі",
+      "gpsHint": "Жібермес бұрын геолокация сұралады (объектіден 500 м дейін). GPS жоқ жіберсеңіз — тексеру өтпейді.",
+      "gpsRefresh": "Координаталарды жаңарту",
+      "gpsOk": "Координаталар: {lat}, {lng}",
+      "gpsError": "Геолокация: {message}",
+      "submit": "GPS-пен жіберу",
+      "submitWithoutGps": "GPS-сіз жіберу",
+      "sending": "Жіберілуде…",
+      "errorNoContract": "Келісімшартты таңдаңыз",
+      "errorTitle": "Тақырыпты енгізіңіз",
+      "errorSubmit": "Сақтау сәтсіз аяқталды"
+    },
+    "photoEvidence": {
+      "label": "Фото (IPFS)",
+      "hint": "Суреттерді сүйреңіз немесе таңдау үшін басыңыз",
+      "uploading": "IPFS-ке жүктелуде…",
+      "count": "{current} / {max} файл",
+      "maxFiles": "Ең көбі {max} файл",
+      "imagesOnly": "Тек суреттер",
+      "uploadFailed": "Жүктеу сәтсіз"
+    },
+    "milestoneSubmit": {
+      "title": "Кезеңді тексеруге жіберу",
+      "close": "Жабу",
+      "noContracts": "Келісімшарт жоқ.",
+      "noMilestones": "Тапсыруға «күтуде» немесе «жіберілген» кезең жоқ.",
+      "contract": "Келісімшарт",
+      "milestone": "Кезең",
+      "note": "Материалдарға пікір",
+      "notePlaceholder": "Міндетті емес",
+      "chainHint": "Блокчейндегі келісімшарт: сақтағаннан кейін submit_milestone транзакциясын қол қою ұсынылады.",
+      "connectWallet": "Желідегі дәлел хэшін жіберу үшін әмиянды (Phantom) қосыңыз.",
+      "lowSol": "SOL балансы төмен (~{balance}). Комиссия үшін кемінде {min} SOL ұсынылады.",
+      "walletMismatch": "Әмиян мердігерге байланғанымен сәйкес келмейді ({expected}).",
+      "sending": "Жіберілуде…",
+      "submit": "Жұмысты тапсыру",
+      "errorPick": "Келісімшарт пен кезеңді таңдаңыз",
+      "errorIndex": "Кезең индексін анықтау мүмкін емес",
+      "errorApi": "Өтініш жіберілмеді",
+      "errorChain": "Блокчейн транзакциясы қатесі"
+    }
   },
   "akimatPage": {
     "badge": "Қала әкімдігі",
@@ -238,7 +311,11 @@
     "openContract": "Ашу",
     "loadErrorTitle": "Қорытынды жүктелмеді",
     "loadErrorLead": "Сервер байланысын тексеріңіз немесе қайталаңыз.",
-    "retry": "Жаңарту"
+    "retry": "Жаңарту",
+    "blockersTitle": "Нысандағы кедергілер",
+    "blockersHint": "Таңдалған аудан бойынша мердігерлердің «кедергі» жазбалары (тоқтау, материалдар, құжаттар).",
+    "blockersEmpty": "Таңдалған аудан бойынша кедергі жазбалары жоқ.",
+    "blockersDistrict": "Аудан"
   },
   "jury": {
     "citizensOnlyTitle": "Тек азамат-алқабилер үшін",
