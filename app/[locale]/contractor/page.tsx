@@ -8,6 +8,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
+import OnChainLink from '@/components/OnChainLink'
 import { formatTengeWithCrypto } from '@/lib/contracts'
 
 type Milestone = {
@@ -562,12 +563,19 @@ export default function ContractorCabinetPage() {
                         <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <Link
-                      href={`/contracts/${c.id}`}
-                      className="inline-flex text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-                    >
-                      {t('openContract')} →
-                    </Link>
+                    <div className="flex items-center gap-4">
+                      <Link
+                        href={`/contracts/${c.id}`}
+                        className="inline-flex text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                      >
+                        {t('openContract')} →
+                      </Link>
+                      <OnChainLink
+                        address={c.onChainPubkey}
+                        label={t('openOnChain')}
+                        className="inline-flex text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                      />
+                    </div>
                   </div>
                 )
               })}

@@ -14,6 +14,7 @@ import { fetchContracts } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import ContractCard from '@/components/ContractCard'
+import ExternalLink from '@/components/ExternalLink'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
 
@@ -141,17 +142,12 @@ export default function ContractsPage() {
               <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
                 {t('subtitle')}
               </p>
-              <a
+              <ExternalLink
                 href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                label={t('goszakupReference')}
+                withIcon
                 className="inline-flex items-center gap-1.5 mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
-              >
-                {t('goszakupReference')}
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                </svg>
-              </a>
+              />
             </div>
             <div className="flex gap-3">
               {[
