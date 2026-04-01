@@ -33,7 +33,7 @@ export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
   const { connection } = useConnection()
-  const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+  const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
   const { login, logout } = useAuth()
 
   const handleConnect = useCallback(() => {
@@ -167,18 +167,31 @@ export default function CitizenRegistration() {
         return
       }
 
-      const hashBytes = new Uint8Array(32)
-      for (let i = 0; i < 32; i++) {
-        hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+      const existingOnChainProfile = await fetchCitizenProfile()
+      if (existingOnChainProfile) {
+        setOnChain(true)
+        setRegInfo('On-chain профиль для этого кошелька уже существует. Используем существующую регистрацию.')
+      } else {
+        const hashBytes = new Uint8Array(32)
+        for (let i = 0; i < 32; i++) {
+          hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+        }
+        const result = await registerCitizen(district, hashBytes)
+        setTxSignature(result.tx)
+        setOnChain(true)
       }
-      const result = await registerCitizen(district, hashBytes)
-      setTxSignature(result.tx)
-      setOnChain(true)
     } catch (err: any) {
-      setOnChain(false)
-      setRegError(`On-chain регистрация не выполнена: ${err?.message || 'неизвестная ошибка'}`)
-      setStep('form')
-      return
+      const msg = String(err?.message || '')
+      const lowered = msg.toLowerCase()
+      if (lowered.includes('already in use') || lowered.includes('allocate: account') || lowered.includes('custom program error: 0x0')) {
+        setOnChain(true)
+        setRegInfo('On-chain профиль уже создан ранее для этого кошелька. Продолжаем регистрацию в БД.')
+      } else {
+        setOnChain(false)
+        setRegError(`On-chain регистрация не выполнена: ${msg || 'неизвестная ошибка'}`)
+        setStep('form')
+        return
+      }
     }
 
     try {
