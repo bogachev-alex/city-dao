@@ -95,6 +95,8 @@
     "signedAt": "Дата подписания",
     "goszakupOpen": "Открыть похожий фильтр на goszakup.gov.kz",
     "openOnChain": "Открыть контракт в Solana Explorer",
+    "onChainStatusLabel": "Статус в блокчейне",
+    "onChainMissing": "Контракт пока не опубликован в блокчейне (Solana).",
     "contractId": "ID контракта",
     "coordinates": "Координаты",
     "escrow20": "Эскроу (20%)",

@@ -242,16 +242,19 @@ export default function ContractDetailPage() {
                 </div>
               )}
 
-              {contract.onChainPubkey && (
-                <div className="mt-4">
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('onChainStatusLabel')}</div>
+                {contract.onChainPubkey ? (
                   <OnChainLink
                     address={contract.onChainPubkey}
                     label={t('openOnChain')}
                     withIcon
                     className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{t('onChainMissing')}</div>
+                )}
+              </div>
 
               {/* Progress */}
               <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">

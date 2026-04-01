@@ -95,6 +95,8 @@
     "signedAt": "Қол қойылған күні",
     "goszakupOpen": "goszakup.gov.kz порталындағы ұқсас сүзгі",
     "openOnChain": "Келісімшартты Solana Explorer-де ашу",
+    "onChainStatusLabel": "Блокчейндегі мәртебе",
+    "onChainMissing": "Келісімшарт әлі блокчейнге (Solana) жарияланбаған.",
     "contractId": "Келісімшарт ID",
     "coordinates": "Координаталар",
     "escrow20": "Эскроу (20%)",
