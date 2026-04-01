@@ -129,7 +129,11 @@ export default function TransactionFeed({
       .finally(() => setLoading(false))
 
     function demoItems(): TransactionFeedItem[] {
-      return DEMO_TRANSACTIONS.slice(0, maxItems).map((x) => ({
+      let pool = DEMO_TRANSACTIONS
+      if (district) {
+        pool = pool.filter((x) => !x.district || x.district === district)
+      }
+      return pool.slice(0, maxItems).map((x) => ({
         signature: x.signature,
         type: x.type,
         description: x.description,

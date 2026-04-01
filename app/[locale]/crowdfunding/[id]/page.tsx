@@ -193,11 +193,25 @@ export default function CampaignDetailPage({ params }: PageProps) {
     )
   }
 
-  const progress = getCampaignProgress(campaign)
-  const daysLeft = getDaysLeft(campaign.deadline)
-  const category = CATEGORY_CONFIG[campaign.category]
-  const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
-  const remaining = Math.max(0, campaign.citizen_target - campaign.citizen_raised)
+  const displayCampaign = useMemo(() => {
+    if (!onChainInfo || !campaign) return campaign
+    return {
+      ...campaign,
+      target_amount: Number(onChainInfo.targetAmount ?? onChainInfo.target_amount ?? campaign.target_amount),
+      citizen_target: Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? campaign.citizen_target),
+      citizen_raised: Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? campaign.citizen_raised),
+      state_match: Number(onChainInfo.stateMatch ?? onChainInfo.state_match ?? campaign.state_match),
+      state_deposited: onChainInfo.stateDeposited ?? onChainInfo.state_deposited ?? campaign.state_deposited,
+      donor_count: Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? campaign.donor_count),
+      deadline: onChainInfo.deadline ? new Date(Number(onChainInfo.deadline) * 1000).toISOString() : campaign.deadline,
+    }
+  }, [campaign, onChainInfo])
+
+  const progress = getCampaignProgress(displayCampaign)
+  const daysLeft = getDaysLeft(displayCampaign.deadline)
+  const category = CATEGORY_CONFIG[displayCampaign.category]
+  const status = CAMPAIGN_STATUS_CONFIG[displayCampaign.status]
+  const remaining = Math.max(0, displayCampaign.citizen_target - displayCampaign.citizen_raised)
 
   const handleDonate = async () => {
     const amount = customAmount ? parseInt(customAmount) : donationAmount

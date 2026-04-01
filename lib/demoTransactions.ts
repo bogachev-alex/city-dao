@@ -16,6 +16,7 @@ export interface DemoTx {
   timestamp: Date
   amount?: number
   contractId?: string
+  district?: string
 }
 
 const now = Date.now()
@@ -36,6 +37,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(25),
     amount: 6000,
     contractId: '2',
+    district: 'Ауэзовский',
   },
   {
     signature: '2HxRtYmKbVqLpNsWfCjUeAoGdXzT5nE8iPrDyFwBuSg9cJvMkQ4aL3oZhN6rXtKpWeCfVnDqBsJuYmR7iLoPaT',
@@ -44,6 +46,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(42),
     amount: 11250,
     contractId: '1',
+    district: 'Медеуский',
   },
   {
     signature: '4nWqPmXaKjLsT8eVbNoCfHrDzIuGy2dR9kBwEpFgQxAc6oJvMtYiS3hZ7lNuK5rXeWfPsDqCvBnJmTaL1oRyHg',
@@ -51,12 +54,14 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     description: 'Этап: Укладка основания (на проверке)',
     timestamp: m(67),
     contractId: '1',
+    district: 'Медеуский',
   },
   {
     signature: '7aLpWqXmNjKsT2eRbVoCfDrHzIuGy5dR9kBwEpFgQxAc6oJvMtYiS3hZ4lNuK8rXeWfPsDqCvBnJmTaL0oRyHg',
     type: 'treasury_vote',
     description: 'Голосование: Ауэзовский, предложение #3',
     timestamp: m(95),
+    district: 'Ауэзовский',
   },
   {
     signature: '9bMpVqYnOkLrU3fScWpDgEsIvJtHz6eS0lCxFqGhRyBd7pKwNuZjT4iA5mOpXeVfQsDrCwAnKmTaL2nRyHgFpW',
@@ -71,6 +76,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(210),
     amount: 250000,
     contractId: '4',
+    district: 'Бостандыкский',
   },
   {
     signature: '1dOrXsApQmNtW5hUeYrFiGaKvLbJ8gU2nEzHsItCf9rMyPwBmV6kC7oQrZgXhStEuFwCoDoLvUbMaN4pTaJiHrW',
@@ -79,6 +85,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(285),
     amount: 380000,
     contractId: '3',
+    district: 'Наурызбайский',
   },
   {
     signature: '8ePoYtBrRnOuX6iVfZsGjHbLwMcK9hV3oFaItDuEg0sPxCnQ7lD8pRaYiWuFtGvHxEpDoDmWvCbNb5qUbKjIsX',
@@ -86,6 +93,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     description: 'Этап: Подготовительные работы принят (30%)',
     timestamp: m(340),
     contractId: '2',
+    district: 'Ауэзовский',
   },
   {
     signature: '2fQpZuCsSoRvY7jWgAhKiCmNxDdL0iW4pGbJuEvFh1tQyCqR8mE9qSbZjXvGuHwIqEpEnEoXwDcOc6rVcLkJtY',
@@ -94,6 +102,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(415),
     amount: 120000,
     contractId: '2',
+    district: 'Ауэзовский',
   },
   {
     signature: '3gRqAvDtTpSwZ8kXhBiLjDnOyEeM1jX5qHcKvFwGi2uRzDsS9nF0rTcAkYwHvIxJrFqFpFpYxEsDd7sWdMlKuZ',
@@ -102,6 +111,7 @@ export const DEMO_TRANSACTIONS: DemoTx[] = [
     timestamp: m(480),
     amount: 45000,
     contractId: '1',
+    district: 'Медеуский',
   },
 ]
 

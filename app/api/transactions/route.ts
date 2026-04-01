@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
     for (const tx of DEMO_TRANSACTIONS) {
       if (merged.length >= limit) break
       if (seen.has(tx.signature)) continue
+      if (district && tx.district && tx.district !== district) continue
       merged.push({
         signature: tx.signature,
         type: tx.type,
