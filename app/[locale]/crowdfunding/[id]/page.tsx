@@ -101,17 +101,26 @@ export default function CampaignDetailPage({ params }: PageProps) {
           return
         }
 
-        // 2. Fallback: derive PDA from creator_wallet + title
-        if (!campaign.creator_wallet) {
-          if (!cancelled) {
-            setOnChainInfo(null)
-            setOnChainInfoError(null)
+        // 2. Try deriving PDA from creator_wallet + title
+        let account: any = null
+        if (campaign.creator_wallet) {
+          try {
+            const creator = new PublicKey(campaign.creator_wallet)
+            account = await fetchCampaignAccount(creator, campaign.title)
+          } catch {
+            // invalid creator_wallet, try connected wallet below
           }
-          return
         }
 
-        const creator = new PublicKey(campaign.creator_wallet)
-        const account = await fetchCampaignAccount(creator, campaign.title)
+        // 3. Fallback: derive PDA from connected wallet + title
+        if (!account && publicKey) {
+          try {
+            account = await fetchCampaignAccount(publicKey, campaign.title)
+          } catch {
+            // connected wallet doesn't match any on-chain campaign
+          }
+        }
+
         if (!cancelled) {
           setOnChainInfo(account)
           setOnChainInfoError(null)
@@ -119,11 +128,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
       } catch {
         if (!cancelled) {
           setOnChainInfo(null)
-          setOnChainInfoError(
-            campaign.onChainPubkey
-              ? 'Не удалось прочитать аккаунт кампании on-chain. Проверьте, что используется devnet.'
-              : 'Некорректный кошелёк автора в данных кампании.',
-          )
+          setOnChainInfoError(null)
         }
       } finally {
         if (!cancelled) setOnChainChecked(true)
@@ -133,7 +138,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     return () => {
       cancelled = true
     }
-  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, fetchCampaignAccount, fetchCampaignAccountByAddress])
+  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, publicKey, fetchCampaignAccount, fetchCampaignAccountByAddress])
 
   if (holdUi) {
     return (
@@ -227,6 +232,11 @@ export default function CampaignDetailPage({ params }: PageProps) {
     }
     setPublishLoading(true)
     setPublishError(null)
+
+    const seedTitle = campaign.title.length > 32 ? campaign.title.slice(0, 32) : campaign.title
+    const [pda] = getCampaignPDA(publicKey, seedTitle)
+    const pdaStr = pda.toBase58()
+
     try {
       const deadlineTs = Math.floor(new Date(campaign.deadline).getTime() / 1000)
       const result = await createCampaignOnChain(
@@ -248,7 +258,19 @@ export default function CampaignDetailPage({ params }: PageProps) {
         // ignore transient fetch errors after publish
       }
     } catch (err: any) {
-      setPublishError(err?.message || 'Не удалось опубликовать кампанию в on-chain.')
+      const msg = err?.message || ''
+      if (msg.includes('already in use') || msg.includes('custom program error: 0x0')) {
+        try {
+          await updateCampaignStatus(campaign.id, 'set_onchain', { onChainPubkey: pdaStr })
+          setCampaign((prev) => (prev ? { ...prev, onChainPubkey: pdaStr } : prev))
+          const account = await fetchCampaignAccountByAddress(pdaStr)
+          setOnChainInfo(account)
+        } catch {
+          setPublishError('Аккаунт уже существует on-chain, но не удалось прочитать данные.')
+        }
+      } else {
+        setPublishError(msg || 'Не удалось опубликовать кампанию в on-chain.')
+      }
     } finally {
       setPublishLoading(false)
     }
