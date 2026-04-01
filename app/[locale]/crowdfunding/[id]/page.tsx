@@ -207,13 +207,25 @@ export default function CampaignDetailPage({ params }: PageProps) {
     let onChainTx: string | undefined
 
     if (walletConnected) {
-      const creatorWallet = campaign.creator_wallet || campaign.onChainPubkey
-      if (!creatorWallet) {
-        setDonateError('Кампания не опубликована on-chain')
-        return
-      }
       try {
-        const creatorPK = new PublicKey(creatorWallet)
+        let creatorPK: PublicKey
+
+        if (onChainInfo?.creator) {
+          creatorPK = new PublicKey(onChainInfo.creator)
+        } else if (campaign.creator_wallet) {
+          try {
+            creatorPK = new PublicKey(campaign.creator_wallet)
+          } catch {
+            setDonateError('Некорректный кошелёк автора кампании. Попробуйте обновить страницу.')
+            setDonated(false)
+            return
+          }
+        } else {
+          setDonateError('Кампания не опубликована on-chain')
+          setDonated(false)
+          return
+        }
+
         const lamports = tengeToLamports(amount)
         const result = await contributeOnChain(creatorPK, campaign.title, amount, lamports, false)
         onChainTx = result.tx
