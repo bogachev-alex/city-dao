@@ -47,6 +47,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     contribute: contributeOnChain,
     createCampaign: createCampaignOnChain,
     fetchCampaignAccount,
+    fetchCampaignAccountByAddress,
     getCampaignPDA,
     loading: solanaLoading,
   } = useCrowdfunding()
@@ -79,7 +80,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
   useEffect(() => {
     let cancelled = false
     const loadOnChain = async () => {
-      if (!campaign?.creator_wallet || !campaign?.title) {
+      if (!campaign?.title) {
         if (!cancelled) {
           setOnChainInfo(null)
           setOnChainInfoError(null)
@@ -88,21 +89,41 @@ export default function CampaignDetailPage({ params }: PageProps) {
         return
       }
       if (!cancelled) setOnChainChecked(false)
+
       try {
+        // 1. Prefer direct fetch by saved onChainPubkey (no PDA derivation needed)
+        if (campaign.onChainPubkey) {
+          const account = await fetchCampaignAccountByAddress(campaign.onChainPubkey)
+          if (!cancelled) {
+            setOnChainInfo(account)
+            setOnChainInfoError(null)
+          }
+          return
+        }
+
+        // 2. Fallback: derive PDA from creator_wallet + title
+        if (!campaign.creator_wallet) {
+          if (!cancelled) {
+            setOnChainInfo(null)
+            setOnChainInfoError(null)
+          }
+          return
+        }
+
         const creator = new PublicKey(campaign.creator_wallet)
         const account = await fetchCampaignAccount(creator, campaign.title)
         if (!cancelled) {
           setOnChainInfo(account)
-          setOnChainInfoError(
-            !account && campaign.onChainPubkey
-              ? 'Не удалось прочитать аккаунт кампании on-chain. Проверьте, что заголовок и кошелёк автора совпадают с транзакцией публикации и используется devnet.'
-              : null,
-          )
+          setOnChainInfoError(null)
         }
       } catch {
         if (!cancelled) {
           setOnChainInfo(null)
-          setOnChainInfoError('Некорректный кошелёк автора в данных кампании.')
+          setOnChainInfoError(
+            campaign.onChainPubkey
+              ? 'Не удалось прочитать аккаунт кампании on-chain. Проверьте, что используется devnet.'
+              : 'Некорректный кошелёк автора в данных кампании.',
+          )
         }
       } finally {
         if (!cancelled) setOnChainChecked(true)
@@ -112,7 +133,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     return () => {
       cancelled = true
     }
-  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, fetchCampaignAccount])
+  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, fetchCampaignAccount, fetchCampaignAccountByAddress])
 
   if (holdUi) {
     return (

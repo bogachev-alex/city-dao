@@ -297,6 +297,19 @@ export function useCrowdfunding() {
     [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA],
   )
 
+  // Fetch campaign account from chain by direct address (read-only)
+  const fetchCampaignAccountByAddress = useCallback(
+    async (address: string | PublicKey) => {
+      try {
+        const pubkey = typeof address === 'string' ? new PublicKey(address) : address
+        return await (readOnlyProgram.account as any).crowdfundingCampaignAccount.fetch(pubkey)
+      } catch {
+        return null
+      }
+    },
+    [readOnlyProgram],
+  )
+
   // Fetch campaign account from chain (read-only; does not require wallet connect)
   const fetchCampaignAccount = useCallback(
     async (creator: PublicKey, title: string) => {
@@ -317,6 +330,7 @@ export function useCrowdfunding() {
     refundAll,
     finalizeCampaign,
     fetchCampaignAccount,
+    fetchCampaignAccountByAddress,
     getCampaignPDA,
     getEscrowPDA,
     getDonorPDA,
