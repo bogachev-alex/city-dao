@@ -8,6 +8,11 @@
 #   node scripts/sync-crowdfunding-program-id.mjs
 #   git add/commit updated sources, backup target/deploy/crowdfunding-keypair.json and GitHub secret.
 #
+# Do NOT transfer SOL to the program id address before the first deploy: that creates a system
+# account and anchor deploy fails with "not an upgradeable program or already in use". The fee
+# payer is SOLANA_WALLET (or ~/.config/solana/id.json); it must hold ~2+ SOL on devnet. The program
+# keypair file only authorizes the program address; rent is paid from the fee payer.
+#
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
