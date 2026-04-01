@@ -50,21 +50,58 @@ export default function ContractDetailPage() {
   const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
 
+  const applyOnChainOverlay = useCallback(async (base: Contract): Promise<Contract> => {
+    if (!base.onChainPubkey) return base
+    try {
+      const onChain = await fetchContractOnChain(new PublicKey(base.onChainPubkey))
+      if (!onChain) return base
+
+      // Keep DB-centric identity/metadata, but show live operational fields from chain.
+      return {
+        ...base,
+        contractor: onChain.contractor || base.contractor,
+        amount_usdc: onChain.amount_usdc ?? base.amount_usdc,
+        deadline: onChain.deadline || base.deadline,
+        status: onChain.status || base.status,
+        lat: onChain.lat ?? base.lat,
+        lng: onChain.lng ?? base.lng,
+        escrow_amount: onChain.escrow_amount ?? base.escrow_amount,
+        penalty_amount: onChain.penalty_amount ?? base.penalty_amount,
+        days_overdue: onChain.days_overdue ?? base.days_overdue,
+        milestones: onChain.milestones?.length ? onChain.milestones : base.milestones,
+      }
+    } catch {
+      return base
+    }
+  }, [])
+
   const loadContract = useCallback(async () => {
     if (!params.id) return
     try {
       const data = await fetchContract(params.id)
       if (data && !data.error) {
-        setContract(normalizeContract(data))
+        const normalized = normalizeContract(data)
+        const withOnChain = await applyOnChainOverlay(normalized)
+        setContract(withOnChain)
       } else {
         const demo = getContractById(params.id)
-        setContract(demo || null)
+        if (!demo) {
+          setContract(null)
+          return
+        }
+        const withOnChain = await applyOnChainOverlay(demo)
+        setContract(withOnChain)
       }
     } catch {
       const demo = getContractById(params.id)
-      setContract(demo || null)
+      if (!demo) {
+        setContract(null)
+        return
+      }
+      const withOnChain = await applyOnChainOverlay(demo)
+      setContract(withOnChain)
     }
-  }, [params.id])
+  }, [applyOnChainOverlay, params.id])
 
   const statusConfig = {
     active: { label: t('statusActive'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
