@@ -164,6 +164,20 @@ export default function CampaignDetailPage({ params }: PageProps) {
     return () => { cancelled = true }
   }, [resolvedCampaignPda, fetchDonorRecords, donated])
 
+  const displayCampaign = useMemo(() => {
+    if (!onChainInfo || !campaign) return campaign
+    return {
+      ...campaign,
+      target_amount: Number(onChainInfo.targetAmount ?? onChainInfo.target_amount ?? campaign.target_amount),
+      citizen_target: Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? campaign.citizen_target),
+      citizen_raised: Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? campaign.citizen_raised),
+      state_match: Number(onChainInfo.stateMatch ?? onChainInfo.state_match ?? campaign.state_match),
+      state_deposited: onChainInfo.stateDeposited ?? onChainInfo.state_deposited ?? campaign.state_deposited,
+      donor_count: Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? campaign.donor_count),
+      deadline: onChainInfo.deadline ? new Date(Number(onChainInfo.deadline) * 1000).toISOString() : campaign.deadline,
+    }
+  }, [campaign, onChainInfo])
+
   if (holdUi) {
     return (
       <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -193,25 +207,12 @@ export default function CampaignDetailPage({ params }: PageProps) {
     )
   }
 
-  const displayCampaign = useMemo(() => {
-    if (!onChainInfo || !campaign) return campaign
-    return {
-      ...campaign,
-      target_amount: Number(onChainInfo.targetAmount ?? onChainInfo.target_amount ?? campaign.target_amount),
-      citizen_target: Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? campaign.citizen_target),
-      citizen_raised: Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? campaign.citizen_raised),
-      state_match: Number(onChainInfo.stateMatch ?? onChainInfo.state_match ?? campaign.state_match),
-      state_deposited: onChainInfo.stateDeposited ?? onChainInfo.state_deposited ?? campaign.state_deposited,
-      donor_count: Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? campaign.donor_count),
-      deadline: onChainInfo.deadline ? new Date(Number(onChainInfo.deadline) * 1000).toISOString() : campaign.deadline,
-    }
-  }, [campaign, onChainInfo])
-
-  const progress = getCampaignProgress(displayCampaign)
-  const daysLeft = getDaysLeft(displayCampaign.deadline)
-  const category = CATEGORY_CONFIG[displayCampaign.category]
-  const status = CAMPAIGN_STATUS_CONFIG[displayCampaign.status]
-  const remaining = Math.max(0, displayCampaign.citizen_target - displayCampaign.citizen_raised)
+  const dc = displayCampaign!
+  const progress = getCampaignProgress(dc)
+  const daysLeft = getDaysLeft(dc.deadline)
+  const category = CATEGORY_CONFIG[dc.category]
+  const status = CAMPAIGN_STATUS_CONFIG[dc.status]
+  const remaining = Math.max(0, dc.citizen_target - dc.citizen_raised)
 
   const handleDonate = async () => {
     const amount = customAmount ? parseInt(customAmount) : donationAmount
@@ -404,7 +405,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Общий бюджет проекта</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(displayCampaign.target_amount)}</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(dc.target_amount)}</span>
                 </div>
               </div>
 
@@ -413,7 +414,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Доля граждан ({100 - category.statePercent}%)</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {formatTenge(displayCampaign.citizen_raised)} / {formatTenge(displayCampaign.citizen_target)}
+                    {formatTenge(dc.citizen_raised)} / {formatTenge(dc.citizen_target)}
                   </span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -432,16 +433,16 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Гос. субсидия ({category.statePercent}%)</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(displayCampaign.state_match)}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(dc.state_match)}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${displayCampaign.state_deposited ? 'bg-emerald-500' : 'bg-gray-300'}`}
-                    style={{ width: displayCampaign.state_deposited ? '100%' : '0%' }}
+                    className={`h-full rounded-full transition-all duration-500 ${dc.state_deposited ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                    style={{ width: dc.state_deposited ? '100%' : '0%' }}
                   />
                 </div>
                 <div className="text-xs mt-1">
-                  {displayCampaign.state_deposited ? (
+                  {dc.state_deposited ? (
                     <span className="text-emerald-600 dark:text-emerald-400">Перечислено акиматом</span>
                   ) : progress >= 100 ? (
                     <span className="text-yellow-600 dark:text-yellow-400">Ожидает перечисления от акимата</span>
@@ -454,7 +455,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-gray-900 dark:text-white">{displayCampaign.donor_count}</div>
+                  <div className="text-lg font-bold text-gray-900 dark:text-white">{dc.donor_count}</div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">участников</div>
                 </div>
                 <div className="text-center">

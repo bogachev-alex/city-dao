@@ -66,7 +66,7 @@ export async function GET(
     balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
     pdaAddress,
     totalPenaltyIncome: (treasury.penalties ?? []).reduce((s, p) => s + Number(p.amountTenge), 0),
-    proposals: treasury.proposals.map((p) => ({
+    proposals: (treasury.proposals ?? []).map((p) => ({
       ...p,
       amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
     })),
