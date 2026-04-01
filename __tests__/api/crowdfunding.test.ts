@@ -21,6 +21,7 @@ describe('POST /api/crowdfunding — create campaign', () => {
         title: 'Test', description: 'Desc', district: 'A',
         category: 'PLAYGROUND', targetAmount: 10000000,
         deadline: '2026-06-01', creatorId: 'c1',
+        onChainPubkey: '11111111111111111111111111111111',
       }),
     }))
     expect(res.status).toBe(201)
