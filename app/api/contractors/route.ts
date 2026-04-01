@@ -24,7 +24,7 @@ const contractorDetailInclude = {
       contract: { select: { id: true, title: true, district: true } },
     },
   },
-} as const
+}
 
 // GET /api/contractors — leaderboard / list, or single contractor by id / name / demo id
 export async function GET(req: NextRequest) {
