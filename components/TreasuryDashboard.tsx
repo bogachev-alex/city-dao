@@ -34,6 +34,8 @@ interface Proposal {
 interface TreasuryData {
   id: string
   district: string
+  walletAddress: string | null
+  pdaAddress?: string | null
   balance: string
   /** Present when Solana account exists; preferred for display */
   balanceOnChain?: string | null
@@ -208,6 +210,30 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('treasuryBalance')}</div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
+          {treasury?.walletAddress && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 dark:text-gray-500">Кошелёк:</span>
+              <code className="text-xs font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded select-all">
+                {treasury.walletAddress}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(treasury.walletAddress!)}
+                className="text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
+                title="Копировать"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {treasury?.pdaAddress && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-xs text-gray-400 dark:text-gray-500">PDA:</span>
+              <code className="text-xs font-mono text-gray-500 dark:text-gray-400 select-all">{shortAddress(treasury.pdaAddress)}</code>
+            </div>
+          )}
           <div className="mt-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs text-gray-500 dark:text-gray-400">

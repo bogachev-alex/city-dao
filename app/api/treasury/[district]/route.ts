@@ -4,6 +4,7 @@ import {
   fetchDistrictTreasuryBalanceOnChain,
   getReadOnlySolanaConnection,
 } from '@/lib/web3/fetchDistrictTreasuryBalance'
+import { getTreasuryPDA } from '@/lib/web3/pda'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,10 +47,17 @@ export async function GET(
     decodedDistrict
   )
 
+  let pdaAddress: string | null = null
+  try {
+    const [pda] = getTreasuryPDA(decodedDistrict)
+    pdaAddress = pda.toBase58()
+  } catch {}
+
   return NextResponse.json({
     ...treasury,
     balance: treasury.balance.toString(),
     balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
+    pdaAddress,
     proposals: treasury.proposals.map((p) => ({
       ...p,
       amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,

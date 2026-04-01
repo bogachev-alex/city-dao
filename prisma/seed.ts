@@ -239,19 +239,19 @@ async function main() {
   // DISTRICT TREASURIES (8) — with varied balances
   // ═══════════════════════════════════════════════
   const districtData = [
-    { district: 'Алатауский',     balance: 2_800_000 },
-    { district: 'Алмалинский',    balance: 12_500_000 },
-    { district: 'Ауэзовский',    balance: 15_500_000 },
-    { district: 'Бостандыкский',  balance: 8_200_000 },
-    { district: 'Жетысуский',    balance: 4_100_000 },
-    { district: 'Медеуский',     balance: 18_900_000 },
-    { district: 'Наурызбайский', balance: 3_600_000 },
-    { district: 'Турксибский',   balance: 5_400_000 },
+    { district: 'Алатауский',    walletAddress: '3zuYfqNAXFy8RYYSo6guiXXRPNc1hTvw7CFiLUnXoQWp', balance: 2_800_000 },
+    { district: 'Алмалинский',   walletAddress: 'A4vodzfg9iJho5brepy1nApxKQ1heDHwGE3ByDNesLSD', balance: 12_500_000 },
+    { district: 'Ауэзовский',    walletAddress: '3it6N2wRR12CaTc7un5ogw3mYQV8rjLyZPvN8mr3FTbg', balance: 15_500_000 },
+    { district: 'Бостандыкский', walletAddress: '6fqUBQXQZ8KTGQcY8FLbNEePq1gSjhnRvcwPaDzPkPHt', balance: 8_200_000 },
+    { district: 'Жетысуский',    walletAddress: 'CRnhVGDha3F1Y9tBP5XGG1kGhEREZfJ8GqDz5yEJVwtn', balance: 4_100_000 },
+    { district: 'Медеуский',     walletAddress: 'RZEyiFoF7Qi3T4FNmkZMxWjWYb9V9Aq1KX7deG4wzN9', balance: 18_900_000 },
+    { district: 'Наурызбайский', walletAddress: 'Hj6xtnYmDqJ4qtaVrBT15o4HcuGeJTPETik3z7x2FW5X', balance: 3_600_000 },
+    { district: 'Турксибский',   walletAddress: 'DfMP5oCHSQuapyAZT6maSgNjMBoghPam6zopTC5VpXVd', balance: 5_400_000 },
   ]
 
   const treasuries = await Promise.all(
     districtData.map((d) =>
-      prisma.districtTreasury.create({ data: { district: d.district, balance: d.balance } })
+      prisma.districtTreasury.create({ data: { district: d.district, walletAddress: d.walletAddress, balance: d.balance } })
     )
   )
 

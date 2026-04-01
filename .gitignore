@@ -21,6 +21,8 @@ tsconfig.tsbuildinfo
 .claude/
 tasks/
 
+.treasury-keys.json
+
 # Local-only (do not commit)
 .dockerignore
 Dockerfile
