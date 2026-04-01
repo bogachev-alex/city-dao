@@ -65,6 +65,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  if (!body.onChainPubkey) {
+    return NextResponse.json(
+      { error: 'onChainPubkey is required (on-chain confirmation required)' },
+      { status: 400 }
+    )
+  }
+
   const contract = await prisma.contract.create({
     data: {
       title: body.title,

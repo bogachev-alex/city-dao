@@ -99,12 +99,38 @@ export default function AdminPage() {
   }
 
   const handleSubmit = async () => {
+    if (!wallet.publicKey) {
+      setError(t('connectWalletHint'))
+      return
+    }
+
     setSubmitting(true)
     setError(null)
-    setSubmitStep('db')
+    setSubmitStep('blockchain')
 
     try {
-      // 1. Save to database
+      // 1) Must be registered on-chain first
+      const result = await registerContractOnChain(
+        form.title,
+        form.district,
+        Number(form.amount_usdc),
+        new Date(form.deadline).getTime() / 1000,
+        form.milestones.map((m) => ({
+          description: m.desc,
+          deadlineDays: m.deadline_days,
+          tranchePct: m.tranche_pct,
+        })),
+        parseFloat(form.lat),
+        parseFloat(form.lng),
+        wallet.publicKey
+      )
+
+      if (!result?.pda) {
+        throw new Error('Не удалось получить on-chain адрес контракта')
+      }
+
+      // 2) Save to database with linked on-chain pubkey
+      setSubmitStep('db')
       const contractData = {
         title: form.title,
         contractorName: form.contractor,
@@ -119,41 +145,10 @@ export default function AdminPage() {
           deadlineDays: m.deadline_days,
           tranchePct: m.tranche_pct,
         })),
+        onChainPubkey: result.pda,
       }
 
-      const created = await createContract(contractData, authHeader())
-
-      // 2. Register on blockchain if wallet connected
-      if (wallet.publicKey) {
-        setSubmitStep('blockchain')
-        try {
-          const result = await registerContractOnChain(
-            form.title,
-            form.district,
-            Number(form.amount_usdc),
-            new Date(form.deadline).getTime() / 1000,
-            form.milestones.map((m) => ({
-              description: m.desc,
-              deadlineDays: m.deadline_days,
-              tranchePct: m.tranche_pct,
-            })),
-            parseFloat(form.lat),
-            parseFloat(form.lng),
-            wallet.publicKey
-          )
-
-          // Update DB record with on-chain pubkey
-          if (result?.pda) {
-            await fetch(`/api/contracts/${created.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ onChainPubkey: result.pda }),
-            })
-          }
-        } catch (blockchainErr: any) {
-          console.warn('Blockchain registration failed, contract saved to DB only:', blockchainErr)
-        }
-      }
+      await createContract(contractData, authHeader())
 
       setSubmitted(true)
     } catch (err: any) {
@@ -494,9 +489,9 @@ export default function AdminPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={!form.title || !form.contractor || !form.amount_usdc || !form.district || !trancheValid || submitting}
+              disabled={!wallet.publicKey || !form.title || !form.contractor || !form.amount_usdc || !form.district || !trancheValid || submitting}
               className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-                form.title && form.contractor && form.amount_usdc && form.district && trancheValid
+                wallet.publicKey && form.title && form.contractor && form.amount_usdc && form.district && trancheValid
                   ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
               }`}
@@ -515,6 +510,11 @@ export default function AdminPage() {
                 </>
               )}
             </button>
+            {!wallet.publicKey && (
+              <div className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
+                {t('connectWalletHint')}
+              </div>
+            )}
           </div>
         )}
       </div>

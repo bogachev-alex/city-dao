@@ -103,7 +103,7 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await req.json()
-  const { action, contractId, txSignature } = body
+  const { action, contractId, txSignature, onChainPubkey } = body
 
   const campaign = await prisma.crowdfundingCampaign.findUnique({ where: { id } })
   if (!campaign) {
@@ -150,6 +150,17 @@ export async function PATCH(
     const updated = await prisma.crowdfundingCampaign.update({
       where: { id },
       data: { status: 'COMPLETED' },
+    })
+    return NextResponse.json(updated)
+  }
+
+  if (action === 'set_onchain') {
+    if (!onChainPubkey) {
+      return NextResponse.json({ error: 'Missing onChainPubkey' }, { status: 400 })
+    }
+    const updated = await prisma.crowdfundingCampaign.update({
+      where: { id },
+      data: { onChainPubkey },
     })
     return NextResponse.json(updated)
   }

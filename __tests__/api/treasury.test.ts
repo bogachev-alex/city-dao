@@ -40,7 +40,7 @@ describe('PATCH /api/treasury/[district] — voting', () => {
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
-        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true, txSignature: 'demo-signature' }),
       }),
       { params: makeParams('Ауэзовский') }
     )
@@ -53,10 +53,21 @@ describe('PATCH /api/treasury/[district] — voting', () => {
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
-        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true, txSignature: 'demo-signature' }),
       }),
       { params: makeParams('Ауэзовский') }
     )
     expect(res.status).toBe(409)
+  })
+
+  it('400 without on-chain confirmation', async () => {
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/treasury/test', {
+        method: 'PATCH',
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+      }),
+      { params: makeParams('Ауэзовский') }
+    )
+    expect(res.status).toBe(400)
   })
 })

@@ -98,7 +98,34 @@ export default function ContractsPage() {
             const score = districtScore * 0.35 + textScore * 0.5 + amountScore * 0.15
             if (!best || score > best.score) best = { id: chainItem.id, score }
           }
-          if (best && best.score >= 0.72) resolvedPubkey = best.id
+          if (best && best.score >= 0.72) {
+            resolvedPubkey = best.id
+          } else {
+            // Soft fallback: prefer same district with moderate title overlap.
+            const districtCandidates = onChain.filter((x) => normalizeText(x.district) === district)
+            let softBest: { id: string; score: number } | null = null
+            for (const chainItem of districtCandidates) {
+              const cTitle = normalizeText(chainItem.title)
+              const cTokens = tokenSet(chainItem.title)
+              const cAmount = Number(chainItem.amount_usdc || 0)
+              const textScore =
+                cTitle === title
+                  ? 1
+                  : (cTitle.includes(title) || title.includes(cTitle) ? 0.8 : overlapScore(titleTokens, cTokens))
+              let amountScore = 0
+              if (amount > 0 && cAmount > 0) {
+                const rel = Math.abs(cAmount - amount) / Math.max(amount, cAmount)
+                if (rel <= 0.1) amountScore = 1
+                else if (rel <= 0.3) amountScore = 0.6
+                else if (rel <= 0.6) amountScore = 0.3
+              }
+              const score = textScore * 0.8 + amountScore * 0.2
+              if (!softBest || score > softBest.score) softBest = { id: chainItem.id, score }
+            }
+            if (softBest && (softBest.score >= 0.55 || districtCandidates.length === 1)) {
+              resolvedPubkey = softBest.id
+            }
+          }
         }
         if (!resolvedPubkey) return c
         const live = byPda.get(resolvedPubkey)

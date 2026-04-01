@@ -68,7 +68,10 @@ export async function PATCH(
   { params }: { params: Promise<{ district: string }> }
 ) {
   const body = await req.json()
-  const { proposalId, citizenId, inFavor } = body
+  const { proposalId, citizenId, inFavor, txSignature } = body
+  if (!txSignature || typeof txSignature !== 'string') {
+    return NextResponse.json({ error: 'On-chain confirmation is required' }, { status: 400 })
+  }
 
   // Check for duplicate vote
   const existing = await prisma.proposalVote.findUnique({

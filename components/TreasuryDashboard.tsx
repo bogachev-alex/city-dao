@@ -89,7 +89,20 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       setVoteError('Зарегистрируйтесь как гражданин для голосования')
       return
     }
+    if (!walletConnected || !publicKey) {
+      setVoteError('Подключите кошелёк: голосование в казне подтверждается on-chain.')
+      return
+    }
     setVoteError(null)
+    let txSignature: string
+    try {
+      const result = await voteOnChain(district, proposalTitle, inFavor)
+      txSignature = result.tx
+      setTxInfo(result.tx)
+    } catch (err: any) {
+      setVoteError(err?.message || 'Не удалось подтвердить голос on-chain.')
+      return
+    }
 
     setVoted((prev) => new Set(prev).add(proposalId))
     setTreasury((prev) => {
@@ -104,21 +117,11 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       }
     })
 
-    // Try on-chain voting if wallet connected
-    if (walletConnected) {
-      try {
-        const result = await voteOnChain(district, proposalTitle, inFavor)
-        setTxInfo(result.tx)
-      } catch (err: any) {
-        console.warn('On-chain vote failed (continuing with DB):', err.message)
-      }
-    }
-
     try {
       const res = await fetch(`/api/treasury/${encodeURIComponent(district)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposalId, citizenId, inFavor }),
+        body: JSON.stringify({ proposalId, citizenId, inFavor, txSignature }),
       })
       if (!res.ok) {
         revertVote(proposalId, inFavor)

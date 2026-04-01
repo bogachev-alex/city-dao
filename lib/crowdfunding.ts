@@ -34,6 +34,7 @@ export interface Campaign {
   photo_url?: string
   donors: CampaignDonor[]
   contract_id?: string        // linked contract after funding
+  onChainPubkey?: string | null
 }
 
 // Matching ratios by category: state pays this percentage, citizens pay the rest
@@ -306,6 +307,7 @@ export function normalizeCampaign(c: any): Campaign {
     lat: c.lat,
     lng: c.lng,
     contract_id: c.contractId || c.contract_id,
+    onChainPubkey: c.onChainPubkey || c.on_chain_pubkey || null,
     donors: contributions.map((d: any) => ({
       id: d.id,
       name: d.anonymous ? 'Анонимный донор' : (d.citizen?.walletAddress?.slice(0, 8) + '...' || 'Донор'),

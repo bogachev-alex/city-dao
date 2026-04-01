@@ -16,11 +16,12 @@ import {
   getDonorTier,
   normalizeCampaign,
 } from '@/lib/crowdfunding'
-import { fetchCampaign, fetchCitizen, contributeToCampaign } from '@/lib/api'
+import { fetchCampaign, fetchCitizen, contributeToCampaign, updateCampaignStatus } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { PublicKey } from '@solana/web3.js'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 import { getContractDetailHref } from '@/lib/contracts'
+import OnChainLink from '@/components/OnChainLink'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -35,8 +36,12 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [donated, setDonated] = useState(false)
   const [donateError, setDonateError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [onChainInfo, setOnChainInfo] = useState<any | null>(null)
+  const [onChainInfoError, setOnChainInfoError] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
-  const { contribute: contributeOnChain, loading: solanaLoading } = useCrowdfunding()
+  const { contribute: contributeOnChain, createCampaign: createCampaignOnChain, fetchCampaignAccount, loading: solanaLoading } = useCrowdfunding()
   const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
 
   useEffect(() => {
@@ -50,6 +55,33 @@ export default function CampaignDetailPage({ params }: PageProps) {
       })
       .catch(() => setCampaign(getCampaignById(params.id) || null))
   }, [params.id])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadOnChain = async () => {
+      if (!campaign?.creator_wallet || !campaign?.title) {
+        if (!cancelled) setOnChainInfo(null)
+        return
+      }
+      try {
+        const creator = new PublicKey(campaign.creator_wallet)
+        const account = await fetchCampaignAccount(creator, campaign.title)
+        if (!cancelled) {
+          setOnChainInfo(account)
+          setOnChainInfoError(null)
+        }
+      } catch {
+        if (!cancelled) {
+          setOnChainInfo(null)
+          setOnChainInfoError('Не удалось прочитать данные кампании из on-chain.')
+        }
+      }
+    }
+    loadOnChain()
+    return () => {
+      cancelled = true
+    }
+  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, fetchCampaignAccount])
 
   if (holdUi) {
     return (
@@ -132,6 +164,41 @@ export default function CampaignDetailPage({ params }: PageProps) {
       })
     } catch (err: any) {
       console.warn('DB contribution failed:', err.message)
+    }
+  }
+
+  const handlePublishOnChain = async () => {
+    if (!campaign) return
+    if (!walletConnected || !publicKey) {
+      setPublishError('Подключите кошелёк для публикации в on-chain.')
+      return
+    }
+    setPublishLoading(true)
+    setPublishError(null)
+    try {
+      const deadlineTs = Math.floor(new Date(campaign.deadline).getTime() / 1000)
+      const result = await createCampaignOnChain(
+        campaign.title,
+        campaign.description,
+        campaign.district,
+        campaign.category,
+        campaign.target_amount,
+        deadlineTs,
+        campaign.lat,
+        campaign.lng,
+      )
+      await updateCampaignStatus(campaign.id, 'set_onchain', { onChainPubkey: result.pda })
+      setCampaign((prev) => (prev ? { ...prev, onChainPubkey: result.pda } : prev))
+      try {
+        const account = await fetchCampaignAccount(publicKey, campaign.title)
+        setOnChainInfo(account)
+      } catch {
+        // ignore transient fetch errors after publish
+      }
+    } catch (err: any) {
+      setPublishError(err?.message || 'Не удалось опубликовать кампанию в on-chain.')
+    } finally {
+      setPublishLoading(false)
     }
   }
 
@@ -514,6 +581,58 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">{category.statePercent}%</span>
                 </div>
               </div>
+            </div>
+
+            {/* On-chain status */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">Статус в блокчейне</h3>
+              {campaign.onChainPubkey ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 dark:text-gray-500">On-chain адрес</span>
+                    <OnChainLink
+                      address={campaign.onChainPubkey}
+                      label={`${campaign.onChainPubkey.slice(0, 6)}...${campaign.onChainPubkey.slice(-6)}`}
+                      className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                    />
+                  </div>
+                  {onChainInfo && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400 dark:text-gray-500">On-chain собрано</span>
+                        <span className="text-gray-900 dark:text-white">
+                          {formatTenge(Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400 dark:text-gray-500">On-chain цель граждан</span>
+                        <span className="text-gray-900 dark:text-white">
+                          {formatTenge(Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400 dark:text-gray-500">On-chain доноров</span>
+                        <span className="text-gray-900 dark:text-white">
+                          {Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? 0)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {onChainInfoError && <div className="text-xs text-yellow-600 dark:text-yellow-400">{onChainInfoError}</div>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Кампания пока не опубликована в on-chain.</div>
+                  <button
+                    onClick={handlePublishOnChain}
+                    disabled={publishLoading || solanaLoading}
+                    className="px-3 py-2 rounded-lg text-xs font-medium border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-60"
+                  >
+                    {publishLoading || solanaLoading ? 'Публикация в on-chain...' : 'Добавить в on-chain'}
+                  </button>
+                  {publishError && <div className="text-xs text-red-500">{publishError}</div>}
+                </div>
+              )}
             </div>
 
             {/* NFT rewards */}
