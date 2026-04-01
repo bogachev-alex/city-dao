@@ -4,6 +4,10 @@ import { PublicKey } from '@solana/web3.js'
 export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
 export const SOLANA_NETWORK: SolanaCluster = 'devnet'
 export const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com'
+/** Settlement token mint for contract economy (USDC on Solana). */
+export const USDC_MINT = new PublicKey(
+  process.env.NEXT_PUBLIC_USDC_MINT || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+)
 
 // Program IDs — generated keypairs, will be active after `anchor deploy`
 export const PROGRAM_IDS = {
