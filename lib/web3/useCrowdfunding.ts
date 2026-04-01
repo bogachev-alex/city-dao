@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { AccountMeta, PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
@@ -27,11 +27,23 @@ const CATEGORY_MAP = {
   commercial: { commercial: {} },
 } as const
 
+/** Wallet stub for read-only Anchor calls (fetch account data without user signature). */
+const READ_ONLY_WALLET = {
+  publicKey: PublicKey.default,
+  signTransaction: async <T extends { serialize(): Uint8Array }>(tx: T) => tx,
+  signAllTransactions: async <T extends { serialize(): Uint8Array }>(txs: T[]) => txs,
+}
+
 export function useCrowdfunding() {
   const { connection } = useConnection()
   const wallet = useWallet()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const readOnlyProgram = useMemo(() => {
+    const provider = new AnchorProvider(connection, READ_ONLY_WALLET as any, { commitment: 'confirmed' })
+    return new Program(idl as any, provider)
+  }, [connection])
 
   const toReadableError = useCallback((err: unknown): string => {
     const raw = err instanceof Error ? err.message : String(err || '')
@@ -285,19 +297,18 @@ export function useCrowdfunding() {
     [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA],
   )
 
-  // Fetch campaign account from chain
-  const fetchCampaignAccount = useCallback(async (creator: PublicKey, title: string) => {
-    const program = getProgram()
-    if (!program) return null
-
-    const [pda] = getCampaignPDA(creator, title)
-    try {
-      const account = await (program.account as any).crowdfundingCampaignAccount.fetch(pda)
-      return account
-    } catch {
-      return null
-    }
-  }, [getProgram, getCampaignPDA])
+  // Fetch campaign account from chain (read-only; does not require wallet connect)
+  const fetchCampaignAccount = useCallback(
+    async (creator: PublicKey, title: string) => {
+      const [pda] = getCampaignPDA(creator, title)
+      try {
+        return await (readOnlyProgram.account as any).crowdfundingCampaignAccount.fetch(pda)
+      } catch {
+        return null
+      }
+    },
+    [readOnlyProgram, getCampaignPDA],
+  )
 
   return {
     createCampaign,
