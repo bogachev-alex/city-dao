@@ -78,3 +78,35 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json(updated)
 }
+
+// DELETE /api/citizens — delete citizen by wallet (test utility)
+export async function DELETE(req: NextRequest) {
+  const { walletAddress } = await req.json()
+  if (!walletAddress || typeof walletAddress !== 'string') {
+    return NextResponse.json({ error: 'walletAddress is required' }, { status: 400 })
+  }
+
+  const citizen = await prisma.citizen.findUnique({ where: { walletAddress } })
+  if (!citizen) {
+    return NextResponse.json({ error: 'Citizen not found' }, { status: 404 })
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.juryVote.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.suggestionVote.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.proposalVote.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.campaignContribution.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.citizenNft.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.citizenSuggestion.deleteMany({ where: { citizenId: citizen.id } })
+      await tx.crowdfundingCampaign.deleteMany({ where: { creatorId: citizen.id } })
+      await tx.citizen.delete({ where: { id: citizen.id } })
+    })
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || 'Failed to delete citizen' },
+      { status: 500 }
+    )
+  }
+}

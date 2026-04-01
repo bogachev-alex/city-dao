@@ -34,7 +34,7 @@ export default function CitizenRegistration() {
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
   const { connection } = useConnection()
   const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
 
   const handleConnect = useCallback(() => {
     const phantom = wallets.find(
@@ -63,7 +63,9 @@ export default function CitizenRegistration() {
   const [agreed, setAgreed] = useState(false)
   const [txSignature, setTxSignature] = useState<string | null>(null)
   const [regError, setRegError] = useState<string | null>(null)
+  const [regInfo, setRegInfo] = useState<string | null>(null)
   const [onChain, setOnChain] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const isValidIIN = iin.length === 12 && /^\d+$/.test(iin)
   const isValidPhone = PHONE_RE.test(phone)
@@ -82,10 +84,58 @@ export default function CitizenRegistration() {
     }
   }
 
+  const fillTestData = async () => {
+    const testIin = '000000000001'
+    setName('Test User')
+    setPhone('+7 (700) 111-11-11')
+    setDistrict(DISTRICTS[0])
+    setAgreed(true)
+    setIin(testIin)
+    const hash = await hashIIN(testIin)
+    setIinHash(hash)
+    setRegError(null)
+    setRegInfo(t('testDataFilled'))
+  }
+
+  const handleDeleteCitizen = async () => {
+    if (!publicKey) {
+      setRegError(t('deleteNeedWallet'))
+      return
+    }
+    setDeleteLoading(true)
+    setRegError(null)
+    setRegInfo(null)
+    try {
+      const walletAddress = publicKey.toBase58()
+      const res = await fetch('/api/citizens', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setRegError(data?.error || t('deleteFailed'))
+        return
+      }
+      localStorage.removeItem('citizen')
+      localStorage.removeItem('citizen_profile')
+      logout()
+      setStep('form')
+      setTxSignature(null)
+      setOnChain(false)
+      setRegInfo(t('deleteSuccess'))
+    } catch {
+      setRegError(t('deleteFailed'))
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!isValidIIN || !isValidName || !isValidPhone || !district || !connected || !agreed || !publicKey || !iinHash) return
     setStep('registering')
     setRegError(null)
+    setRegInfo(null)
 
     const walletAddress = publicKey.toBase58()
 
@@ -243,6 +293,29 @@ export default function CitizenRegistration() {
           {regError || solanaError}
         </div>
       )}
+      {regInfo && (
+        <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4 text-sm text-emerald-700 dark:text-emerald-400">
+          {regInfo}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void fillTestData()}
+          className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors"
+        >
+          {t('fillTestData')}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleDeleteCitizen()}
+          disabled={deleteLoading}
+          className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/30 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-60"
+        >
+          {deleteLoading ? t('deleting') : t('deleteUser')}
+        </button>
+      </div>
 
       {/* Step 1: Personal info */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
