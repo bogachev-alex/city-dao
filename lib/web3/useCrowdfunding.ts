@@ -142,6 +142,7 @@ export function useCrowdfunding() {
     campaignCreator: PublicKey,
     campaignTitle: string,
     amount: number,
+    lamports: number,
     anonymous: boolean,
   ) => {
     if (!wallet.publicKey) throw new Error('Wallet not connected')
@@ -157,7 +158,7 @@ export function useCrowdfunding() {
       const [donorPDA] = getDonorPDA(campaignPDA, wallet.publicKey)
 
       const tx = await (program.methods as any)
-        .contribute(new BN(amount), anonymous)
+        .contribute(new BN(amount), new BN(lamports), anonymous)
         .accounts({
           campaign: campaignPDA,
           escrow: escrowPDA,

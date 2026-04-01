@@ -48,3 +48,15 @@ export const DISTRICTS = [
   'Наурызбайский',
   'Турксибский',
 ] as const
+
+// Tenge to lamports conversion (1 SOL = ~80 000 KZT)
+const KZT_PER_SOL = 80_000
+const LAMPORTS_PER_SOL = 1_000_000_000
+
+export function tengeToLamports(tenge: number): number {
+  return Math.round((tenge / KZT_PER_SOL) * LAMPORTS_PER_SOL)
+}
+
+export function lamportsToTenge(lamports: number): number {
+  return Math.round((lamports / LAMPORTS_PER_SOL) * KZT_PER_SOL)
+}

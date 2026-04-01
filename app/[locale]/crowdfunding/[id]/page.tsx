@@ -22,6 +22,7 @@ import { PublicKey } from '@solana/web3.js'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 import { getContractDetailHref, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
+import { tengeToLamports } from '@/lib/web3/constants'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -195,19 +196,32 @@ export default function CampaignDetailPage({ params }: PageProps) {
       return
     }
 
-    setDonated(true)
+    if (!walletConnected) {
+      setDonateError('Подключите кошелёк для взноса')
+      return
+    }
+
+    setDonated(false)
+    setDonateError(null)
 
     let onChainTx: string | undefined
 
-    // Try on-chain contribution if wallet connected and creator wallet known
-    if (walletConnected && campaign.creator_wallet) {
+    if (walletConnected) {
+      const creatorWallet = campaign.creator_wallet || campaign.onChainPubkey
+      if (!creatorWallet) {
+        setDonateError('Кампания не опубликована on-chain')
+        return
+      }
       try {
-        const creatorPK = new PublicKey(campaign.creator_wallet)
-        const result = await contributeOnChain(creatorPK, campaign.title, amount, false)
+        const creatorPK = new PublicKey(creatorWallet)
+        const lamports = tengeToLamports(amount)
+        const result = await contributeOnChain(creatorPK, campaign.title, amount, lamports, false)
         onChainTx = result.tx
         setTxInfo(result.tx)
       } catch (err: any) {
-        console.warn('On-chain contribution failed (continuing with DB):', err.message)
+        setDonateError(err?.message || 'Ошибка on-chain взноса')
+        setDonated(false)
+        return
       }
     }
 
@@ -219,8 +233,15 @@ export default function CampaignDetailPage({ params }: PageProps) {
         anonymous: false,
         txSignature: onChainTx,
       })
+      setDonated(true)
     } catch (err: any) {
       console.warn('DB contribution failed:', err.message)
+      if (!onChainTx) {
+        setDonateError('Ошибка записи взноса в БД')
+        setDonated(false)
+      } else {
+        setDonated(true)
+      }
     }
   }
 

@@ -73,16 +73,31 @@ pub mod crowdfunding {
         Ok(())
     }
 
-    pub fn contribute(ctx: Context<Contribute>, amount: u64, anonymous: bool) -> Result<()> {
-        let campaign = &mut ctx.accounts.campaign;
-        let escrow = &mut ctx.accounts.escrow;
-
-        require!(campaign.status == CampaignStatus::Active, CrowdfundingError::CampaignNotActive);
-
-        let now = Clock::get()?.unix_timestamp;
-        require!(campaign.deadline > now, CrowdfundingError::DeadlinePassed);
+    pub fn contribute(ctx: Context<Contribute>, amount: u64, lamports: u64, anonymous: bool) -> Result<()> {
         require!(amount >= 500, CrowdfundingError::AmountTooLow);
         require!(amount <= 500_000, CrowdfundingError::AmountTooHigh);
+        require!(lamports > 0, CrowdfundingError::AmountTooLow);
+
+        let campaign_info = &ctx.accounts.campaign;
+        require!(campaign_info.status == CampaignStatus::Active, CrowdfundingError::CampaignNotActive);
+
+        let now = Clock::get()?.unix_timestamp;
+        require!(campaign_info.deadline > now, CrowdfundingError::DeadlinePassed);
+
+        // Transfer SOL from donor to escrow (before mutable borrows)
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.donor.to_account_info(),
+                    to: ctx.accounts.escrow.to_account_info(),
+                },
+            ),
+            lamports,
+        )?;
+
+        let campaign = &mut ctx.accounts.campaign;
+        let escrow = &mut ctx.accounts.escrow;
 
         campaign.citizen_raised = campaign
             .citizen_raised
@@ -95,13 +110,14 @@ pub mod crowdfunding {
 
         escrow.total_deposited = escrow
             .total_deposited
-            .checked_add(amount)
+            .checked_add(lamports)
             .ok_or(CrowdfundingError::Overflow)?;
 
         let donor = &mut ctx.accounts.donor_record;
         donor.donor = ctx.accounts.donor.key();
         donor.campaign = campaign.key();
         donor.amount = amount;
+        donor.lamports = lamports;
         donor.anonymous = anonymous;
         donor.created_at = now;
         donor.bump = ctx.bumps.donor_record;
@@ -110,6 +126,7 @@ pub mod crowdfunding {
             campaign: campaign.key(),
             donor: donor.donor,
             amount,
+            lamports,
             total_raised: campaign.citizen_raised,
             donor_count: campaign.donor_count,
         });
@@ -333,13 +350,14 @@ pub struct DonorRecord {
     pub donor: Pubkey,
     pub campaign: Pubkey,
     pub amount: u64,
+    pub lamports: u64,
     pub anonymous: bool,
     pub created_at: i64,
     pub bump: u8,
 }
 
 impl DonorRecord {
-    pub const SPACE: usize = 8 + 32 + 32 + 8 + 1 + 8 + 1;
+    pub const SPACE: usize = 8 + 32 + 32 + 8 + 8 + 1 + 8 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
@@ -376,6 +394,7 @@ pub struct ContributionReceived {
     pub campaign: Pubkey,
     pub donor: Pubkey,
     pub amount: u64,
+    pub lamports: u64,
     pub total_raised: u64,
     pub donor_count: u32,
 }

@@ -92,6 +92,10 @@
           "type": "u64"
         },
         {
+          "name": "lamports",
+          "type": "u64"
+        },
+        {
           "name": "anonymous",
           "type": "bool"
         }
@@ -689,6 +693,10 @@
             "type": "u64"
           },
           {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
             "name": "total_raised",
             "type": "u64"
           },
@@ -804,6 +812,10 @@
           },
           {
             "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "lamports",
             "type": "u64"
           },
           {
