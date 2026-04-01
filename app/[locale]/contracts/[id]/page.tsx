@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
-import { fetchContractOnChain } from '@/lib/web3/onchain'
+import { fetchAllContractsOnChain, fetchContractOnChain } from '@/lib/web3/onchain'
 import { PublicKey } from '@solana/web3.js'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
@@ -38,8 +38,13 @@ function milestoneStatusForApi(m: Milestone): string {
   return map[m.status] || 'PENDING'
 }
 
+function normalizeText(v: string): string {
+  return v.trim().toLowerCase()
+}
+
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const t = useTranslations('contractDetail')
   const locale = useLocale()
   const { user, authHeader } = useAuth()
@@ -50,15 +55,34 @@ export default function ContractDetailPage() {
   const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
 
-  const applyOnChainOverlay = useCallback(async (base: Contract): Promise<Contract> => {
-    if (!base.onChainPubkey) return base
+  const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
+    let pubkeyStr = overrideOnChainPubkey || base.onChainPubkey
+    if (!pubkeyStr) {
+      try {
+        // Fallback matching when DB record has no onChainPubkey yet.
+        const candidates = await fetchAllContractsOnChain()
+        const title = normalizeText(base.title)
+        const district = normalizeText(base.district)
+        const amount = Number(base.amount_usdc || 0)
+        const matched = candidates.find((c) =>
+          normalizeText(c.title) === title &&
+          normalizeText(c.district) === district &&
+          Number(c.amount_usdc || 0) === amount
+        )
+        if (matched) pubkeyStr = matched.id
+      } catch {
+        // keep DB-only view if chain lookup fails
+      }
+    }
+    if (!pubkeyStr) return base
     try {
-      const onChain = await fetchContractOnChain(new PublicKey(base.onChainPubkey))
+      const onChain = await fetchContractOnChain(new PublicKey(pubkeyStr))
       if (!onChain) return base
 
       // Keep DB-centric identity/metadata, but show live operational fields from chain.
       return {
         ...base,
+        onChainPubkey: pubkeyStr,
         contractor: onChain.contractor || base.contractor,
         amount_usdc: onChain.amount_usdc ?? base.amount_usdc,
         deadline: onChain.deadline || base.deadline,
@@ -77,11 +101,12 @@ export default function ContractDetailPage() {
 
   const loadContract = useCallback(async () => {
     if (!params.id) return
+    const overrideOnChainPubkey = searchParams.get('onchain')?.trim() || null
     try {
       const data = await fetchContract(params.id)
       if (data && !data.error) {
         const normalized = normalizeContract(data)
-        const withOnChain = await applyOnChainOverlay(normalized)
+        const withOnChain = await applyOnChainOverlay(normalized, overrideOnChainPubkey)
         setContract(withOnChain)
       } else {
         const demo = getContractById(params.id)
@@ -89,7 +114,7 @@ export default function ContractDetailPage() {
           setContract(null)
           return
         }
-        const withOnChain = await applyOnChainOverlay(demo)
+        const withOnChain = await applyOnChainOverlay(demo, overrideOnChainPubkey)
         setContract(withOnChain)
       }
     } catch {
@@ -98,10 +123,10 @@ export default function ContractDetailPage() {
         setContract(null)
         return
       }
-      const withOnChain = await applyOnChainOverlay(demo)
+      const withOnChain = await applyOnChainOverlay(demo, overrideOnChainPubkey)
       setContract(withOnChain)
     }
-  }, [applyOnChainOverlay, params.id])
+  }, [applyOnChainOverlay, params.id, searchParams])
 
   const statusConfig = {
     active: { label: t('statusActive'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
