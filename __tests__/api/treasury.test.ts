@@ -24,6 +24,7 @@ describe('GET /api/treasury/[district]', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       proposals: [],
+      penalties: [],
     })
     const res = await GET(
       new NextRequest('http://localhost/api/treasury/test'),
