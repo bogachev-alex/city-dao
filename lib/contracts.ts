@@ -175,6 +175,12 @@ const MILESTONE_STATUS_MAP: Record<string, MilestoneStatus> = {
 
 /** Normalize API response (Prisma format) to frontend Contract shape */
 export function normalizeContract(c: any): Contract {
+  const deadline =
+    typeof c.deadline === 'string'
+      ? c.deadline
+      : c.deadline
+        ? new Date(c.deadline).toISOString()
+        : ''
   const signed =
     c.signedAt ||
     (c.startDate ? (typeof c.startDate === 'string' ? c.startDate : new Date(c.startDate).toISOString()) : undefined)
@@ -189,7 +195,7 @@ export function normalizeContract(c: any): Contract {
     contractorWalletAddress: c.contractor?.walletAddress ?? null,
     onChainPubkey: c.onChainPubkey ?? null,
     amount_usdc: Number(c.totalAmount || c.amount_usdc || 0),
-    deadline: typeof c.deadline === 'string' ? c.deadline : new Date(c.deadline).toISOString(),
+    deadline,
     district: c.district,
     status: CONTRACT_STATUS_MAP[c.status] || 'active',
     lat: c.lat,
