@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
 import {
@@ -40,8 +40,16 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [publishError, setPublishError] = useState<string | null>(null)
   const [onChainInfo, setOnChainInfo] = useState<any | null>(null)
   const [onChainInfoError, setOnChainInfoError] = useState<string | null>(null)
+  /** First on-chain fetch finished (avoids flashing «опубликовать» while RPC reads account). */
+  const [onChainChecked, setOnChainChecked] = useState(false)
   const { publicKey, connected: walletConnected } = useWallet()
-  const { contribute: contributeOnChain, createCampaign: createCampaignOnChain, fetchCampaignAccount, loading: solanaLoading } = useCrowdfunding()
+  const {
+    contribute: contributeOnChain,
+    createCampaign: createCampaignOnChain,
+    fetchCampaignAccount,
+    getCampaignPDA,
+    loading: solanaLoading,
+  } = useCrowdfunding()
   const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
 
   useEffect(() => {
@@ -56,25 +64,48 @@ export default function CampaignDetailPage({ params }: PageProps) {
       .catch(() => setCampaign(getCampaignById(params.id) || null))
   }, [params.id])
 
+  const derivedCampaignPda = useMemo(() => {
+    if (!campaign?.creator_wallet || !campaign?.title) return null
+    try {
+      const [pda] = getCampaignPDA(new PublicKey(campaign.creator_wallet), campaign.title)
+      return pda.toBase58()
+    } catch {
+      return null
+    }
+  }, [campaign?.creator_wallet, campaign?.title, getCampaignPDA])
+
+  const displayOnChainAddress = campaign?.onChainPubkey || derivedCampaignPda
+
   useEffect(() => {
     let cancelled = false
     const loadOnChain = async () => {
       if (!campaign?.creator_wallet || !campaign?.title) {
-        if (!cancelled) setOnChainInfo(null)
+        if (!cancelled) {
+          setOnChainInfo(null)
+          setOnChainInfoError(null)
+          setOnChainChecked(true)
+        }
         return
       }
+      if (!cancelled) setOnChainChecked(false)
       try {
         const creator = new PublicKey(campaign.creator_wallet)
         const account = await fetchCampaignAccount(creator, campaign.title)
         if (!cancelled) {
           setOnChainInfo(account)
-          setOnChainInfoError(null)
+          setOnChainInfoError(
+            !account && campaign.onChainPubkey
+              ? 'Не удалось прочитать аккаунт кампании on-chain. Проверьте, что заголовок и кошелёк автора совпадают с транзакцией публикации и используется devnet.'
+              : null,
+          )
         }
       } catch {
         if (!cancelled) {
           setOnChainInfo(null)
-          setOnChainInfoError('Не удалось прочитать данные кампании из on-chain.')
+          setOnChainInfoError('Некорректный кошелёк автора в данных кампании.')
         }
+      } finally {
+        if (!cancelled) setOnChainChecked(true)
       }
     }
     loadOnChain()
@@ -583,19 +614,23 @@ export default function CampaignDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* On-chain status */}
+            {/* On-chain status: DB onChainPubkey OR live account read from devnet (PDA match) */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">Статус в блокчейне</h3>
-              {campaign.onChainPubkey ? (
+              {!onChainChecked ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">Проверка on-chain…</div>
+              ) : campaign.onChainPubkey || onChainInfo ? (
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 dark:text-gray-500">On-chain адрес</span>
-                    <OnChainLink
-                      address={campaign.onChainPubkey}
-                      label={`${campaign.onChainPubkey.slice(0, 6)}...${campaign.onChainPubkey.slice(-6)}`}
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline"
-                    />
-                  </div>
+                  {displayOnChainAddress && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 dark:text-gray-500">On-chain адрес</span>
+                      <OnChainLink
+                        address={displayOnChainAddress}
+                        label={`${displayOnChainAddress.slice(0, 6)}...${displayOnChainAddress.slice(-6)}`}
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                      />
+                    </div>
+                  )}
                   {onChainInfo && (
                     <>
                       <div className="flex justify-between">
@@ -619,6 +654,11 @@ export default function CampaignDetailPage({ params }: PageProps) {
                     </>
                   )}
                   {onChainInfoError && <div className="text-xs text-yellow-600 dark:text-yellow-400">{onChainInfoError}</div>}
+                  {!campaign.onChainPubkey && onChainInfo && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Аккаунт найден в сети; при необходимости сохраните PDA в БД (поле onChainPubkey).
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">

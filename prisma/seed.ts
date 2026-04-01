@@ -737,6 +737,7 @@ async function main() {
   // ═══════════════════════════════════════════════
   const campaign1 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-1',
       title: 'Детская площадка во дворе ЖК «Алтын Булак»',
       description: 'Установка современной детской площадки с безопасным покрытием, качелями, горками и спортивным уголком для детей 3–12 лет. Старая площадка демонтирована в 2024 году из-за аварийного состояния, двор обслуживает 4 многоэтажных дома (~800 семей).',
       district: 'Ауэзовский', lat: 43.2395, lng: 76.8742, category: 'PLAYGROUND',
@@ -747,6 +748,7 @@ async function main() {
   })
   const campaign2 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-2',
       title: 'Ремонт тротуара по ул. Жандосова (от Манаса до Тимирязева)',
       description: 'Замена разрушенной тротуарной плитки на участке 1.2 км. Основной пешеходный маршрут к школе №135 и поликлинике №7.',
       district: 'Бостандыкский', lat: 43.2156, lng: 76.8892, category: 'ROADS',
@@ -757,6 +759,7 @@ async function main() {
   })
   const campaign3 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-3',
       title: 'Озеленение сквера на пересечении Абая и Байтурсынова',
       description: 'Высадка 40 деревьев и 200 кустарников, установка системы капельного полива, укладка газона 2000 м².',
       district: 'Алмалинский', lat: 43.2401, lng: 76.9198, category: 'LANDSCAPING',
@@ -767,6 +770,7 @@ async function main() {
   })
   const campaign4 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-4',
       title: 'Ремонт спортзала школы №92 (мкр. Алгабас)',
       description: 'Капитальный ремонт спортивного зала: замена полового покрытия, обновление освещения (LED), установка вентиляции, покупка нового спортинвентаря.',
       district: 'Алатауский', lat: 43.1897, lng: 76.8456, category: 'SCHOOL',
@@ -777,6 +781,7 @@ async function main() {
   })
   const campaign5 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-5',
       title: 'Освещение пешеходной аллеи вдоль р. Есентай',
       description: 'Установка 35 LED-фонарей вдоль пешеходной аллеи протяжённостью 1.5 км. После 18:00 зимой полностью тёмный участок.',
       district: 'Медеуский', lat: 43.2311, lng: 76.9488, category: 'LANDSCAPING',
@@ -787,6 +792,7 @@ async function main() {
   })
   const campaign6 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-6',
       title: 'Установка камер видеонаблюдения (мкр. Орбита-2)',
       description: 'Монтаж 20 камер видеонаблюдения на ключевых точках микрорайона. Интеграция с системой «Сергек».',
       district: 'Бостандыкский', lat: 43.2256, lng: 76.8992, category: 'COMMERCIAL',
