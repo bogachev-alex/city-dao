@@ -4,6 +4,12 @@ import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
+function toJsonSafe<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))
+  ) as T
+}
+
 // GET /api/contracts/[id] — contract detail with milestones, jury, penalties, work logs
 export async function GET(
   req: NextRequest,
@@ -32,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
 
-  return NextResponse.json(contract)
+  return NextResponse.json(toJsonSafe(contract))
 }
 
 // PATCH /api/contracts/[id] — update contract status (AKIMAT only)
@@ -55,5 +61,5 @@ export async function PATCH(
     },
   })
 
-  return NextResponse.json(contract)
+  return NextResponse.json(toJsonSafe(contract))
 }

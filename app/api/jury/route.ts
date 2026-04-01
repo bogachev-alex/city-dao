@@ -62,12 +62,85 @@ async function resolveSession(sessionId: string) {
   return candidates[candidates.length - 1]
 }
 
+async function createSessionFromLegacyAlias(sessionId: string) {
+  const parts = sessionId.split('-').filter(Boolean)
+  if (parts.length < 2) return null
+
+  const contractId = parts[0]
+  const milestoneSortOrder = Number(parts[1])
+  if (!Number.isInteger(milestoneSortOrder) || milestoneSortOrder <= 0) return null
+
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    include: {
+      milestones: { orderBy: { sortOrder: 'asc' } },
+    },
+  })
+  if (!contract) return null
+
+  const milestone = contract.milestones.find((m) => m.sortOrder === milestoneSortOrder)
+  if (!milestone) return null
+
+  const now = new Date()
+  const commitDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+  const revealDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000)
+
+  // Re-check after lookup to avoid duplicates in concurrent requests.
+  const existing = await prisma.jurySession.findFirst({
+    where: { contractId: contract.id, milestoneId: milestone.id },
+    include: {
+      contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
+      milestone: { select: { id: true, description: true } },
+      votes: {
+        include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (existing) return existing
+
+  const jurors = await prisma.citizen.findMany({
+    where: { district: contract.district },
+    orderBy: { reputationScore: 'desc' },
+    take: 5,
+  })
+
+  const session = await prisma.jurySession.create({
+    data: {
+      contractId: contract.id,
+      milestoneId: milestone.id,
+      status: 'COMMIT_PHASE',
+      commitDeadline,
+      revealDeadline,
+      votes: {
+        create: jurors.map((c, idx) => ({
+          citizenId: c.id,
+          weight: idx === 0 ? 2 : 1,
+          isExpert: idx === 0,
+        })),
+      },
+    },
+    include: {
+      contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
+      milestone: { select: { id: true, description: true } },
+      votes: {
+        include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
+      },
+    },
+  })
+
+  return session
+}
+
 // GET /api/jury?sessionId=... — get jury session details
 export async function GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get('sessionId')
 
   if (sessionId) {
-    const session = await resolveSession(sessionId)
+    let session = await resolveSession(sessionId)
+    if (!session) {
+      session = await createSessionFromLegacyAlias(sessionId)
+    }
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }

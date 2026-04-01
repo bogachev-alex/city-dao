@@ -4,6 +4,12 @@ import { requireRole } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
+function toJsonSafe<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))
+  ) as T
+}
+
 // GET /api/contracts — list contracts with optional filters
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -13,26 +19,33 @@ export async function GET(req: NextRequest) {
   const subjectType = searchParams.get('subjectType')
   const amountMin = searchParams.get('amountMin')
 
-  const contracts = await prisma.contract.findMany({
-    where: {
-      ...(district && { district }),
-      ...(status && { status: status as any }),
-      ...(customer && {
-        customerName: { contains: customer, mode: 'insensitive' as const },
-      }),
-      ...(subjectType && { subjectType }),
-      ...(amountMin && !Number.isNaN(Number(amountMin)) && {
-        totalAmount: { gte: BigInt(amountMin) },
-      }),
-    },
-    include: {
-      contractor: { select: { id: true, name: true, rating: true } },
-      milestones: { orderBy: { sortOrder: 'asc' } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: {
+        ...(district && { district }),
+        ...(status && { status: status as any }),
+        ...(customer && {
+          customerName: { contains: customer, mode: 'insensitive' as const },
+        }),
+        ...(subjectType && { subjectType }),
+        ...(amountMin && !Number.isNaN(Number(amountMin)) && {
+          totalAmount: { gte: BigInt(amountMin) },
+        }),
+      },
+      include: {
+        contractor: { select: { id: true, name: true, rating: true } },
+        milestones: { orderBy: { sortOrder: 'asc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
-  return NextResponse.json(contracts)
+    return NextResponse.json(toJsonSafe(contracts))
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || 'Failed to fetch contracts' },
+      { status: 500 }
+    )
+  }
 }
 
 // POST /api/contracts — register a new contract (AKIMAT only)
@@ -105,7 +118,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(contract, { status: 201 })
+    return NextResponse.json(toJsonSafe(contract), { status: 201 })
   } catch (err: any) {
     // Idempotent behavior for repeated submissions with the same on-chain contract.
     if (body.onChainPubkey) {
@@ -117,7 +130,7 @@ export async function POST(req: NextRequest) {
         },
       })
       if (existing) {
-        return NextResponse.json(existing, { status: 200 })
+        return NextResponse.json(toJsonSafe(existing), { status: 200 })
       }
     }
 
