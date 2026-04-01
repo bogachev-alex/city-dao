@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 
 declare_id!("9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT");
 
@@ -6,14 +7,6 @@ declare_id!("9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT");
 pub mod penalty_engine {
     use super::*;
 
-    /// Execute penalty and transfer funds from escrow to district treasury.
-    /// Anyone can call — fully decentralized enforcement.
-    ///
-    /// Formula:
-    ///   time_penalty    = total_amount × days_overdue / 100   (1% per day)
-    ///   quality_penalty = total_amount × rejection_count × 10 / 100  (10% per rejection)
-    ///   ghost_penalty   = total_amount × ghost_count × 5 / 100  (5% per ghost site)
-    ///   total capped at 30% of total_amount
     pub fn execute_penalty(
         ctx: Context<ExecutePenalty>,
         nonce: u64,
@@ -55,6 +48,36 @@ pub mod penalty_engine {
         record.timestamp = clock.unix_timestamp;
         record.bump = ctx.bumps.penalty_record;
 
+        // Transfer SOL from caller to district treasury PDA
+        if actual_penalty > 0 {
+            let treasury_lamports = actual_penalty.min(ctx.accounts.caller.lamports());
+            if treasury_lamports > 0 {
+                let transfer_ix = system_program::transfer(
+                    ctx.accounts.caller.key,
+                    ctx.accounts.district_treasury.key,
+                    treasury_lamports,
+                );
+                anchor_lang::solana_program::program::invoke_signed(
+                    &transfer_ix,
+                    &[
+                        ctx.accounts.caller.to_account_info(),
+                        ctx.accounts.district_treasury.to_account_info(),
+                        ctx.accounts.system_program.to_account_info(),
+                    ],
+                    &[],
+                )?;
+            }
+
+            // CPI: deposit into district_treasury program to update on-chain balance
+            let cpi_program = ctx.accounts.district_treasury_program.to_account_info();
+            let cpi_accounts = district_treasury::cpi::accounts::Deposit {
+                district_treasury: ctx.accounts.district_treasury.to_account_info(),
+                depositor: ctx.accounts.caller.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+            district_treasury::cpi::deposit(cpi_ctx, actual_penalty)?;
+        }
+
         emit!(PenaltyExecuted {
             contract: record.contract,
             penalty_type,
@@ -64,7 +87,6 @@ pub mod penalty_engine {
             triggered_by: record.triggered_by,
         });
 
-        // If capped → emit termination signal
         if capped >= max_penalty {
             emit!(PenaltyCapped {
                 contract: record.contract,
@@ -81,8 +103,6 @@ pub mod penalty_engine {
 #[derive(Accounts)]
 #[instruction(nonce: u64)]
 pub struct ExecutePenalty<'info> {
-    /// The contract being penalized — read-only reference.
-    /// In production, this would be a CPI to contract_registry.
     pub contract_data: Account<'info, ContractRef>,
     #[account(
         init,
@@ -99,8 +119,10 @@ pub struct ExecutePenalty<'info> {
     /// CHECK: District treasury PDA — receives penalty funds
     #[account(mut)]
     pub district_treasury: UncheckedAccount<'info>,
+    /// District treasury program for CPI deposit
+    pub district_treasury_program: Program<'info, district_treasury::program::DistrictTreasury>,
     #[account(mut)]
-    pub caller: Signer<'info>, // Anyone can trigger
+    pub caller: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 

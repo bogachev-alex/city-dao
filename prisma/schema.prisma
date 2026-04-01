@@ -181,16 +181,18 @@ enum PenaltyType {
 }
 
 model Penalty {
-  id           String      @id @default(cuid())
-  contractId   String
-  contract     Contract    @relation(fields: [contractId], references: [id])
-  type         PenaltyType
-  amountTenge  BigInt
-  daysOverdue  Int?
-  triggeredBy  String?     // wallet address of citizen who called check_deadline
-  txSignature  String?     // Solana tx signature
+  id                  String           @id @default(cuid())
+  contractId          String
+  contract            Contract         @relation(fields: [contractId], references: [id])
+  type                PenaltyType
+  amountTenge         BigInt
+  daysOverdue         Int?
+  triggeredBy         String?          // wallet address of citizen who called check_deadline
+  txSignature         String?          // Solana tx signature
+  districtTreasuryId  String?
+  districtTreasury    DistrictTreasury? @relation(fields: [districtTreasuryId], references: [id])
 
-  createdAt    DateTime    @default(now())
+  createdAt           DateTime         @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -211,6 +213,7 @@ model DistrictTreasury {
   walletAddress String?            @unique
   balance       BigInt             @default(0) // in tenge
   proposals     SpendingProposal[]
+  penalties     Penalty[]
 
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt

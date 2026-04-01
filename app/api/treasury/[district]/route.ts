@@ -35,6 +35,13 @@ export async function GET(
         },
         orderBy: { createdAt: 'desc' },
       },
+      penalties: {
+        include: {
+          contract: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      },
     },
   })
 
@@ -58,9 +65,14 @@ export async function GET(
     balance: treasury.balance.toString(),
     balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
     pdaAddress,
+    totalPenaltyIncome: treasury.penalties.reduce((s, p) => s + Number(p.amountTenge), 0),
     proposals: treasury.proposals.map((p) => ({
       ...p,
       amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
+    })),
+    penalties: treasury.penalties.map((p) => ({
+      ...p,
+      amountTenge: typeof p.amountTenge === 'bigint' ? p.amountTenge.toString() : p.amountTenge,
     })),
   })
 }

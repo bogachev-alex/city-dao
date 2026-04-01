@@ -37,9 +37,19 @@ interface TreasuryData {
   walletAddress: string | null
   pdaAddress?: string | null
   balance: string
-  /** Present when Solana account exists; preferred for display */
+  totalPenaltyIncome?: number
   balanceOnChain?: string | null
   proposals: Proposal[]
+  penalties?: PenaltyData[]
+}
+
+interface PenaltyData {
+  id: string
+  type: string
+  amountTenge: string
+  daysOverdue?: number | null
+  createdAt: string
+  contract?: { id: string; title: string } | null
 }
 
 interface TreasuryDashboardProps {
@@ -205,7 +215,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   return (
     <div className="space-y-6">
       {/* Balance cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/20 dark:to-emerald-600/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6">
           <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('treasuryBalance')}</div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
@@ -251,6 +261,13 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
             </div>
           </div>
         </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Штрафы подрядчиков</div>
+          <div className="text-2xl font-bold text-orange-500 dark:text-orange-400">
+            {treasury?.totalPenaltyIncome ? formatTenge(treasury.totalPenaltyIncome) : '0 ₸'}
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{treasury?.penalties?.length || 0} штрафов</div>
+        </div>
       </div>
 
       {/* On-chain tx notification */}
@@ -263,6 +280,36 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
               tx
             </a>
           )}
+        </div>
+      )}
+
+      {/* Penalty Income */}
+      {treasury?.penalties && treasury.penalties.length > 0 && (
+        <div>
+          <h3 className="text-gray-900 dark:text-white font-semibold mb-3 flex items-center gap-2">
+            <svg width="16" height="16" fill="none" stroke="#f97316" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Штрафы подрядчиков
+          </h3>
+          <div className="space-y-2">
+            {treasury.penalties.map((p) => (
+              <div key={p.id} className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                    {p.type === 'TIME_OVERDUE' ? 'Просрочка' : p.type === 'QUALITY_REJECTED' ? 'Брак' : 'Брошенный объект'}
+                    {p.daysOverdue ? ` (${p.daysOverdue} дн.)` : ''}
+                  </div>
+                  {p.contract && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.contract.title}</div>
+                  )}
+                </div>
+                <div className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                  +{formatTenge(p.amountTenge)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -401,18 +401,30 @@ async function main() {
   console.log('Created 4 jury sessions')
 
   // ═══════════════════════════════════════════════
-  // PENALTIES (4)
+  // PENALTIES (4) — routed to district treasuries
   // ═══════════════════════════════════════════════
-  await prisma.penalty.createMany({
-    data: [
-      { contractId: contract2.id, type: 'TIME_OVERDUE', amountTenge: 6_000_000, daysOverdue: 5 },
-      { contractId: contract7.id, type: 'TIME_OVERDUE', amountTenge: 5_700_000, daysOverdue: 6 },
-      { contractId: contract7.id, type: 'QUALITY_REJECTED', amountTenge: 9_500_000, triggeredBy: citizens[5].id },
-      { contractId: contract7.id, type: 'GHOST_SITE', amountTenge: 4_750_000, triggeredBy: citizens[1].id },
-    ],
+  const auezovTreasuryForPenalty = treasuries.find(t => t.district === 'Ауэзовский')!
+
+  const penalty1 = await prisma.penalty.create({
+    data: { contractId: contract2.id, type: 'TIME_OVERDUE', amountTenge: 6_000_000, daysOverdue: 5, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty2 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'TIME_OVERDUE', amountTenge: 5_700_000, daysOverdue: 6, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty3 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'QUALITY_REJECTED', amountTenge: 9_500_000, triggeredBy: citizens[5].id, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty4 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'GHOST_SITE', amountTenge: 4_750_000, triggeredBy: citizens[1].id, districtTreasuryId: auezovTreasuryForPenalty.id },
   })
 
-  console.log('Created 4 penalties')
+  const totalPenalties = BigInt(6_000_000) + BigInt(5_700_000) + BigInt(9_500_000) + BigInt(4_750_000)
+  await prisma.districtTreasury.update({
+    where: { id: auezovTreasuryForPenalty.id },
+    data: { balance: { increment: totalPenalties } },
+  })
+
+  console.log('Created 4 penalties routed to Ауэзовский treasury')
 
   // ═══════════════════════════════════════════════
   // WORK LOGS (15)
