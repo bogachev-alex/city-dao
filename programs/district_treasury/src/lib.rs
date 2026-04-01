@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy");
+declare_id!("HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ");
 
 #[program]
 pub mod district_treasury {

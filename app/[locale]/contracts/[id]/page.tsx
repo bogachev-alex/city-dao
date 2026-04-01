@@ -15,6 +15,9 @@ import {
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
 } from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchContractOnChain } from '@/lib/web3/onchain'
+import { PublicKey } from '@solana/web3.js'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
 import { useAuth } from '@/components/AuthContext'
@@ -38,6 +41,7 @@ export default function ContractDetailPage() {
   const t = useTranslations('contractDetail')
   const locale = useLocale()
   const { user, authHeader } = useAuth()
+  const dataSource = useDataSource()
   const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
@@ -70,8 +74,30 @@ export default function ContractDetailPage() {
   useEffect(() => {
     if (!params.id) return
     setLoading(true)
+
+    // On-chain mode: try to fetch from Solana by PDA address
+    if (dataSource === 'onchain') {
+      (async () => {
+        try {
+          const pubkey = new PublicKey(params.id)
+          const onChain = await fetchContractOnChain(pubkey)
+          if (onChain) {
+            setContract(onChain)
+          } else {
+            setContract(getContractById(params.id) || null)
+          }
+        } catch {
+          setContract(getContractById(params.id) || null)
+        } finally {
+          setLoading(false)
+        }
+      })()
+      return
+    }
+
+    // Mock/DB mode: fetch from API
     void loadContract().finally(() => setLoading(false))
-  }, [params.id, loadContract])
+  }, [params.id, dataSource, loadContract])
 
   if (loading) {
     return (

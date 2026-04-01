@@ -1,4 +1,8 @@
 export { SolanaProvider } from './provider'
 export { useAnchorProvider, useProgram } from './useAnchorProgram'
+export { useDataSource, getDataSource } from './useDataSource'
+export { useContracts, useContract } from './useContracts'
+export { fetchOnChainTransactions, fetchParsedTransactions } from './fetchTransactions'
+export { fetchAllContractsOnChain, fetchContractOnChain, getReadOnlyConnection } from './onchain'
 export * from './pda'
 export * from './constants'

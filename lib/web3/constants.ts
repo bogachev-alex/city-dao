@@ -3,15 +3,15 @@ import { PublicKey } from '@solana/web3.js'
 // Solana cluster
 export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
 export const SOLANA_NETWORK: SolanaCluster = 'devnet'
-export const SOLANA_RPC_URL = 'https://api.devnet.solana.com'
+export const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com'
 
 // Program IDs — generated keypairs, will be active after `anchor deploy`
 export const PROGRAM_IDS = {
-  contractRegistry: new PublicKey('GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU'),
-  citizenRegistry: new PublicKey('Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6'),
-  juryMechanism: new PublicKey('F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w'),
-  penaltyEngine: new PublicKey('DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z'),
-  districtTreasury: new PublicKey('44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy'),
+  contractRegistry: new PublicKey('6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4'),
+  citizenRegistry: new PublicKey('2Gjs7gsyaBayR38AACScCPz3ZgRf3JZvAoW63A5jKCd3'),
+  juryMechanism: new PublicKey('HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd'),
+  penaltyEngine: new PublicKey('9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT'),
+  districtTreasury: new PublicKey('HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ'),
   crowdfunding: new PublicKey('CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ'),
 } as const
 
