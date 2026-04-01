@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import TransactionFeed from '@/components/TransactionFeed'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
+import { DEMO_CONTRACTS } from '@/lib/contracts'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
@@ -25,9 +28,34 @@ function formatBigAmount(val: number): string {
 
 export default function HomePage() {
   const t = useTranslations('home')
+  const dataSource = useDataSource()
   const [stats, setStats] = useState({ contracts: 0, totalAmount: 0, penalized: 0, citizens: 0 })
 
   useEffect(() => {
+    if (dataSource === 'onchain') {
+      // On-chain mode: read contracts from Solana devnet
+      fetchAllContractsOnChain()
+        .then((contracts) => {
+          const list = contracts.length > 0 ? contracts : DEMO_CONTRACTS
+          setStats({
+            contracts: list.length,
+            totalAmount: list.reduce((s, c) => s + c.amount_usdc, 0),
+            penalized: list.filter((c) => c.status === 'penalized').length,
+            citizens: 0, // citizen count requires separate program query
+          })
+        })
+        .catch(() => {
+          setStats({
+            contracts: DEMO_CONTRACTS.length,
+            totalAmount: DEMO_CONTRACTS.reduce((s, c) => s + c.amount_usdc, 0),
+            penalized: DEMO_CONTRACTS.filter((c) => c.status === 'penalized').length,
+            citizens: 0,
+          })
+        })
+      return
+    }
+
+    // Mock/DB mode: fetch from API
     Promise.all([
       fetch('/api/contracts').then(r => r.json()).catch(() => []),
       fetch('/api/citizens').then(r => r.json()).catch(() => []),
@@ -44,7 +72,7 @@ export default function HomePage() {
         citizens: citizenList.length,
       })
     })
-  }, [])
+  }, [dataSource])
 
   const STATS = [
     { label: t('contractsMonitored'), value: String(stats.contracts), icon: '📋', color: 'text-blue-600 dark:text-blue-400' },

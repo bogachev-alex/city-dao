@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useConnection } from '@solana/wallet-adapter-react'
 import { Link } from '@/i18n/routing'
 import {
   DEMO_TRANSACTIONS,
@@ -11,6 +12,8 @@ import {
   truncateSig,
   type TxType,
 } from '@/lib/demoTransactions'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchParsedTransactions, type OnChainTx } from '@/lib/web3/fetchTransactions'
 
 export interface TransactionFeedItem {
   signature: string
@@ -45,17 +48,48 @@ export default function TransactionFeed({
   showHeader = true,
 }: TransactionFeedProps) {
   const t = useTranslations('components.transactionFeed')
+  const dataSource = useDataSource()
+  const { connection } = useConnection()
   const [items, setItems] = useState<TransactionFeedItem[]>([])
   const [demoAppended, setDemoAppended] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
+
+    // On-chain mode: fetch real Solana transactions
+    if (dataSource === 'onchain') {
+      fetchParsedTransactions(maxItems, connection)
+        .then((txs: OnChainTx[]) => {
+          if (txs.length > 0) {
+            setItems(txs.map((tx) => ({
+              signature: tx.signature,
+              type: tx.type,
+              description: tx.description,
+              timestamp: tx.timestamp,
+              amount: tx.amount,
+            })))
+            setDemoAppended(false)
+          } else {
+            // No on-chain txs yet, fall back to demo
+            setItems(demoItems())
+            setDemoAppended(true)
+          }
+        })
+        .catch(() => {
+          setItems(demoItems())
+          setDemoAppended(true)
+        })
+        .finally(() => setLoading(false))
+      return
+    }
+
+    // Mock mode: use API (DB + demo padding)
     const params = new URLSearchParams()
     params.set('limit', String(maxItems))
     if (district) params.set('district', district)
     if (!includeDemo) params.set('demo', '0')
 
-    setLoading(true)
     fetch(`/api/transactions?${params.toString()}`)
       .then((r) => r.json())
       .then((data: { items?: TransactionFeedItem[]; demoAppended?: boolean }) => {
@@ -64,34 +98,27 @@ export default function TransactionFeed({
           setItems(list)
           setDemoAppended(!!data.demoAppended)
         } else {
-          setItems(
-            DEMO_TRANSACTIONS.slice(0, maxItems).map((x) => ({
-              signature: x.signature,
-              type: x.type,
-              description: x.description,
-              timestamp: x.timestamp.toISOString(),
-              amount: x.amount,
-              contractId: x.contractId,
-            }))
-          )
+          setItems(demoItems())
           setDemoAppended(true)
         }
       })
       .catch(() => {
-        setItems(
-          DEMO_TRANSACTIONS.slice(0, maxItems).map((x) => ({
-            signature: x.signature,
-            type: x.type,
-            description: x.description,
-            timestamp: x.timestamp.toISOString(),
-            amount: x.amount,
-            contractId: x.contractId,
-          }))
-        )
+        setItems(demoItems())
         setDemoAppended(true)
       })
       .finally(() => setLoading(false))
-  }, [district, maxItems, includeDemo])
+
+    function demoItems(): TransactionFeedItem[] {
+      return DEMO_TRANSACTIONS.slice(0, maxItems).map((x) => ({
+        signature: x.signature,
+        type: x.type,
+        description: x.description,
+        timestamp: x.timestamp.toISOString(),
+        amount: x.amount,
+        contractId: x.contractId,
+      }))
+    }
+  }, [district, maxItems, includeDemo, dataSource, connection])
 
   const inner = (
     <>

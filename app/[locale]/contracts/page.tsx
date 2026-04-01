@@ -11,6 +11,8 @@ import {
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
 } from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import ContractCard from '@/components/ContractCard'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
@@ -35,6 +37,7 @@ export default function ContractsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [contractorScope, setContractorScope] = useState<'mine' | 'all'>('mine')
 
+  const dataSource = useDataSource()
   const isContractor = user?.role === 'CONTRACTOR'
   const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
 
@@ -52,6 +55,19 @@ export default function ContractsPage() {
 
   const loadContracts = useCallback(() => {
     setLoading(true)
+
+    // On-chain mode: read directly from Solana devnet
+    if (dataSource === 'onchain') {
+      fetchAllContractsOnChain()
+        .then((onChain) => {
+          setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+        })
+        .catch(() => setContracts(DEMO_CONTRACTS))
+        .finally(() => setLoading(false))
+      return
+    }
+
+    // Mock/DB mode: fetch from API with filters
     const amountMin = amountMinFilter.trim() ? Number(amountMinFilter.replace(/\s/g, '')) : undefined
     fetchContracts({
       district: districtFilter !== 'all' ? districtFilter : undefined,
@@ -69,7 +85,7 @@ export default function ContractsPage() {
       })
       .catch(() => setContracts(DEMO_CONTRACTS))
       .finally(() => setLoading(false))
-  }, [districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
+  }, [dataSource, districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
 
   useEffect(() => {
     loadContracts()
