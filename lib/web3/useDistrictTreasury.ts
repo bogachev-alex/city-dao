@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
-import { AnchorProvider, Program } from '@coral-xyz/anchor'
+import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS } from './constants'
 import idl from './idl/district_treasury.json'
 
@@ -89,7 +89,7 @@ export function useDistrictTreasury() {
           .createProposal(
             proposalTitle,
             proposalTitle,
-            1, // minimal demo amount; UI tracks real amount off-chain
+            new BN(1), // u64 in Anchor expects BN
             'GENERAL',
           )
           .accounts({

@@ -70,12 +70,25 @@ async function createSessionFromLegacyAlias(sessionId: string) {
   const milestoneSortOrder = Number(parts[1])
   if (!Number.isInteger(milestoneSortOrder) || milestoneSortOrder <= 0) return null
 
-  const contract = await prisma.contract.findUnique({
+  let contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: {
       milestones: { orderBy: { sortOrder: 'asc' } },
     },
   })
+  if (!contract) {
+    const contractIndex = Number(contractId)
+    if (Number.isInteger(contractIndex) && contractIndex > 0) {
+      const list = await prisma.contract.findMany({
+        include: {
+          milestones: { orderBy: { sortOrder: 'asc' } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: contractIndex,
+      })
+      contract = list[contractIndex - 1] || null
+    }
+  }
   if (!contract) return null
 
   const milestone = contract.milestones.find((m) => m.sortOrder === milestoneSortOrder)

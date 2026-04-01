@@ -16,23 +16,37 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-
-  const contract = await prisma.contract.findUnique({
-    where: { id },
-    include: {
-      contractor: true,
-      milestones: { orderBy: { sortOrder: 'asc' } },
-      jurySessions: {
-        include: {
-          milestone: { select: { id: true, description: true } },
-          votes: { include: { citizen: { select: { id: true, walletAddress: true, tier: true } } } },
-        },
-        orderBy: { createdAt: 'desc' },
+  const include = {
+    contractor: true,
+    milestones: { orderBy: { sortOrder: 'asc' as const } },
+    jurySessions: {
+      include: {
+        milestone: { select: { id: true, description: true } },
+        votes: { include: { citizen: { select: { id: true, walletAddress: true, tier: true } } } },
       },
-      penalties: { orderBy: { createdAt: 'desc' } },
-      workLogs: { orderBy: { createdAt: 'desc' }, take: 20 },
+      orderBy: { createdAt: 'desc' as const },
     },
+    penalties: { orderBy: { createdAt: 'desc' as const } },
+    workLogs: { orderBy: { createdAt: 'desc' as const }, take: 20 },
+  }
+
+  let contract = await prisma.contract.findUnique({
+    where: { id },
+    include,
   })
+
+  // Legacy compatibility: allow numeric aliases like /api/contracts/1
+  if (!contract) {
+    const idx = Number(id)
+    if (Number.isInteger(idx) && idx > 0) {
+      const list = await prisma.contract.findMany({
+        include,
+        orderBy: { createdAt: 'asc' },
+        take: idx,
+      })
+      contract = list[idx - 1] || null
+    }
+  }
 
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })

@@ -77,12 +77,6 @@ export function useContractRegistry() {
       const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(contractPDA)
 
-      // Idempotent path: if contract already exists on-chain, reuse it.
-      const existing = await fetchContract(wallet.publicKey, onChainTitle)
-      if (existing) {
-        return { tx: null, pda: contractPDA.toBase58() }
-      }
-
       const milestoneInputs = milestones.map((m) => ({
         description: m.description,
         deadlineDays: m.deadlineDays,
@@ -123,7 +117,7 @@ export function useContractRegistry() {
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, fetchContract, isAlreadyInUseError])
+  }, [wallet.publicKey, getProgram, isAlreadyInUseError])
 
   /**
    * Contractor submits milestone on-chain with IPFS evidence hash (see IDL submit_milestone).
