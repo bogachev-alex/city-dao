@@ -20,3 +20,10 @@ tsconfig.tsbuildinfo
 .cursor/
 .claude/
 tasks/
+
+# Local-only (do not commit)
+.dockerignore
+Dockerfile
+AGENTS.md
+CHANGELOG.md
+opencode.json
