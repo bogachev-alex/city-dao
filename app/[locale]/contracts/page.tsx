@@ -42,6 +42,35 @@ export default function ContractsPage() {
   const isContractor = user?.role === 'CONTRACTOR'
   const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
 
+  const applyOnChainOverlay = useCallback(async (baseContracts: Contract[]): Promise<Contract[]> => {
+    const indexed = baseContracts.filter((c) => !!c.onChainPubkey)
+    if (indexed.length === 0) return baseContracts
+    try {
+      const onChain = await fetchAllContractsOnChain()
+      const byPda = new Map(onChain.map((c) => [c.id, c]))
+      return baseContracts.map((c) => {
+        if (!c.onChainPubkey) return c
+        const live = byPda.get(c.onChainPubkey)
+        if (!live) return c
+        return {
+          ...c,
+          contractor: live.contractor || c.contractor,
+          amount_usdc: live.amount_usdc ?? c.amount_usdc,
+          deadline: live.deadline || c.deadline,
+          status: live.status || c.status,
+          lat: live.lat ?? c.lat,
+          lng: live.lng ?? c.lng,
+          escrow_amount: live.escrow_amount ?? c.escrow_amount,
+          penalty_amount: live.penalty_amount ?? c.penalty_amount,
+          days_overdue: live.days_overdue ?? c.days_overdue,
+          milestones: live.milestones?.length ? live.milestones : c.milestones,
+        }
+      })
+    } catch {
+      return baseContracts
+    }
+  }, [])
+
   useEffect(() => {
     if (user?.role !== 'CONTRACTOR') setContractorScope('mine')
   }, [user?.role])
@@ -77,16 +106,22 @@ export default function ContractsPage() {
       subjectType: subjectTypeFilter !== 'all' ? subjectTypeFilter : undefined,
       amountMin: amountMin != null && !Number.isNaN(amountMin) ? amountMin : undefined,
     })
-      .then((data: any[]) => {
+      .then(async (data: any[]) => {
         if (Array.isArray(data) && data.length > 0) {
-          setContracts(data.map(normalizeContract))
+          const normalized = data.map(normalizeContract)
+          const merged = await applyOnChainOverlay(normalized)
+          setContracts(merged)
         } else {
-          setContracts(DEMO_CONTRACTS)
+          const merged = await applyOnChainOverlay(DEMO_CONTRACTS)
+          setContracts(merged)
         }
       })
-      .catch(() => setContracts(DEMO_CONTRACTS))
+      .catch(async () => {
+        const merged = await applyOnChainOverlay(DEMO_CONTRACTS)
+        setContracts(merged)
+      })
       .finally(() => setLoading(false))
-  }, [dataSource, districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
+  }, [applyOnChainOverlay, dataSource, districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
 
   useEffect(() => {
     loadContracts()

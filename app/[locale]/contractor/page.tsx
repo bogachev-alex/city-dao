@@ -10,6 +10,7 @@ import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
 import { formatTengeWithCrypto } from '@/lib/contracts'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 
 type Milestone = {
   id: string
@@ -100,6 +101,41 @@ export default function ContractorCabinetPage() {
   const [loadingSol, setLoadingSol] = useState(false)
   const [blockerNotice, setBlockerNotice] = useState<string | null>(null)
 
+  const toApiStatus = useCallback((status: string): string => {
+    const map: Record<string, string> = {
+      active: 'ACTIVE',
+      penalized: 'PENALIZED',
+      completed: 'COMPLETED',
+      disputed: 'DISPUTED',
+    }
+    return map[status] || 'ACTIVE'
+  }, [])
+
+  const applyOnChainOverlay = useCallback(async (payload: ContractorPayload): Promise<ContractorPayload> => {
+    const hasOnChainRefs = payload.contracts.some((c) => !!c.onChainPubkey)
+    if (!hasOnChainRefs) return payload
+    try {
+      const onChain = await fetchAllContractsOnChain()
+      const byPda = new Map(onChain.map((c) => [c.id, c]))
+      return {
+        ...payload,
+        contracts: payload.contracts.map((c) => {
+          if (!c.onChainPubkey) return c
+          const live = byPda.get(c.onChainPubkey)
+          if (!live) return c
+          return {
+            ...c,
+            status: toApiStatus(live.status),
+            deadline: live.deadline || c.deadline,
+            totalAmount: String(live.amount_usdc ?? c.totalAmount),
+          }
+        }),
+      }
+    } catch {
+      return payload
+    }
+  }, [toApiStatus])
+
   const loadContractor = useCallback(async () => {
     if (!user || user.role !== 'CONTRACTOR') return
     setLoading(true)
@@ -113,14 +149,15 @@ export default function ContractorCabinetPage() {
         throw new Error((err as { error?: string }).error || 'not_found')
       }
       const json = (await r.json()) as ContractorPayload
-      setData(json)
+      const merged = await applyOnChainOverlay(json)
+      setData(merged)
     } catch {
       setLoadError('not_found')
       setData(null)
     } finally {
       setLoading(false)
     }
-  }, [user, authHeader])
+  }, [user, authHeader, applyOnChainOverlay])
 
   useEffect(() => {
     if (authLoading) return
