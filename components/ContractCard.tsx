@@ -8,6 +8,7 @@ import {
   getMilestoneCompletedCount,
   formatTengeWithCrypto,
   getContractDetailHref,
+  formatContractTitleForDisplay,
 } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
 
@@ -41,7 +42,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <Link href={contractHref} className="min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug group-hover:text-emerald-600 dark:text-emerald-400 transition-colors line-clamp-2">
-              {contract.title}
+              {formatContractTitleForDisplay(contract.title)}
             </h3>
           </Link>
           <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>

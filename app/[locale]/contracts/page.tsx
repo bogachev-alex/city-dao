@@ -9,6 +9,7 @@ import {
   ContractStatus,
   normalizeContract,
   resolveContractOnChainPubkey,
+  formatContractTitleForDisplay,
 } from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
@@ -66,7 +67,33 @@ export default function ContractsPage() {
     try {
       const onChain = await fetchAllContractsOnChain()
       const byPda = new Map(onChain.map((c) => [c.id, c]))
+      const dbByOnChainPubkey = new Map<string, Contract>()
+      for (const c of baseContracts) {
+        const pk = c.onChainPubkey || null
+        if (pk) dbByOnChainPubkey.set(pk, c)
+      }
+
       const mergedBase = baseContracts.map((c) => {
+        // Prefer direct DB link by on-chain pubkey (avoids fuzzy match + keeps full title from DB).
+        if (c.onChainPubkey && byPda.has(c.onChainPubkey)) {
+          const live = byPda.get(c.onChainPubkey)!
+          return {
+            ...c,
+            title: c.title,
+            onChainPubkey: c.onChainPubkey,
+            contractor: live.contractor || c.contractor,
+            amount_usdc: live.amount_usdc ?? c.amount_usdc,
+            deadline: live.deadline || c.deadline,
+            status: live.status || c.status,
+            lat: live.lat ?? c.lat,
+            lng: live.lng ?? c.lng,
+            escrow_amount: live.escrow_amount ?? c.escrow_amount,
+            penalty_amount: live.penalty_amount ?? c.penalty_amount,
+            days_overdue: live.days_overdue ?? c.days_overdue,
+            milestones: live.milestones?.length ? live.milestones : c.milestones,
+          }
+        }
+
         let resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
         if (!resolvedPubkey) {
           const title = normalizeText(c.title)
@@ -132,6 +159,7 @@ export default function ContractsPage() {
         if (!live) return c
         return {
           ...c,
+          title: c.title,
           onChainPubkey: resolvedPubkey,
           contractor: live.contractor || c.contractor,
           amount_usdc: live.amount_usdc ?? c.amount_usdc,
@@ -152,9 +180,36 @@ export default function ContractsPage() {
           .map((c) => resolveContractOnChainPubkey(c.id, c.onChainPubkey))
           .filter(Boolean) as string[]
       )
-      const onChainOnly = onChain.filter((c) => !knownPubkeys.has(c.id))
+      const onChainOnly = onChain
+        .filter((c) => !knownPubkeys.has(c.id))
+        .map((c) => {
+          const db = dbByOnChainPubkey.get(c.id)
+          if (db) {
+            return {
+              ...c,
+              id: db.id,
+              title: db.title,
+              contractor: db.contractor,
+              customerName: db.customerName,
+              registryNumber: db.registryNumber,
+              subjectType: db.subjectType,
+              onChainPubkey: c.id,
+            }
+          }
+          return {
+            ...c,
+            title: formatContractTitleForDisplay(c.title),
+          }
+        })
 
-      return [...onChainOnly, ...mergedBase]
+      const combined = [...onChainOnly, ...mergedBase]
+      const seen = new Set<string>()
+      return combined.filter((c) => {
+        const key = c.onChainPubkey || c.id
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
     } catch {
       return baseContracts
     }

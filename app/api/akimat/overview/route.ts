@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import {
+  fetchDistrictTreasuryBalanceOnChain,
+  getReadOnlySolanaConnection,
+} from '@/lib/web3/fetchDistrictTreasuryBalance'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,18 +41,24 @@ export async function GET() {
     }),
   ])
 
+  const connection = getReadOnlySolanaConnection()
+  const onChainByDistrict = await Promise.all(
+    treasuries.map((t) => fetchDistrictTreasuryBalanceOnChain(connection, t.district))
+  )
+
   let totalBalance = BigInt(0)
-  for (const t of treasuries) {
-    totalBalance += t.balance
-  }
+  const treasuryRows = treasuries.map((t, i) => {
+    const onChain = onChainByDistrict[i]
+    const balance = onChain !== null ? onChain : t.balance
+    totalBalance += balance
+    return {
+      district: t.district,
+      balance: balance.toString(),
+      votingCount: t.proposals.length,
+    }
+  })
 
   const votingProposalsTotal = treasuries.reduce((s, t) => s + t.proposals.length, 0)
-
-  const treasuryRows = treasuries.map((t) => ({
-    district: t.district,
-    balance: t.balance.toString(),
-    votingCount: t.proposals.length,
-  }))
 
   return NextResponse.json({
     totalContracts,

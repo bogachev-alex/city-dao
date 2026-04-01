@@ -4,6 +4,11 @@ import { prismaMock, resetPrismaMock } from '../mocks/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
+vi.mock('@/lib/web3/fetchDistrictTreasuryBalance', () => ({
+  fetchDistrictTreasuryBalanceOnChain: vi.fn().mockResolvedValue(null),
+  getReadOnlySolanaConnection: vi.fn(),
+}))
+
 const { GET, POST, PATCH } = await import('@/app/api/treasury/[district]/route')
 
 beforeEach(() => resetPrismaMock())
@@ -13,7 +18,12 @@ const makeParams = (district: string) => Promise.resolve({ district })
 describe('GET /api/treasury/[district]', () => {
   it('returns treasury with proposals', async () => {
     prismaMock.districtTreasury.findUnique.mockResolvedValue({
-      id: 't1', district: 'Ауэзовский', proposals: [],
+      id: 't1',
+      district: 'Ауэзовский',
+      balance: BigInt(1_000_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      proposals: [],
     })
     const res = await GET(
       new NextRequest('http://localhost/api/treasury/test'),

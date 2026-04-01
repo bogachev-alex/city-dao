@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import {
+  fetchDistrictTreasuryBalanceOnChain,
+  getReadOnlySolanaConnection,
+} from '@/lib/web3/fetchDistrictTreasuryBalance'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +41,20 @@ export async function GET(
     return NextResponse.json({ error: 'District not found' }, { status: 404 })
   }
 
-  return NextResponse.json(treasury)
+  const balanceOnChain = await fetchDistrictTreasuryBalanceOnChain(
+    getReadOnlySolanaConnection(),
+    decodedDistrict
+  )
+
+  return NextResponse.json({
+    ...treasury,
+    balance: treasury.balance.toString(),
+    balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
+    proposals: treasury.proposals.map((p) => ({
+      ...p,
+      amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
+    })),
+  })
 }
 
 // POST /api/treasury/[district] — create spending proposal

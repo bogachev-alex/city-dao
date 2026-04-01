@@ -515,6 +515,7 @@
     "treasuryDashboard": {
       "treasuryBalance": "Баланс казны района",
       "liveBalance": "Live баланс",
+      "onChainBalance": "Баланс на Solana (on-chain)",
       "proposals": "Предложений",
       "activeVotings": "активных голосований",
       "voteRecorded": "Голос записан",

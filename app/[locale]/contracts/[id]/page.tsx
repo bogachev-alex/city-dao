@@ -159,6 +159,24 @@ export default function ContractDetailPage() {
         const withOnChain = await applyOnChainOverlay(normalized, overrideOnChainPubkey)
         setContract(withOnChain)
       } else {
+        let pk: PublicKey | null = null
+        try {
+          pk = new PublicKey(params.id)
+        } catch {
+          pk = null
+        }
+        if (pk) {
+          try {
+            const onChain = await fetchContractOnChain(pk)
+            if (onChain) {
+              setOnChainSnapshot(onChain)
+              setContract(await applyOnChainOverlay(onChain, overrideOnChainPubkey || params.id))
+              return
+            }
+          } catch {
+            // fall through to demo / not found
+          }
+        }
         const demo = getContractById(params.id)
         if (!demo) {
           setContract(null)
@@ -168,7 +186,25 @@ export default function ContractDetailPage() {
         setContract(withOnChain)
       }
     } catch {
-      const demo = getContractById(params.id)
+      let pk: PublicKey | null = null
+      try {
+        pk = new PublicKey(params.id!)
+      } catch {
+        pk = null
+      }
+      if (pk) {
+        try {
+          const onChain = await fetchContractOnChain(pk)
+          if (onChain) {
+            setOnChainSnapshot(onChain)
+            setContract(await applyOnChainOverlay(onChain, overrideOnChainPubkey || params.id))
+            return
+          }
+        } catch {
+          // fall through
+        }
+      }
+      const demo = getContractById(params.id!)
       if (!demo) {
         setContract(null)
         return

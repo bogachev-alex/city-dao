@@ -35,6 +35,8 @@ interface TreasuryData {
   id: string
   district: string
   balance: string
+  /** Present when Solana account exists; preferred for display */
+  balanceOnChain?: string | null
   proposals: Proposal[]
 }
 
@@ -177,7 +179,17 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
     return `${value.slice(0, 4)}...${value.slice(-4)}`
   }
 
-  const balance = treasury ? Number(treasury.balance) : 0
+  const balance = treasury
+    ? Number(
+        treasury.balanceOnChain != null && treasury.balanceOnChain !== ''
+          ? treasury.balanceOnChain
+          : treasury.balance
+      )
+    : 0
+  const balanceSourceOnChain =
+    treasury != null &&
+    treasury.balanceOnChain != null &&
+    treasury.balanceOnChain !== ''
   const proposals = treasury?.proposals || []
 
   if (loading) {
@@ -198,7 +210,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
           <div className="mt-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">{t('liveBalance')}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {balanceSourceOnChain ? t('onChainBalance') : t('liveBalance')}
+            </span>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">

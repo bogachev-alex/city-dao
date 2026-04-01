@@ -96,6 +96,14 @@ export async function GET(
     }
   }
 
+  // Resolve by Solana on-chain PDA (same address as in Explorer)
+  if (!contract) {
+    contract = await prisma.contract.findUnique({
+      where: { onChainPubkey: id },
+      include,
+    })
+  }
+
   if (contract) {
     try {
       await ensureJurySessionForTesting(contract.id)

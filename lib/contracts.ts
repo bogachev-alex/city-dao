@@ -99,6 +99,18 @@ export function getContractDetailHref(contractId: string, dbPubkey?: string | nu
   return `${base}?onchain=${encodeURIComponent(onChainPubkey)}`
 }
 
+/**
+ * On-chain contract `title` is the PDA seed string: for long names it is truncated to 32 bytes
+ * and a stable hash suffix (`-abc12def`) is appended. Prefer the DB title when available;
+ * use this only for display when only the seed exists.
+ */
+export function formatContractTitleForDisplay(title: string): string {
+  const m = title.match(/^(.+)-([0-9a-f]{8})$/)
+  if (!m) return title
+  const prefix = m[1].trim()
+  return prefix.length > 0 ? `${prefix}…` : title
+}
+
 export const DEMO_CONTRACTS: Contract[] = [
   {
     id: '1',
