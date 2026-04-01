@@ -6,7 +6,15 @@ export const dynamic = 'force-dynamic'
 
 const contractorDetailInclude = {
   contracts: {
-    include: { milestones: { orderBy: { sortOrder: 'asc' as const } } },
+    include: {
+      milestones: { orderBy: { sortOrder: 'asc' as const } },
+      penalties: { orderBy: { createdAt: 'desc' as const }, take: 5 },
+      jurySessions: {
+        where: { status: { in: ['SELECTING', 'COMMIT_PHASE', 'REVEAL_PHASE', 'FINALIZED'] } },
+        orderBy: { createdAt: 'desc' as const },
+        take: 3,
+      },
+    },
     orderBy: { createdAt: 'desc' as const },
   },
   workLogs: {

@@ -14,7 +14,7 @@ type Props = {
   onClose: () => void
   contracts: ContractOption[]
   authHeader: () => Record<string, string>
-  onSuccess: () => void
+  onSuccess: (createdLog?: { type?: string; contractId?: string }) => void
 }
 
 function requestPosition(timeoutMs = 15000): Promise<GeolocationPosition> {
@@ -174,7 +174,7 @@ export default function WorkLogFormModal({
         return
       }
       reset()
-      onSuccess()
+      onSuccess(data as { type?: string; contractId?: string })
       onClose()
     } catch {
       setFormError(t('errorSubmit'))

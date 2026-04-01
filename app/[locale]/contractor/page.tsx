@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
+import { useConnection, useWallet } from '@solana/wallet-adapter-react'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import { formatTengeWithCrypto } from '@/lib/contracts'
@@ -24,6 +26,13 @@ type ApiContract = {
   totalAmount: string | bigint
   onChainPubkey?: string | null
   milestones: Milestone[]
+  penalties?: { id: string; amountTenge: string | number; type: string }[]
+  jurySessions?: {
+    id: string
+    status: 'SELECTING' | 'COMMIT_PHASE' | 'REVEAL_PHASE' | 'FINALIZED' | 'ESCALATED' | string
+    commitDeadline?: string | null
+    revealDeadline?: string | null
+  }[]
 }
 
 type ApiWorkLog = {
@@ -66,18 +75,29 @@ const LOG_TYPE_LABEL: Record<string, string> = {
   BLOCKER: 'Блокер',
   MATERIAL_DELIVERY: 'Поставка',
 }
+const MIN_SOL_WARN = 0.02
+
+function formatPhaseLeft(ms: number): string {
+  const h = Math.max(0, Math.ceil(ms / (1000 * 60 * 60)))
+  return `${h}h`
+}
 
 export default function ContractorCabinetPage() {
   const t = useTranslations('contractorPage')
   const tNav = useTranslations('nav')
   const locale = useLocale()
   const { user, loading: authLoading, authHeader } = useAuth()
+  const { connection } = useConnection()
+  const wallet = useWallet()
   const router = useRouter()
   const [data, setData] = useState<ContractorPayload | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+  const [solBalance, setSolBalance] = useState<number | null>(null)
+  const [loadingSol, setLoadingSol] = useState(false)
+  const [blockerNotice, setBlockerNotice] = useState<string | null>(null)
 
   const loadContractor = useCallback(async () => {
     if (!user || user.role !== 'CONTRACTOR') return
@@ -114,6 +134,30 @@ export default function ContractorCabinetPage() {
     void loadContractor()
   }, [user, authLoading, router, loadContractor])
 
+  useEffect(() => {
+    let alive = true
+    let timer: ReturnType<typeof setInterval> | null = null
+    async function refresh() {
+      if (!wallet.publicKey) {
+        if (alive) setSolBalance(null)
+        return
+      }
+      try {
+        if (alive) setLoadingSol(true)
+        const lamports = await connection.getBalance(wallet.publicKey)
+        if (alive) setSolBalance(lamports / LAMPORTS_PER_SOL)
+      } finally {
+        if (alive) setLoadingSol(false)
+      }
+    }
+    void refresh()
+    if (wallet.publicKey) timer = setInterval(() => void refresh(), 15000)
+    return () => {
+      alive = false
+      if (timer) clearInterval(timer)
+    }
+  }, [connection, wallet.publicKey])
+
   const stats = useMemo(() => {
     if (!data?.contracts) return null
     const contracts = data.contracts
@@ -141,6 +185,21 @@ export default function ContractorCabinetPage() {
     }
     return { reviewMilestones, contractsWithReview }
   }, [data])
+
+  const activeBlockersByContract = useMemo(() => {
+    const map = new Map<string, ApiWorkLog>()
+    if (!data) return map
+    const now = Date.now()
+    for (const log of data.workLogs) {
+      if (log.type !== 'BLOCKER') continue
+      const ageMs = now - new Date(log.createdAt).getTime()
+      if (ageMs > 72 * 60 * 60 * 1000) continue
+      if (!map.has(log.contract.id)) map.set(log.contract.id, log)
+    }
+    return map
+  }, [data])
+
+  const solWarn = solBalance != null && solBalance < MIN_SOL_WARN
 
   if (authLoading || loading) {
     return (
@@ -189,7 +248,27 @@ export default function ContractorCabinetPage() {
                 <span className="text-gray-400 text-sm">
                   {t('reputation')}: <span className="text-white font-semibold">{data.reputationScore}</span>
                 </span>
+                <span
+                  className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold border ${
+                    !wallet.publicKey
+                      ? 'bg-gray-500/10 text-gray-300 border-gray-500/30'
+                      : solWarn
+                        ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  {!wallet.publicKey
+                    ? t('walletNotConnected')
+                    : loadingSol
+                      ? t('solLoading')
+                      : t('solBalance', { value: (solBalance ?? 0).toFixed(4) })}
+                </span>
               </div>
+              {wallet.publicKey && solWarn && (
+                <p className="mt-2 text-xs text-red-300">
+                  {t('solLowWarning', { min: MIN_SOL_WARN })}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4 w-full lg:w-auto lg:min-w-[420px]">
               <div className="bg-white/5 border border-white/10 rounded-xl p-4">
@@ -229,6 +308,20 @@ export default function ContractorCabinetPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {blockerNotice && (
+          <section className="rounded-xl border border-orange-400/40 bg-orange-500/10 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-orange-900 dark:text-orange-200">{blockerNotice}</p>
+              <button
+                type="button"
+                onClick={() => setBlockerNotice(null)}
+                className="text-xs text-orange-800 dark:text-orange-300 hover:underline"
+              >
+                {t('dismiss')}
+              </button>
+            </div>
+          </section>
+        )}
         {attention.reviewMilestones > 0 && (
           <section
             className="rounded-xl border border-amber-500/40 bg-amber-500/15 dark:bg-amber-500/10 px-4 py-4"
@@ -350,6 +443,28 @@ export default function ContractorCabinetPage() {
                 const dLeft = daysUntil(c.deadline)
                 const risk = c.status === 'ACTIVE' && dLeft >= 0 && dLeft < 7
                 const review = (c.milestones || []).some((m) => m.status === 'UNDER_REVIEW')
+                const activeBlocker = activeBlockersByContract.get(c.id)
+                const penalties = c.penalties || []
+                const penaltyTotal = penalties.reduce((acc, p) => acc + Number(p.amountTenge || 0), 0)
+                const latestJury = c.jurySessions?.[0]
+                let juryStatusText: string | null = null
+                if (latestJury) {
+                  if (latestJury.status === 'SELECTING') {
+                    juryStatusText = t('jurySelecting')
+                  } else if (latestJury.status === 'COMMIT_PHASE') {
+                    const left = latestJury.commitDeadline
+                      ? new Date(latestJury.commitDeadline).getTime() - Date.now()
+                      : null
+                    juryStatusText = left != null ? t('juryCommitLeft', { hours: formatPhaseLeft(left) }) : t('juryCommit')
+                  } else if (latestJury.status === 'REVEAL_PHASE') {
+                    const left = latestJury.revealDeadline
+                      ? new Date(latestJury.revealDeadline).getTime() - Date.now()
+                      : null
+                    juryStatusText = left != null ? t('juryRevealLeft', { hours: formatPhaseLeft(left) }) : t('juryReveal')
+                  } else if (latestJury.status === 'FINALIZED') {
+                    juryStatusText = t('juryFinalized')
+                  }
+                }
 
                 return (
                   <div
@@ -383,6 +498,24 @@ export default function ContractorCabinetPage() {
                             {t('badgeReview')}
                           </span>
                         )}
+                        {!wallet.publicKey ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-600 dark:text-gray-400 border border-gray-500/30">
+                            {t('walletNotConnected')}
+                          </span>
+                        ) : solWarn ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-300 border border-red-500/30">
+                            {t('solLowBadge')}
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                            {t('solOkBadge')}
+                          </span>
+                        )}
+                        {activeBlocker && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30">
+                            {t('blockerActive')}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
@@ -392,6 +525,31 @@ export default function ContractorCabinetPage() {
                       <span className="text-gray-500 dark:text-gray-400">
                         {dLeft < 0 ? t('deadlineOverdue', { days: Math.abs(dLeft) }) : t('deadlineLeft', { days: dLeft })}
                       </span>
+                    </div>
+                    <div className="mb-3 space-y-1">
+                      {c.status === 'ACTIVE' && dLeft >= 0 && (
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          {t('penaltyCountdown', { days: dLeft })}
+                        </p>
+                      )}
+                      {c.status === 'PENALIZED' && (
+                        <p className="text-xs text-red-700 dark:text-red-300">
+                          {t('penaltyRunning', { amount: new Intl.NumberFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ').format(penaltyTotal) })}
+                        </p>
+                      )}
+                      {juryStatusText && (
+                        <p className="text-xs text-violet-700 dark:text-violet-300">{juryStatusText}</p>
+                      )}
+                      {activeBlocker && (
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          {t('blockerRecordedAt', {
+                            time: new Date(activeBlocker.createdAt).toLocaleString(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            }),
+                          })}
+                        </p>
+                      )}
                     </div>
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -466,7 +624,12 @@ export default function ContractorCabinetPage() {
         onClose={() => setWorkLogModalOpen(false)}
         contracts={data.contracts.map((c) => ({ id: c.id, title: c.title }))}
         authHeader={authHeader}
-        onSuccess={() => void loadContractor()}
+        onSuccess={(created) => {
+          if (created?.type === 'BLOCKER') {
+            setBlockerNotice(t('blockerRecorded'))
+          }
+          void loadContractor()
+        }}
       />
       <MilestoneSubmitModal
         open={milestoneModalOpen}

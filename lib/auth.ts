@@ -70,7 +70,6 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/', labelKey: 'map' },
     { href: '/blockchain', labelKey: 'blockchain' },
-    { href: '/profile', labelKey: 'profile' },
   ],
   AKIMAT: [
     { href: '/akimat', labelKey: 'akimatDesk' },
