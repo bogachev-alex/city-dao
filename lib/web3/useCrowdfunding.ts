@@ -33,6 +33,14 @@ export function useCrowdfunding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const toReadableError = useCallback((err: unknown): string => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    if (raw.includes('Attempt to load a program that does not exist')) {
+      return `Crowdfunding program is not deployed on ${PROGRAM_IDS.crowdfunding.toBase58()} in devnet.`
+    }
+    return raw || 'Crowdfunding operation failed'
+  }, [])
+
   const getProgram = useCallback(() => {
     if (!wallet.publicKey || !wallet.signTransaction) return null
     const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
@@ -109,13 +117,13 @@ export function useCrowdfunding() {
       console.log('Campaign created on-chain:', tx)
       return { tx, pda: campaignPDA.toBase58() }
     } catch (err: any) {
-      const msg = err?.message || 'Failed to create campaign'
+      const msg = toReadableError(err)
       setError(msg)
-      throw err
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA])
+  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, toReadableError])
 
   // Contribute to a campaign on-chain
   const contribute = useCallback(async (
@@ -150,13 +158,13 @@ export function useCrowdfunding() {
       console.log('Contribution on-chain:', tx)
       return { tx }
     } catch (err: any) {
-      const msg = err?.message || 'Contribution failed'
+      const msg = toReadableError(err)
       setError(msg)
-      throw err
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getDonorPDA])
+  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getDonorPDA, toReadableError])
 
   // Fetch campaign account from chain
   const fetchCampaignAccount = useCallback(async (creator: PublicKey, title: string) => {

@@ -5,6 +5,7 @@ members = [
     "programs/jury_mechanism",
     "programs/penalty_engine",
     "programs/district_treasury",
+    "programs/crowdfunding",
 ]
 resolver = "2"
 

@@ -71,14 +71,24 @@ export default function TransactionFeed({
             })))
             setDemoAppended(false)
           } else {
-            // No on-chain txs yet, fall back to demo
-            setItems(demoItems())
-            setDemoAppended(true)
+            if (includeDemo) {
+              // No on-chain txs yet, fall back to demo
+              setItems(demoItems())
+              setDemoAppended(true)
+            } else {
+              setItems([])
+              setDemoAppended(false)
+            }
           }
         })
         .catch(() => {
-          setItems(demoItems())
-          setDemoAppended(true)
+          if (includeDemo) {
+            setItems(demoItems())
+            setDemoAppended(true)
+          } else {
+            setItems([])
+            setDemoAppended(false)
+          }
         })
         .finally(() => setLoading(false))
       return
@@ -98,13 +108,23 @@ export default function TransactionFeed({
           setItems(list)
           setDemoAppended(!!data.demoAppended)
         } else {
-          setItems(demoItems())
-          setDemoAppended(true)
+          if (includeDemo) {
+            setItems(demoItems())
+            setDemoAppended(true)
+          } else {
+            setItems([])
+            setDemoAppended(false)
+          }
         }
       })
       .catch(() => {
-        setItems(demoItems())
-        setDemoAppended(true)
+        if (includeDemo) {
+          setItems(demoItems())
+          setDemoAppended(true)
+        } else {
+          setItems([])
+          setDemoAppended(false)
+        }
       })
       .finally(() => setLoading(false))
 

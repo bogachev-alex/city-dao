@@ -4,21 +4,52 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+async function resolveSession(sessionId: string) {
+  const include = {
+    contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
+    milestone: { select: { id: true, description: true } },
+    votes: {
+      include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
+    },
+  } as const
+
+  // Primary lookup by real JurySession.id
+  const direct = await prisma.jurySession.findUnique({
+    where: { id: sessionId },
+    include,
+  })
+  if (direct) return direct
+
+  // Legacy/friendly aliases: "contractId-milestoneId" or "contractId-milestoneId-sessionIndex"
+  const parts = sessionId.split('-').filter(Boolean)
+  if (parts.length < 2) return null
+
+  const contractId = parts[0]
+  const milestoneId = parts[1]
+
+  const candidates = await prisma.jurySession.findMany({
+    where: { contractId, milestoneId },
+    include,
+    orderBy: { createdAt: 'asc' },
+  })
+  if (candidates.length === 0) return null
+
+  if (parts.length >= 3) {
+    const idx = Number(parts[2])
+    if (Number.isInteger(idx) && idx >= 1 && idx <= candidates.length) {
+      return candidates[idx - 1]
+    }
+  }
+
+  return candidates[candidates.length - 1]
+}
+
 // GET /api/jury?sessionId=... — get jury session details
 export async function GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get('sessionId')
 
   if (sessionId) {
-    const session = await prisma.jurySession.findUnique({
-      where: { id: sessionId },
-      include: {
-        contract: { select: { id: true, title: true, district: true } },
-        milestone: { select: { id: true, description: true } },
-        votes: {
-          include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
-        },
-      },
-    })
+    const session = await resolveSession(sessionId)
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }

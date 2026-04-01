@@ -53,7 +53,7 @@ export default function BlockchainDashboardPage() {
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t('txFeedSectionTitle')}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{t('txFeedSectionLead')}</p>
-          <TransactionFeed maxItems={20} variant="embedded" showHeader={false} blockchainLink={false} />
+          <TransactionFeed maxItems={20} variant="embedded" showHeader={false} blockchainLink={false} includeDemo={false} />
         </section>
 
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-6 shadow-sm">

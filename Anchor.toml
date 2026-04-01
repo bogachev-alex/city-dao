@@ -11,6 +11,7 @@ contract_registry = "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4"
 district_treasury = "HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ"
 jury_mechanism = "HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd"
 penalty_engine = "9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT"
+crowdfunding = "CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ"
 
 [registry]
 url = "https://api.apr.dev"

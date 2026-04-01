@@ -30,6 +30,11 @@ export function useContractRegistry() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isAlreadyInUseError = useCallback((err: unknown): boolean => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    return raw.includes('already in use') || raw.includes('Allocate: account')
+  }, [])
+
   const getProgram = useCallback(() => {
     if (!wallet.publicKey || !wallet.signTransaction) return null
     const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
@@ -72,6 +77,12 @@ export function useContractRegistry() {
       const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(contractPDA)
 
+      // Idempotent path: if contract already exists on-chain, reuse it.
+      const existing = await fetchContract(wallet.publicKey, onChainTitle)
+      if (existing) {
+        return { tx: null, pda: contractPDA.toBase58() }
+      }
+
       const milestoneInputs = milestones.map((m) => ({
         description: m.description,
         deadlineDays: m.deadlineDays,
@@ -100,13 +111,19 @@ export function useContractRegistry() {
       console.log('Contract registered on-chain:', tx)
       return { tx, pda: contractPDA.toBase58() }
     } catch (err: any) {
+      // If PDA was created earlier (e.g., repeated submit), treat as success.
+      if (isAlreadyInUseError(err)) {
+        const onChainTitle = normalizeSeedString(title)
+        const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
+        return { tx: null, pda: contractPDA.toBase58() }
+      }
       const msg = err?.message || 'Contract registration failed'
       setError(msg)
       throw err
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram])
+  }, [wallet.publicKey, getProgram, fetchContract, isAlreadyInUseError])
 
   /**
    * Contractor submits milestone on-chain with IPFS evidence hash (see IDL submit_milestone).
