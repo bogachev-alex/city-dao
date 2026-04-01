@@ -13,6 +13,7 @@ import {
   formatTengeWithCrypto,
   normalizeContract,
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+  resolveContractOnChainPubkey,
 } from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
@@ -71,7 +72,7 @@ export default function ContractDetailPage() {
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
 
   const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
-    let pubkeyStr = overrideOnChainPubkey || base.onChainPubkey
+    let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
     if (!pubkeyStr) {
       try {
         // Fallback matching when DB record has no onChainPubkey yet.
