@@ -7,6 +7,17 @@ import { AnchorProvider, Program } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS } from './constants'
 import idl from './idl/district_treasury.json'
 
+const MAX_SEED_BYTES = 32
+
+function normalizeSeedString(input: string): string {
+  // Solana seed max length is 32 bytes, not 32 chars.
+  let out = input
+  while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
+    out = out.slice(0, -1)
+  }
+  return out
+}
+
 export function useDistrictTreasury() {
   const { connection } = useConnection()
   const wallet = useWallet()
@@ -29,8 +40,9 @@ export function useDistrictTreasury() {
 
   // Derive proposal PDA
   const getProposalPDA = useCallback((treasuryKey: PublicKey, title: string) => {
+    const seedTitle = normalizeSeedString(title)
     return PublicKey.findProgramAddressSync(
-      [SEEDS.proposal, treasuryKey.toBuffer(), Buffer.from(title)],
+      [SEEDS.proposal, treasuryKey.toBuffer(), Buffer.from(seedTitle)],
       PROGRAM_IDS.districtTreasury
     )
   }, [])

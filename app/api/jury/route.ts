@@ -25,13 +25,31 @@ async function resolveSession(sessionId: string) {
   if (parts.length < 2) return null
 
   const contractId = parts[0]
-  const milestoneId = parts[1]
+  const milestoneToken = parts[1]
 
-  const candidates = await prisma.jurySession.findMany({
-    where: { contractId, milestoneId },
+  let candidates = await prisma.jurySession.findMany({
+    where: { contractId, milestoneId: milestoneToken },
     include,
     orderBy: { createdAt: 'asc' },
   })
+
+  // Fallback for aliases like "contractId-milestoneSortOrder-sessionIndex" (e.g. "1-1-2")
+  if (candidates.length === 0) {
+    const milestoneSortOrder = Number(milestoneToken)
+    if (Number.isInteger(milestoneSortOrder) && milestoneSortOrder > 0) {
+      candidates = await prisma.jurySession.findMany({
+        where: {
+          contractId,
+          milestone: {
+            sortOrder: milestoneSortOrder,
+          },
+        },
+        include,
+        orderBy: { createdAt: 'asc' },
+      })
+    }
+  }
+
   if (candidates.length === 0) return null
 
   if (parts.length >= 3) {

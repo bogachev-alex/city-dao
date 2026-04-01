@@ -72,37 +72,58 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const contract = await prisma.contract.create({
-    data: {
-      title: body.title,
-      description: body.description,
-      district: body.district,
-      lat: body.lat,
-      lng: body.lng,
-      contractorId,
-      totalAmount: BigInt(body.totalAmount),
-      escrowAmount: BigInt(Math.floor(body.totalAmount * 0.2)),
-      deadline: new Date(body.deadline),
-      category: body.category,
-      ...(body.registryNumber && { registryNumber: String(body.registryNumber) }),
-      ...(body.customerName && { customerName: String(body.customerName) }),
-      ...(body.subjectType && { subjectType: String(body.subjectType) }),
-      ...(body.startDate && { startDate: new Date(body.startDate) }),
-      ...(body.onChainPubkey && { onChainPubkey: body.onChainPubkey }),
-      milestones: {
-        create: body.milestones.map((m: any, i: number) => ({
-          description: m.description,
-          deadlineDays: m.deadlineDays,
-          tranchePct: m.tranchePct,
-          sortOrder: i + 1,
-        })),
+  try {
+    const contract = await prisma.contract.create({
+      data: {
+        title: body.title,
+        description: body.description,
+        district: body.district,
+        lat: body.lat,
+        lng: body.lng,
+        contractorId,
+        totalAmount: BigInt(body.totalAmount),
+        escrowAmount: BigInt(Math.floor(body.totalAmount * 0.2)),
+        deadline: new Date(body.deadline),
+        category: body.category,
+        ...(body.registryNumber && { registryNumber: String(body.registryNumber) }),
+        ...(body.customerName && { customerName: String(body.customerName) }),
+        ...(body.subjectType && { subjectType: String(body.subjectType) }),
+        ...(body.startDate && { startDate: new Date(body.startDate) }),
+        ...(body.onChainPubkey && { onChainPubkey: body.onChainPubkey }),
+        milestones: {
+          create: body.milestones.map((m: any, i: number) => ({
+            description: m.description,
+            deadlineDays: m.deadlineDays,
+            tranchePct: m.tranchePct,
+            sortOrder: i + 1,
+          })),
+        },
       },
-    },
-    include: {
-      contractor: { select: { id: true, name: true } },
-      milestones: { orderBy: { sortOrder: 'asc' } },
-    },
-  })
+      include: {
+        contractor: { select: { id: true, name: true } },
+        milestones: { orderBy: { sortOrder: 'asc' } },
+      },
+    })
 
-  return NextResponse.json(contract, { status: 201 })
+    return NextResponse.json(contract, { status: 201 })
+  } catch (err: any) {
+    // Idempotent behavior for repeated submissions with the same on-chain contract.
+    if (body.onChainPubkey) {
+      const existing = await prisma.contract.findUnique({
+        where: { onChainPubkey: String(body.onChainPubkey) },
+        include: {
+          contractor: { select: { id: true, name: true } },
+          milestones: { orderBy: { sortOrder: 'asc' } },
+        },
+      })
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 })
+      }
+    }
+
+    return NextResponse.json(
+      { error: err?.message || 'Failed to create contract' },
+      { status: 500 }
+    )
+  }
 }
