@@ -13,6 +13,7 @@ import {
   formatTengeWithCrypto,
   normalizeContract,
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+  resolveContractOnChainPubkey,
 } from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
@@ -39,7 +40,22 @@ function milestoneStatusForApi(m: Milestone): string {
 }
 
 function normalizeText(v: string): string {
-  return v.trim().toLowerCase()
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()"]/g, ' ')
+    .replace(/\s+/g, ' ')
+}
+
+function tokenSet(v: string): Set<string> {
+  return new Set(normalizeText(v).split(' ').filter((s) => s.length > 2))
+}
+
+function overlapScore(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let inter = 0
+  for (const t of a) if (b.has(t)) inter++
+  return inter / Math.max(a.size, b.size)
 }
 
 export default function ContractDetailPage() {
@@ -56,19 +72,41 @@ export default function ContractDetailPage() {
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
 
   const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
-    let pubkeyStr = overrideOnChainPubkey || base.onChainPubkey
+    let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
     if (!pubkeyStr) {
       try {
         // Fallback matching when DB record has no onChainPubkey yet.
         const candidates = await fetchAllContractsOnChain()
         const title = normalizeText(base.title)
+        const titleTokens = tokenSet(base.title)
         const district = normalizeText(base.district)
         const amount = Number(base.amount_usdc || 0)
-        const matched = candidates.find((c) =>
-          normalizeText(c.title) === title &&
-          normalizeText(c.district) === district &&
-          Number(c.amount_usdc || 0) === amount
-        )
+
+        let best: { id: string; score: number } | null = null
+        for (const c of candidates) {
+          const cDistrict = normalizeText(c.district)
+          const cAmount = Number(c.amount_usdc || 0)
+          const cTitle = normalizeText(c.title)
+          const cTokens = tokenSet(c.title)
+
+          const districtScore = cDistrict === district ? 1 : 0
+          const textScore =
+            cTitle === title
+              ? 1
+              : (cTitle.includes(title) || title.includes(cTitle) ? 0.85 : overlapScore(titleTokens, cTokens))
+
+          let amountScore = 0
+          if (amount > 0 && cAmount > 0) {
+            const rel = Math.abs(cAmount - amount) / Math.max(amount, cAmount)
+            if (rel <= 0.01) amountScore = 1
+            else if (rel <= 0.05) amountScore = 0.7
+            else if (rel <= 0.15) amountScore = 0.35
+          }
+
+          const score = districtScore * 0.35 + textScore * 0.5 + amountScore * 0.15
+          if (!best || score > best.score) best = { id: c.id, score }
+        }
+        const matched = best && best.score >= 0.72 ? candidates.find((c) => c.id === best.id) : undefined
         if (matched) pubkeyStr = matched.id
       } catch {
         // keep DB-only view if chain lookup fails

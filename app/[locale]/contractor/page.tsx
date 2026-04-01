@@ -9,7 +9,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
-import { formatTengeWithCrypto } from '@/lib/contracts'
+import { formatTengeWithCrypto, resolveContractOnChainPubkey } from '@/lib/contracts'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 
 type Milestone = {
@@ -112,7 +112,7 @@ export default function ContractorCabinetPage() {
   }, [])
 
   const applyOnChainOverlay = useCallback(async (payload: ContractorPayload): Promise<ContractorPayload> => {
-    const hasOnChainRefs = payload.contracts.some((c) => !!c.onChainPubkey)
+    const hasOnChainRefs = payload.contracts.some((c) => !!resolveContractOnChainPubkey(c.id, c.onChainPubkey))
     if (!hasOnChainRefs) return payload
     try {
       const onChain = await fetchAllContractsOnChain()
@@ -120,11 +120,13 @@ export default function ContractorCabinetPage() {
       return {
         ...payload,
         contracts: payload.contracts.map((c) => {
-          if (!c.onChainPubkey) return c
-          const live = byPda.get(c.onChainPubkey)
+          const resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
+          if (!resolvedPubkey) return c
+          const live = byPda.get(resolvedPubkey)
           if (!live) return c
           return {
             ...c,
+            onChainPubkey: resolvedPubkey,
             status: toApiStatus(live.status),
             deadline: live.deadline || c.deadline,
             totalAmount: String(live.amount_usdc ?? c.totalAmount),

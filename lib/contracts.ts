@@ -65,6 +65,28 @@ export function getSolanaExplorerAddressUrl(address: string): string {
   return `https://explorer.solana.com/address/${address}?cluster=${encodeURIComponent(cluster)}`
 }
 
+let contractOnChainMapCache: Record<string, string> | null = null
+
+function parseContractOnChainMap(): Record<string, string> {
+  if (contractOnChainMapCache) return contractOnChainMapCache
+
+  const raw = process.env.NEXT_PUBLIC_CONTRACT_ONCHAIN_MAP || ''
+  const parsed: Record<string, string> = {}
+  for (const chunk of raw.split(',').map((s) => s.trim()).filter(Boolean)) {
+    const [id, pubkey] = chunk.split(':').map((s) => s.trim())
+    if (!id || !pubkey) continue
+    parsed[id] = pubkey
+  }
+  contractOnChainMapCache = parsed
+  return parsed
+}
+
+export function resolveContractOnChainPubkey(contractId: string, dbPubkey?: string | null): string | null {
+  if (dbPubkey) return dbPubkey
+  const mapped = parseContractOnChainMap()[contractId]
+  return mapped || null
+}
+
 export const DEMO_CONTRACTS: Contract[] = [
   {
     id: '1',

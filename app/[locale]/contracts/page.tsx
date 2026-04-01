@@ -9,6 +9,7 @@ import {
   ContractStatus,
   normalizeContract,
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+  resolveContractOnChainPubkey,
 } from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
@@ -43,17 +44,19 @@ export default function ContractsPage() {
   const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
 
   const applyOnChainOverlay = useCallback(async (baseContracts: Contract[]): Promise<Contract[]> => {
-    const indexed = baseContracts.filter((c) => !!c.onChainPubkey)
+    const indexed = baseContracts.filter((c) => !!resolveContractOnChainPubkey(c.id, c.onChainPubkey))
     if (indexed.length === 0) return baseContracts
     try {
       const onChain = await fetchAllContractsOnChain()
       const byPda = new Map(onChain.map((c) => [c.id, c]))
       return baseContracts.map((c) => {
-        if (!c.onChainPubkey) return c
-        const live = byPda.get(c.onChainPubkey)
+        const resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
+        if (!resolvedPubkey) return c
+        const live = byPda.get(resolvedPubkey)
         if (!live) return c
         return {
           ...c,
+          onChainPubkey: resolvedPubkey,
           contractor: live.contractor || c.contractor,
           amount_usdc: live.amount_usdc ?? c.amount_usdc,
           deadline: live.deadline || c.deadline,
