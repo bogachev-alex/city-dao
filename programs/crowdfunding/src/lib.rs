@@ -99,25 +99,35 @@ pub mod crowdfunding {
         let campaign = &mut ctx.accounts.campaign;
         let escrow = &mut ctx.accounts.escrow;
 
+        let donor = &mut ctx.accounts.donor_record;
+        let is_new = donor.amount == 0;
+
         campaign.citizen_raised = campaign
             .citizen_raised
             .checked_add(amount)
             .ok_or(CrowdfundingError::Overflow)?;
-        campaign.donor_count = campaign
-            .donor_count
-            .checked_add(1)
-            .ok_or(CrowdfundingError::Overflow)?;
+        if is_new {
+            campaign.donor_count = campaign
+                .donor_count
+                .checked_add(1)
+                .ok_or(CrowdfundingError::Overflow)?;
+        }
 
         escrow.total_deposited = escrow
             .total_deposited
             .checked_add(lamports)
             .ok_or(CrowdfundingError::Overflow)?;
 
-        let donor = &mut ctx.accounts.donor_record;
         donor.donor = ctx.accounts.donor.key();
         donor.campaign = campaign.key();
-        donor.amount = amount;
-        donor.lamports = lamports;
+        donor.amount = donor
+            .amount
+            .checked_add(amount)
+            .ok_or(CrowdfundingError::Overflow)?;
+        donor.lamports = donor
+            .lamports
+            .checked_add(lamports)
+            .ok_or(CrowdfundingError::Overflow)?;
         donor.anonymous = anonymous;
         donor.created_at = now;
         donor.bump = ctx.bumps.donor_record;
@@ -232,7 +242,7 @@ pub struct Contribute<'info> {
     )]
     pub escrow: Account<'info, CampaignEscrow>,
     #[account(
-        init,
+        init_if_needed,
         payer = donor,
         space = DonorRecord::SPACE,
         seeds = [b"donor", campaign.key().as_ref(), donor.key().as_ref()],
