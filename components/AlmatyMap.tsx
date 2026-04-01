@@ -6,7 +6,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
-import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS } from '@/lib/contracts'
+import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS, getContractDetailHref } from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
 import { useTheme } from './ThemeProvider'
 
@@ -162,7 +162,7 @@ export default function AlmatyMap() {
                   }
                 </div>
                 <a
-                  href={`/${locale}/contracts/${contract.id}`}
+                  href={`/${locale}${getContractDetailHref(contract.id, contract.onChainPubkey)}`}
                   style={{
                     display: 'block',
                     textAlign: 'center',

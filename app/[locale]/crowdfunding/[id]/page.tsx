@@ -20,6 +20,7 @@ import { fetchCampaign, fetchCitizen, contributeToCampaign } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { PublicKey } from '@solana/web3.js'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
+import { getContractDetailHref } from '@/lib/contracts'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -463,7 +464,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   Сумма собрана, государственная субсидия перечислена. Проект передан в Amanat Protocol для исполнения.
                 </p>
                 {campaign.contract_id && (
-                  <Link href={`/contracts/${campaign.contract_id}`} className="inline-block mt-3 text-sm text-emerald-700 hover:text-emerald-800 underline">
+                  <Link href={getContractDetailHref(campaign.contract_id)} className="inline-block mt-3 text-sm text-emerald-700 hover:text-emerald-800 underline">
                     Смотреть контракт →
                   </Link>
                 )}

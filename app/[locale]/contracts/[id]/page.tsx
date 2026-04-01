@@ -60,6 +60,12 @@ function overlapScore(a: Set<string>, b: Set<string>): number {
   return inter / Math.max(a.size, b.size)
 }
 
+function shortAddress(value: string): string {
+  if (!value) return value
+  if (value.length <= 14) return value
+  return `${value.slice(0, 6)}...${value.slice(-6)}`
+}
+
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
@@ -69,6 +75,7 @@ export default function ContractDetailPage() {
   const dataSource = useDataSource()
   const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
+  const [onChainSnapshot, setOnChainSnapshot] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
   const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
@@ -114,27 +121,23 @@ export default function ContractDetailPage() {
         // keep DB-only view if chain lookup fails
       }
     }
-    if (!pubkeyStr) return base
+    if (!pubkeyStr) {
+      setOnChainSnapshot(null)
+      return base
+    }
     try {
       const onChain = await fetchContractOnChain(new PublicKey(pubkeyStr))
-      if (!onChain) return base
-
-      // Keep DB-centric identity/metadata, but show live operational fields from chain.
+      if (!onChain) {
+        setOnChainSnapshot(null)
+        return base
+      }
+      setOnChainSnapshot(onChain)
       return {
         ...base,
         onChainPubkey: pubkeyStr,
-        contractor: onChain.contractor || base.contractor,
-        amount_usdc: onChain.amount_usdc ?? base.amount_usdc,
-        deadline: onChain.deadline || base.deadline,
-        status: onChain.status || base.status,
-        lat: onChain.lat ?? base.lat,
-        lng: onChain.lng ?? base.lng,
-        escrow_amount: onChain.escrow_amount ?? base.escrow_amount,
-        penalty_amount: onChain.penalty_amount ?? base.penalty_amount,
-        days_overdue: onChain.days_overdue ?? base.days_overdue,
-        milestones: onChain.milestones?.length ? onChain.milestones : base.milestones,
       }
     } catch {
+      setOnChainSnapshot(null)
       return base
     }
   }, [])
@@ -142,6 +145,7 @@ export default function ContractDetailPage() {
   const loadContract = useCallback(async () => {
     if (!params.id) return
     const overrideOnChainPubkey = searchParams.get('onchain')?.trim() || null
+    setOnChainSnapshot(null)
     try {
       const data = await fetchContract(params.id)
       if (data && !data.error) {
@@ -183,14 +187,34 @@ export default function ContractDetailPage() {
     if (dataSource === 'onchain') {
       (async () => {
         try {
-          const pubkey = new PublicKey(params.id)
-          const onChain = await fetchContractOnChain(pubkey)
+          const overrideOnChainPubkey = searchParams.get('onchain')?.trim() || null
+          const mappedOnChainPubkey = resolveContractOnChainPubkey(params.id, null)
+          const candidatePubkey = overrideOnChainPubkey || mappedOnChainPubkey || params.id
+
+          let onChain: Contract | null = null
+          try {
+            onChain = await fetchContractOnChain(new PublicKey(candidatePubkey))
+          } catch {
+            onChain = null
+          }
+
           if (onChain) {
+            setOnChainSnapshot(onChain)
             setContract(onChain)
           } else {
-            setContract(getContractById(params.id) || null)
+            const fallback = getContractById(params.id) || null
+            if (!fallback) {
+              setContract(null)
+              return
+            }
+            const withOnChain = await applyOnChainOverlay(
+              fallback,
+              overrideOnChainPubkey || mappedOnChainPubkey
+            )
+            setContract(withOnChain)
           }
         } catch {
+          setOnChainSnapshot(null)
           setContract(getContractById(params.id) || null)
         } finally {
           setLoading(false)
@@ -201,7 +225,7 @@ export default function ContractDetailPage() {
 
     // Mock/DB mode: fetch from API
     void loadContract().finally(() => setLoading(false))
-  }, [params.id, dataSource, loadContract])
+  }, [params.id, dataSource, loadContract, searchParams, applyOnChainOverlay])
 
   if (loading) {
     return (
@@ -243,6 +267,7 @@ export default function ContractDetailPage() {
   ]
 
   const activeReviewMilestone = contract.milestones.find((m) => m.status === 'under_review')
+  const onChainDaysLeft = onChainSnapshot ? getDaysUntilDeadline(onChainSnapshot.deadline) : null
 
   const isContractorView =
     user?.role === 'CONTRACTOR' && !!contract.contractorId && user.id === contract.contractorId
@@ -347,12 +372,50 @@ export default function ContractDetailPage() {
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('onChainStatusLabel')}</div>
                 {contract.onChainPubkey ? (
-                  <OnChainLink
-                    address={contract.onChainPubkey}
-                    label={t('openOnChain')}
-                    withIcon
-                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                  />
+                  <div className="space-y-3">
+                    <OnChainLink
+                      address={contract.onChainPubkey}
+                      label={t('openOnChain')}
+                      withIcon
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                    />
+                    {onChainSnapshot && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainContractor')}</div>
+                          <div className="font-mono text-gray-700 dark:text-gray-300">{shortAddress(onChainSnapshot.contractor)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainAmount')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainDeadline')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">
+                            {onChainDaysLeft != null
+                              ? (onChainDaysLeft < 0
+                                ? t('overdueDays', { days: Math.abs(onChainDaysLeft) })
+                                : t('daysLeft', { days: onChainDaysLeft }))
+                              : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainStatus')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">
+                            {statusConfig[onChainSnapshot.status]?.label || onChainSnapshot.status}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainEscrow')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainMilestones')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{onChainSnapshot.milestones.length}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="text-xs text-gray-500 dark:text-gray-400">{t('onChainMissing')}</div>
                 )}

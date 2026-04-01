@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
-import { formatTengeWithCrypto } from '@/lib/contracts'
+import { formatTengeWithCrypto, getContractDetailHref } from '@/lib/contracts'
 
 type Overview = {
   totalContracts: number
@@ -246,7 +246,7 @@ export default function AkimatCabinetPage() {
                         timeStyle: 'short',
                       })}
                     </span>
-                    <Link href={`/contracts/${b.contract.id}`} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                    <Link href={getContractDetailHref(b.contract.id)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
                       {t('openContract')}
                     </Link>
                   </div>
@@ -322,7 +322,7 @@ export default function AkimatCabinetPage() {
                         dateStyle: 'short',
                       })}
                     </span>
-                    <Link href={`/contracts/${c.id}`} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                    <Link href={getContractDetailHref(c.id)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
                       {t('openContract')}
                     </Link>
                   </div>

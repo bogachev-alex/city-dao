@@ -87,6 +87,13 @@ export function resolveContractOnChainPubkey(contractId: string, dbPubkey?: stri
   return mapped || null
 }
 
+export function getContractDetailHref(contractId: string, dbPubkey?: string | null): string {
+  const base = `/contracts/${contractId}`
+  const onChainPubkey = resolveContractOnChainPubkey(contractId, dbPubkey)
+  if (!onChainPubkey) return base
+  return `${base}?onchain=${encodeURIComponent(onChainPubkey)}`
+}
+
 export const DEMO_CONTRACTS: Contract[] = [
   {
     id: '1',

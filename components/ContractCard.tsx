@@ -7,6 +7,7 @@ import {
   getDaysUntilDeadline,
   getMilestoneCompletedCount,
   formatTengeWithCrypto,
+  getContractDetailHref,
 } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
 
@@ -32,12 +33,13 @@ export default function ContractCard({ contract }: ContractCardProps) {
 
   const deadlineColor =
     daysLeft < 0 ? 'text-red-500 dark:text-red-400' : daysLeft < 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-gray-400'
+  const contractHref = getContractDetailHref(contract.id, contract.onChainPubkey)
 
   return (
     <div className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:shadow-md dark:hover:shadow-lg transition-all duration-200">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <Link href={`/contracts/${contract.id}`} className="min-w-0">
+          <Link href={contractHref} className="min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug group-hover:text-emerald-600 dark:text-emerald-400 transition-colors line-clamp-2">
               {contract.title}
             </h3>
@@ -129,7 +131,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
         )}
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
           <Link
-            href={`/contracts/${contract.id}`}
+            href={contractHref}
             className="text-emerald-600 dark:text-emerald-400 hover:underline"
           >
             {t('openContract')}

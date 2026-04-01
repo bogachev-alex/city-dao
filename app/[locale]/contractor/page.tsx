@@ -9,7 +9,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
-import { formatTengeWithCrypto, resolveContractOnChainPubkey } from '@/lib/contracts'
+import { formatTengeWithCrypto, resolveContractOnChainPubkey, getContractDetailHref } from '@/lib/contracts'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 
 type Milestone = {
@@ -377,7 +377,7 @@ export default function ContractorCabinetPage() {
                 return (
                   <li key={c.id}>
                     <Link
-                      href={`/contracts/${c.id}`}
+                      href={getContractDetailHref(c.id, c.onChainPubkey)}
                       className="text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline"
                     >
                       {c.title} — {t('attentionStages', { count: n })}
@@ -406,7 +406,7 @@ export default function ContractorCabinetPage() {
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{t('toolLogBody')}</p>
             {data.contracts[0] ? (
               <Link
-                href={`/contracts/${data.contracts[0].id}`}
+                href={getContractDetailHref(data.contracts[0].id, data.contracts[0].onChainPubkey)}
                 className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
               >
                 {t('toolLogCta')} →
@@ -604,7 +604,7 @@ export default function ContractorCabinetPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <Link
-                        href={`/contracts/${c.id}`}
+                        href={getContractDetailHref(c.id, c.onChainPubkey)}
                         className="inline-flex text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
                       >
                         {t('openContract')} →
@@ -655,7 +655,7 @@ export default function ContractorCabinetPage() {
                         timeStyle: 'short',
                       })}
                     </span>
-                    <Link href={`/contracts/${log.contract.id}`} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                    <Link href={getContractDetailHref(log.contract.id)} className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
                       {t('toContract')}
                     </Link>
                   </div>
