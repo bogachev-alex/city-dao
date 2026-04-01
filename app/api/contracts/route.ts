@@ -208,6 +208,18 @@ export async function POST(req: NextRequest) {
         },
       })
       if (existing) {
+        // Do not silently return an unrelated record when a PDA collision happens.
+        const sameTitle = String(existing.title || '').trim() === String(body.title || '').trim()
+        const sameDistrict = String(existing.district || '').trim() === String(body.district || '').trim()
+        if (!sameTitle || !sameDistrict) {
+          return NextResponse.json(
+            {
+              error:
+                'onChainPubkey is already linked to another contract. Please change contract title and retry on-chain registration.',
+            },
+            { status: 409 }
+          )
+        }
         return NextResponse.json(toJsonSafe(existing), { status: 200 })
       }
     }

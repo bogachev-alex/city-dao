@@ -17,7 +17,16 @@ export async function GET(
       proposals: {
         include: {
           aiResearch: true,
-          votes: { select: { id: true, citizenId: true, inFavor: true } },
+          votes: {
+            select: {
+              id: true,
+              citizenId: true,
+              inFavor: true,
+              createdAt: true,
+              citizen: { select: { walletAddress: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
       },

@@ -6,12 +6,16 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import ProposalResearch from './ProposalResearch'
 import TransactionFeed from './TransactionFeed'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
-import { formatTengeWithCrypto } from '@/lib/contracts'
+import { formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
 
 interface Vote {
   id: string
   citizenId: string
   inFavor: boolean
+  createdAt?: string
+  citizen?: {
+    walletAddress?: string
+  } | null
 }
 
 interface Proposal {
@@ -48,6 +52,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   const [loading, setLoading] = useState(true)
   const [voteError, setVoteError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
+  const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const walletAddr = publicKey?.toBase58()
@@ -111,7 +116,21 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
         ...prev,
         proposals: prev.proposals.map((p) =>
           p.id === proposalId
-            ? { ...p, votesFor: inFavor ? p.votesFor + 1 : p.votesFor, votesAgainst: !inFavor ? p.votesAgainst + 1 : p.votesAgainst }
+            ? {
+                ...p,
+                votesFor: inFavor ? p.votesFor + 1 : p.votesFor,
+                votesAgainst: !inFavor ? p.votesAgainst + 1 : p.votesAgainst,
+                votes: [
+                  {
+                    id: `local-${Date.now()}`,
+                    citizenId,
+                    inFavor,
+                    createdAt: new Date().toISOString(),
+                    citizen: { walletAddress: publicKey.toBase58() },
+                  },
+                  ...(p.votes || []),
+                ],
+              }
             : p
         ),
       }
@@ -139,7 +158,12 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
         ...prev,
         proposals: prev.proposals.map((p) =>
           p.id === proposalId
-            ? { ...p, votesFor: inFavor ? p.votesFor - 1 : p.votesFor, votesAgainst: !inFavor ? p.votesAgainst - 1 : p.votesAgainst }
+            ? {
+                ...p,
+                votesFor: inFavor ? p.votesFor - 1 : p.votesFor,
+                votesAgainst: !inFavor ? p.votesAgainst - 1 : p.votesAgainst,
+                votes: (p.votes || []).filter((v) => v.citizenId !== citizenId),
+              }
             : p
         ),
       }
@@ -147,6 +171,11 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   }
 
   const formatTenge = (n: number | string) => formatTengeWithCrypto(Number(n))
+  const shortAddress = (value?: string) => {
+    if (!value) return 'Unknown wallet'
+    if (value.length <= 10) return value
+    return `${value.slice(0, 4)}...${value.slice(-4)}`
+  }
 
   const balance = treasury ? Number(treasury.balance) : 0
   const proposals = treasury?.proposals || []
@@ -190,7 +219,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-emerald-600 dark:text-emerald-400">{t('voteRecorded')}</span>
           {txInfo && (
-            <a href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
+            <a href={getSolanaExplorerTxUrl(txInfo)} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
               tx
             </a>
           )}
@@ -220,6 +249,8 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
               const total = proposal.votesFor + proposal.votesAgainst
               const forPct = total > 0 ? Math.round((proposal.votesFor / total) * 100) : 50
               const hasVoted = voted.has(proposal.id)
+              const showVotes = expandedVotes.has(proposal.id)
+              const allVotes = proposal.votes || []
 
               return (
                 <div key={proposal.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
@@ -282,6 +313,41 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                       <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${forPct}%` }} />
                       <div className="h-full bg-red-400 flex-1 transition-all duration-500" />
                     </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                      onClick={() =>
+                        setExpandedVotes((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(proposal.id)) next.delete(proposal.id)
+                          else next.add(proposal.id)
+                          return next
+                        })
+                      }
+                      className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                    >
+                      {showVotes ? 'Скрыть все голоса' : `Показать все голоса (${allVotes.length})`}
+                    </button>
+                    {showVotes && (
+                      <div className="mt-2 space-y-1.5">
+                        {allVotes.length === 0 ? (
+                          <div className="text-xs text-gray-400 dark:text-gray-500">Голосов пока нет</div>
+                        ) : (
+                          allVotes.map((v) => (
+                            <div
+                              key={v.id}
+                              className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 rounded px-2 py-1.5"
+                            >
+                              <span className={v.inFavor ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                                {v.inFavor ? 'За' : 'Против'}
+                              </span>
+                              <span className="font-mono text-gray-500 dark:text-gray-400">{shortAddress(v.citizen?.walletAddress)}</span>
+                              <span className="text-gray-400 dark:text-gray-500">{v.createdAt ? new Date(v.createdAt).toLocaleString('ru-RU') : '-'}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )

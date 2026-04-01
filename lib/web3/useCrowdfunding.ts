@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { PROGRAM_IDS, SEEDS } from './constants'
+import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/crowdfunding.json'
 
 const MAX_SEED_BYTES = 32
@@ -36,7 +36,7 @@ export function useCrowdfunding() {
   const toReadableError = useCallback((err: unknown): string => {
     const raw = err instanceof Error ? err.message : String(err || '')
     if (raw.includes('Attempt to load a program that does not exist')) {
-      return `Crowdfunding program is not deployed on ${PROGRAM_IDS.crowdfunding.toBase58()} in devnet.`
+      return `Crowdfunding program is not deployed on ${PROGRAM_IDS.crowdfunding.toBase58()} in ${SOLANA_NETWORK}.`
     }
     return raw || 'Crowdfunding operation failed'
   }, [])

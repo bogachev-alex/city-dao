@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { DISTRICTS, formatTengeWithCrypto } from '@/lib/contracts'
+import { DISTRICTS, formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { createContract } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
 import { useAuth } from '@/components/AuthContext'
@@ -63,6 +63,8 @@ export default function AdminPage() {
   const [activeSection, setActiveSection] = useState<'general' | 'milestones'>('general')
   const [error, setError] = useState<string | null>(null)
   const [submitStep, setSubmitStep] = useState<'db' | 'blockchain' | null>(null)
+  const [onChainTx, setOnChainTx] = useState<string | null>(null)
+  const [onChainPda, setOnChainPda] = useState<string | null>(null)
 
   const wallet = useWallet()
   const { registerContract: registerContractOnChain } = useContractRegistry()
@@ -128,6 +130,8 @@ export default function AdminPage() {
       if (!result?.pda) {
         throw new Error('Не удалось получить on-chain адрес контракта')
       }
+      setOnChainTx(result.tx || null)
+      setOnChainPda(result.pda)
 
       // 2) Save to database with linked on-chain pubkey
       setSubmitStep('db')
@@ -214,13 +218,45 @@ export default function AdminPage() {
                 {form.amount_usdc ? formatTengeWithCrypto(Math.round(Number(form.amount_usdc) * 0.2)) : '0 ₸'}
               </span>
             </div>
+            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">TX Signature</div>
+              {onChainTx ? (
+                <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">{onChainTx}</div>
+              ) : (
+                <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                  No on-chain tx signature returned (possible PDA reuse).
+                </div>
+              )}
+            </div>
+            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">On-chain contract PDA</div>
+              <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                {onChainPda || '-'}
+              </div>
+            </div>
           </div>
           <div className="flex gap-3 justify-center">
+            {onChainTx && (
+              <a
+                href={getSolanaExplorerTxUrl(onChainTx)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 rounded-xl font-medium hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors"
+              >
+                Open in Explorer
+              </a>
+            )}
             <Link href="/contracts" className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors">
               {t('viewRegistry')}
             </Link>
             <button
-              onClick={() => { setForm(INITIAL_FORM); setSubmitted(false); setError(null); }}
+              onClick={() => {
+                setForm(INITIAL_FORM)
+                setSubmitted(false)
+                setError(null)
+                setOnChainTx(null)
+                setOnChainPda(null)
+              }}
               className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               {t('addMore')}

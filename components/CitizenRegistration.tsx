@@ -8,7 +8,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
-import { DISTRICTS } from '@/lib/contracts'
+import { DISTRICTS, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
 import { useAuth } from '@/components/AuthContext'
 import type { AuthUser } from '@/lib/auth'
@@ -152,17 +152,17 @@ export default function CitizenRegistration() {
           const lowered = msg.toLowerCase()
           if (msg.includes('429') || lowered.includes('airdrop limit') || lowered.includes('faucet')) {
             setRegError(
-              `Лимит devnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
+              `Лимит testnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
             )
           } else {
-            setRegError(`Не удалось получить devnet airdrop: ${msg || 'неизвестная ошибка'}`)
+            setRegError(`Не удалось получить testnet airdrop: ${msg || 'неизвестная ошибка'}`)
           }
           setStep('form')
           return
         }
       }
       if (balance < minFeeReserveLamports) {
-        setRegError('Недостаточно SOL в devnet даже после airdrop. Повторите попытку через 10-20 секунд.')
+        setRegError('Недостаточно SOL в testnet даже после airdrop. Повторите попытку через 10-20 секунд.')
         setStep('form')
         return
       }
@@ -268,7 +268,7 @@ export default function CitizenRegistration() {
                   <span className="text-emerald-600 dark:text-emerald-400 text-xs">On-chain</span>
                   {txSignature && (
                     <a
-                      href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                      href={getSolanaExplorerTxUrl(txSignature)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-500 dark:text-blue-400 text-xs underline"

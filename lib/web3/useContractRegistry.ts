@@ -9,13 +9,31 @@ import idl from './idl/contract_registry.json'
 
 const MAX_SEED_BYTES = 32
 
+function shortStableHash(input: string): string {
+  let h = 5381
+  for (let i = 0; i < input.length; i++) {
+    h = ((h << 5) + h) ^ input.charCodeAt(i)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
 function normalizeSeedString(input: string): string {
   // Solana seed max length is 32 bytes, not 32 chars.
-  let out = input
+  const raw = String(input || '').trim()
+  const hashSuffix = `-${shortStableHash(raw)}`
+  let out = raw
   while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
     out = out.slice(0, -1)
   }
-  return out
+  if (out === raw) return out
+
+  // Keep deterministic uniqueness for long titles that would otherwise collide after truncation.
+  let pref = raw
+  const budget = MAX_SEED_BYTES - Buffer.byteLength(hashSuffix, 'utf8')
+  while (Buffer.byteLength(pref, 'utf8') > Math.max(1, budget)) {
+    pref = pref.slice(0, -1)
+  }
+  return `${pref}${hashSuffix}`
 }
 
 interface MilestoneInput {

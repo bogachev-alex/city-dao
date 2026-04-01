@@ -20,7 +20,7 @@ import { fetchCampaign, fetchCitizen, contributeToCampaign, updateCampaignStatus
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { PublicKey } from '@solana/web3.js'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
-import { getContractDetailHref } from '@/lib/contracts'
+import { getContractDetailHref, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
@@ -507,7 +507,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </p>
                 {txInfo && (
                   <a
-                    href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`}
+                    href={getSolanaExplorerTxUrl(txInfo)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block mt-2 text-xs text-blue-500 underline"
