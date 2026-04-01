@@ -66,7 +66,7 @@ export default function ContractsPage() {
     try {
       const onChain = await fetchAllContractsOnChain()
       const byPda = new Map(onChain.map((c) => [c.id, c]))
-      return baseContracts.map((c) => {
+      const mergedBase = baseContracts.map((c) => {
         let resolvedPubkey = resolveContractOnChainPubkey(c.id, c.onChainPubkey)
         if (!resolvedPubkey) {
           const title = normalizeText(c.title)
@@ -145,6 +145,16 @@ export default function ContractsPage() {
           milestones: live.milestones?.length ? live.milestones : c.milestones,
         }
       })
+
+      // Also surface contracts that exist only on-chain (not yet persisted in DB).
+      const knownPubkeys = new Set(
+        mergedBase
+          .map((c) => resolveContractOnChainPubkey(c.id, c.onChainPubkey))
+          .filter(Boolean) as string[]
+      )
+      const onChainOnly = onChain.filter((c) => !knownPubkeys.has(c.id))
+
+      return [...onChainOnly, ...mergedBase]
     } catch {
       return baseContracts
     }
