@@ -6,9 +6,18 @@ export const dynamic = 'force-dynamic'
 
 const WORK_LOG_TYPES = ['DAILY_LOG', 'MILESTONE_CLAIM', 'BLOCKER', 'MATERIAL_DELIVERY'] as const
 type WorkLogTypeStr = (typeof WORK_LOG_TYPES)[number]
+const DEMO_CONTRACTOR_ID = 'demo-contractor-1'
+const DEMO_CONTRACTOR_NAME = 'ТОО СтройАлматы'
 
 function isWorkLogType(v: unknown): v is WorkLogTypeStr {
   return typeof v === 'string' && (WORK_LOG_TYPES as readonly string[]).includes(v)
+}
+
+function ownsContract(authId: string, contractorId: string, contractorName?: string | null): boolean {
+  if (contractorId === authId) return true
+  // Demo role-switcher uses synthetic id while seeded DB has real contractor id.
+  if (authId === DEMO_CONTRACTOR_ID && contractorName === DEMO_CONTRACTOR_NAME) return true
+  return false
 }
 
 // GET /api/work-logs?contractId=... — work logs for a contract
@@ -75,12 +84,18 @@ export async function POST(req: NextRequest) {
 
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    select: { id: true, contractorId: true, lat: true, lng: true },
+    select: {
+      id: true,
+      contractorId: true,
+      lat: true,
+      lng: true,
+      contractor: { select: { name: true } },
+    },
   })
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
-  if (contract.contractorId !== auth.id) {
+  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
 

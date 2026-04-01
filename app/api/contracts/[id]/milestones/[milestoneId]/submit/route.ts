@@ -6,6 +6,14 @@ export const dynamic = 'force-dynamic'
 
 const JURORS = 3
 const HOUR_MS = 60 * 60 * 1000
+const DEMO_CONTRACTOR_ID = 'demo-contractor-1'
+const DEMO_CONTRACTOR_NAME = 'ТОО СтройАлматы'
+
+function ownsContract(authId: string, contractorId: string, contractorName?: string | null): boolean {
+  if (contractorId === authId) return true
+  if (authId === DEMO_CONTRACTOR_ID && contractorName === DEMO_CONTRACTOR_NAME) return true
+  return false
+}
 
 /**
  * POST /api/contracts/[id]/milestones/[milestoneId]/submit
@@ -34,13 +42,16 @@ export async function POST(
 
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    include: { milestones: { orderBy: { sortOrder: 'asc' } } },
+    include: {
+      contractor: { select: { name: true } },
+      milestones: { orderBy: { sortOrder: 'asc' } },
+    },
   })
 
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
-  if (contract.contractorId !== auth.id) {
+  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
 
