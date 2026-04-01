@@ -23,6 +23,8 @@ import PenaltyCalculator from '@/components/PenaltyCalculator'
 import { useAuth } from '@/components/AuthContext'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
+import OnChainLink from '@/components/OnChainLink'
+import ExternalLink from '@/components/ExternalLink'
 
 function milestoneStatusForApi(m: Milestone): string {
   const map: Record<Milestone['status'], string> = {
@@ -231,17 +233,23 @@ export default function ContractDetailPage() {
                       </div>
                     )}
                   </div>
-                  <a
+                  <ExternalLink
                     href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    label={t('goszakupOpen')}
+                    withIcon
                     className="inline-flex items-center gap-1.5 mt-3 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
-                  >
-                    {t('goszakupOpen')}
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                    </svg>
-                  </a>
+                  />
+                </div>
+              )}
+
+              {contract.onChainPubkey && (
+                <div className="mt-4">
+                  <OnChainLink
+                    address={contract.onChainPubkey}
+                    label={t('openOnChain')}
+                    withIcon
+                    className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  />
                 </div>
               )}
 

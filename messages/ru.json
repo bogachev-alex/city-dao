@@ -94,6 +94,7 @@
     "subjectType": "Предмет договора",
     "signedAt": "Дата подписания",
     "goszakupOpen": "Открыть похожий фильтр на goszakup.gov.kz",
+    "openOnChain": "Открыть контракт в Solana Explorer",
     "contractId": "ID контракта",
     "coordinates": "Координаты",
     "escrow20": "Эскроу (20%)",
@@ -209,6 +210,7 @@
     "deadlineLeft": "{days} дн. до дедлайна",
     "deadlineOverdue": "Просрочка {days} дн.",
     "openContract": "Открыть контракт",
+    "openOnChain": "В блокчейне",
     "badgeRisk": "Дедлайн < 7 дн.",
     "badgeReview": "На проверке жюри",
     "penaltyCountdown": "Осталось {days} дн. до начала штрафов (1% в день)",
@@ -387,7 +389,9 @@
       "done": "выполнено",
       "overdueBy": "Просрочен на {days} дн.",
       "daysLeft": "{days} дн. осталось",
-      "penaltyLabel": "Штраф:"
+      "penaltyLabel": "Штраф:",
+      "openContract": "Открыть контракт",
+      "onChain": "В блокчейне"
     },
     "milestoneTracker": {
       "pending": "Ожидание",

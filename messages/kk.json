@@ -94,6 +94,7 @@
     "subjectType": "Келісім нысанасы",
     "signedAt": "Қол қойылған күні",
     "goszakupOpen": "goszakup.gov.kz порталындағы ұқсас сүзгі",
+    "openOnChain": "Келісімшартты Solana Explorer-де ашу",
     "contractId": "Келісімшарт ID",
     "coordinates": "Координаталар",
     "escrow20": "Эскроу (20%)",
@@ -209,6 +210,7 @@
     "deadlineLeft": "Дедлайнға {days} күн",
     "deadlineOverdue": "Мерзімі {days} күн өтті",
     "openContract": "Келісімшартты ашу",
+    "openOnChain": "Блокчейнде",
     "badgeRisk": "Дедлайн < 7 күн",
     "badgeReview": "Жюри тексеруінде",
     "penaltyCountdown": "Айыппұл басталуына {days} күн қалды (күніне 1%)",
@@ -387,7 +389,9 @@
       "done": "орындалды",
       "overdueBy": "Мерзімі өткен {days} күн",
       "daysLeft": "{days} күн қалды",
-      "penaltyLabel": "Айыппұл:"
+      "penaltyLabel": "Айыппұл:",
+      "openContract": "Келісімшартты ашу",
+      "onChain": "Блокчейнде"
     },
     "milestoneTracker": {
       "pending": "Күту",
