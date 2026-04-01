@@ -5,6 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { getContractPDA, getEscrowPDA } from './pda'
+import { SOLANA_NETWORK } from './constants'
 import idl from './idl/contract_registry.json'
 
 const MAX_SEED_BYTES = 32
@@ -51,6 +52,14 @@ export function useContractRegistry() {
   const isAlreadyInUseError = useCallback((err: unknown): boolean => {
     const raw = err instanceof Error ? err.message : String(err || '')
     return raw.includes('already in use') || raw.includes('Allocate: account')
+  }, [])
+
+  const toReadableError = useCallback((err: unknown): string => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    if (raw.includes('Attempt to debit an account but found no record of a prior credit')) {
+      return `Wallet has no SOL on ${SOLANA_NETWORK}. Fund your wallet and retry.`
+    }
+    return raw || 'Contract registration failed'
   }, [])
 
   const getProgram = useCallback(() => {
@@ -129,13 +138,13 @@ export function useContractRegistry() {
         const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
         return { tx: null, pda: contractPDA.toBase58() }
       }
-      const msg = err?.message || 'Contract registration failed'
+      const msg = toReadableError(err)
       setError(msg)
-      throw err
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, isAlreadyInUseError])
+  }, [wallet.publicKey, getProgram, isAlreadyInUseError, toReadableError])
 
   /**
    * Contractor submits milestone on-chain with IPFS evidence hash (see IDL submit_milestone).
@@ -160,14 +169,14 @@ export function useContractRegistry() {
 
         return tx
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'submit_milestone failed'
+        const msg = toReadableError(err)
         setError(msg)
-        throw err
+        throw new Error(msg)
       } finally {
         setLoading(false)
       }
     },
-    [getProgram, wallet.publicKey]
+    [getProgram, wallet.publicKey, toReadableError]
   )
 
   return {
