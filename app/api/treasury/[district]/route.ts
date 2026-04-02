@@ -16,34 +16,35 @@ export async function GET(
   const { district } = await params
   const decodedDistrict = decodeURIComponent(district)
 
-  const treasury = await prisma.districtTreasury.findUnique({
-    where: { district: decodedDistrict },
-    include: {
-      proposals: {
-        include: {
-          aiResearch: true,
-          votes: {
-            select: {
-              id: true,
-              citizenId: true,
-              inFavor: true,
-              createdAt: true,
-              citizen: { select: { walletAddress: true } },
+  const [treasury, penalties] = await Promise.all([
+    prisma.districtTreasury.findUnique({
+      where: { district: decodedDistrict },
+      include: {
+        proposals: {
+          include: {
+            aiResearch: true,
+            votes: {
+              select: {
+                id: true,
+                citizenId: true,
+                inFavor: true,
+                createdAt: true,
+                citizen: { select: { walletAddress: true } },
+              },
+              orderBy: { createdAt: 'desc' },
             },
-            orderBy: { createdAt: 'desc' },
           },
+          orderBy: { createdAt: 'desc' },
         },
-        orderBy: { createdAt: 'desc' },
       },
-      penalties: {
-        include: {
-          contract: { select: { id: true, title: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      },
-    },
-  })
+    }),
+    prisma.penalty.findMany({
+      where: { contract: { district: decodedDistrict } },
+      include: { contract: { select: { id: true, title: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+  ])
 
   if (!treasury) {
     return NextResponse.json({ error: 'District not found' }, { status: 404 })
@@ -65,12 +66,12 @@ export async function GET(
     balance: treasury.balance.toString(),
     balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
     pdaAddress,
-    totalPenaltyIncome: (treasury.penalties ?? []).reduce((s, p) => s + Number(p.amountTenge), 0),
+    totalPenaltyIncome: penalties.reduce((s, p) => s + Number(p.amountTenge), 0),
     proposals: (treasury.proposals ?? []).map((p) => ({
       ...p,
       amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
     })),
-    penalties: (treasury.penalties ?? []).map((p) => ({
+    penalties: penalties.map((p) => ({
       ...p,
       amountTenge: typeof p.amountTenge === 'bigint' ? p.amountTenge.toString() : p.amountTenge,
     })),

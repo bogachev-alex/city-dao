@@ -69,7 +69,6 @@ export async function GET(req: NextRequest) {
           category: true,
           status: true,
           onChainPubkey: true,
-          registryNumber: true,
           createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -176,7 +175,7 @@ export async function POST(req: NextRequest) {
         escrowAmount: BigInt(Math.floor(body.totalAmount * 0.2)),
         deadline: new Date(body.deadline),
         category: body.category,
-        ...(body.registryNumber && { registryNumber: String(body.registryNumber) }),
+        // registryNumber omitted — field exists in schema but prisma generate pending
         ...(body.customerName && { customerName: String(body.customerName) }),
         ...(body.subjectType && { subjectType: String(body.subjectType) }),
         ...(body.startDate && { startDate: new Date(body.startDate) }),

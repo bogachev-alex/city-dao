@@ -138,7 +138,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                 votes: [
                   {
                     id: `local-${Date.now()}`,
-                    citizenId,
+                    citizenId: citizenId ?? 'demo-citizen',
                     inFavor,
                     createdAt: new Date().toISOString(),
                     citizen: { walletAddress: publicKey.toBase58() },

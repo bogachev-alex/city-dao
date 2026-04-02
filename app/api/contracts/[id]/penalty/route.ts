@@ -93,7 +93,6 @@ export async function POST(
         daysOverdue: type === 'TIME_OVERDUE' ? daysOverdue : null,
         triggeredBy: triggeredBy || null,
         txSignature: txSignature || null,
-        districtTreasuryId: treasury.id,
       },
     }),
     prisma.districtTreasury.update({
