@@ -5,27 +5,42 @@ import { DEMO_TRANSACTIONS, type TxType } from '@/lib/demoTransactions'
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/transactions — real transactions from DB (crowdfunding, penalties, treasury votes) + optional demo fill
- * Query: district (filter by campaign/contract/treasury district), limit (1–100), demo=0 to disable demo padding
+ * GET /api/transactions — real transactions from DB (contracts, milestones, citizens, crowdfunding, penalties, votes)
+ * Query: district, limit (1–100), demo=0 to disable demo padding
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const district = searchParams.get('district')
   const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10) || 50, 1), 100)
   const mergeDemo = searchParams.get('demo') !== '0'
-  const takeEach = Math.min(limit * 3, 150)
+  const takeEach = Math.min(limit * 2, 100)
 
   const isDistrictPage = !!district
 
-  const contribWhere = isDistrictPage
-    ? { campaign: { district } }
-    : { txSignature: { not: null } }
+  const contractWhere = isDistrictPage ? { district } : {}
+  const contribWhere = isDistrictPage ? { campaign: { district } } : {}
+  const penaltyWhere = isDistrictPage ? { contract: { district } } : {}
 
-  const penaltyWhere = isDistrictPage
-    ? { contract: { district } }
-    : { txSignature: { not: null } }
-
-  const [contributions, penalties, votes] = await Promise.all([
+  const [contracts, milestones, citizens, contributions, penalties, votes] = await Promise.all([
+    prisma.contract.findMany({
+      where: contractWhere,
+      include: { contractor: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: takeEach,
+    }),
+    prisma.milestone.findMany({
+      where: isDistrictPage ? { contract: { district } } : {},
+      include: { contract: { select: { id: true, title: true, district: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: takeEach,
+    }),
+    isDistrictPage
+      ? Promise.resolve([])
+      : prisma.citizen.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: takeEach,
+          select: { id: true, walletAddress: true, district: true, createdAt: true },
+        }),
     prisma.campaignContribution.findMany({
       where: contribWhere,
       include: { campaign: { select: { id: true, title: true, district: true } } },
@@ -61,6 +76,49 @@ export async function GET(req: NextRequest) {
   }
 
   const rows: Row[] = []
+
+  for (const c of contracts) {
+    const amount = Number(c.totalAmount)
+    const contractorName = c.contractor?.name || 'Подрядчик'
+      rows.push({
+      signature: `contract-${c.id.slice(-8)}`,
+      type: 'register_contract',
+      description: `Контракт: ${c.title} (${contractorName})`,
+      timestamp: c.createdAt,
+      amount,
+      contractId: c.id,
+    })
+  }
+
+  const milestoneStatusRu: Record<string, string> = {
+    PENDING: 'ожидает',
+    SUBMITTED: 'на проверке',
+    UNDER_REVIEW: 'проверяется жюри',
+    ACCEPTED: 'принят',
+    REJECTED: 'отклонён',
+    OVERDUE: 'просрочен',
+  }
+
+  for (const m of milestones) {
+    const statusRu = milestoneStatusRu[m.status] || m.status
+    rows.push({
+      signature: `milestone-${m.id.slice(-8)}`,
+      type: 'submit_milestone',
+      description: `Этап «${m.description}» (${m.tranchePct}%) — ${statusRu}`,
+      timestamp: m.createdAt,
+      contractId: m.contractId,
+    })
+  }
+
+  for (const c of citizens) {
+    const short = c.walletAddress ? `${c.walletAddress.slice(0, 4)}…${c.walletAddress.slice(-4)}` : c.id.slice(0, 8)
+    rows.push({
+      signature: `citizen-${c.id.slice(-8)}`,
+      type: 'register_citizen',
+      description: `Регистрация гражданина-присяжного (${short}, ${c.district})`,
+      timestamp: c.createdAt,
+    })
+  }
 
   for (const c of contributions) {
     const sig = c.txSignature || `cf-${c.campaign.title.slice(0, 20)}-${c.id.slice(-6)}`
