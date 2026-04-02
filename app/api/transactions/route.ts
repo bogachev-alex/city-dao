@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
   const rows: Row[] = []
 
   for (const c of contributions) {
-    const sig = c.txSignature || `cf-${c.id}`
+    const sig = c.txSignature || `cf-${c.campaign.title.slice(0, 20)}-${c.id.slice(-6)}`
     const amount = Number(c.amount)
     rows.push({
       signature: sig,
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   }
 
   for (const p of penalties) {
-    const sig = p.txSignature || `penalty-${p.id}`
+    const sig = p.txSignature || `penalty-${p.contract.title.slice(0, 20)}-${p.id.slice(-6)}`
     const amount = Number(p.amountTenge)
     const kind = penaltyTypeRu[p.type] || p.type
     rows.push({
@@ -95,11 +95,12 @@ export async function GET(req: NextRequest) {
   }
 
   for (const v of votes) {
-    const sig = (v as any).txSignature || `vote-${v.id}`
+    const wallet = v.citizen?.walletAddress
+    const short = wallet ? `${wallet.slice(0, 4)}…${wallet.slice(-4)}` : '—'
     rows.push({
-      signature: sig,
+      signature: `vote-${v.proposal.title.slice(0, 20)}-${v.id.slice(-6)}`,
       type: 'treasury_vote',
-      description: `Голосование: «${v.proposal.title}» — ${v.inFavor ? 'За' : 'Против'}`,
+      description: `Голосование: «${v.proposal.title}» — ${v.inFavor ? 'За' : 'Против'} (${short})`,
       timestamp: v.createdAt,
     })
   }
