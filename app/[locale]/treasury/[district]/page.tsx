@@ -33,8 +33,8 @@ export default function TreasuryPage() {
               <p className="text-gray-500 dark:text-gray-400">{t('transparentManagement')}</p>
             </div>
             {/* District switcher */}
-            <div className="flex flex-wrap gap-2">
-              {DISTRICTS.slice(0, 4).map((d) => (
+            <div className="flex flex-wrap gap-2 max-w-md">
+              {DISTRICTS.map((d) => (
                 <Link
                   key={d}
                   href={`/treasury/${encodeURIComponent(d)}`}
