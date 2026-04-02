@@ -78,7 +78,6 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
     { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/admin', labelKey: 'admin' },
-    { href: '/profile', labelKey: 'profile' },
   ],
 }
 
