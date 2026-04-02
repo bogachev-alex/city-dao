@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
@@ -23,12 +23,14 @@ const REDIRECT_AFTER_LOGIN = HOME_PATH_BY_ROLE
 export default function LoginPage() {
   const { user, login } = useAuth()
   const router = useRouter()
-  const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
+  const { publicKey, connected, select, connect, disconnect, wallets, wallet, connecting } = useWallet()
 
   const [walletError, setWalletError] = useState<string | null>(null)
-  const [pendingConnect, setPendingConnect] = useState(false)
   const [checking, setChecking] = useState(false)
   const [notFound, setNotFound] = useState(false)
+
+  // Use ref (not state) to avoid stale closure race between select() and connect()
+  const pendingConnectRef = useRef(false)
 
   useEffect(() => {
     if (user) {
@@ -36,12 +38,13 @@ export default function LoginPage() {
     }
   }, [user, router])
 
+  // After select() the adapter name changes — connect() in the next effect tick
   useEffect(() => {
-    if (pendingConnect && wallet && !connected && !connecting) {
-      setPendingConnect(false)
+    if (pendingConnectRef.current && wallet && !connected && !connecting) {
+      pendingConnectRef.current = false
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
     }
-  }, [pendingConnect, wallet, connected, connecting, connect])
+  }, [wallet?.adapter.name, connected, connecting, connect])
 
   const handleWalletConnect = useCallback(() => {
     setWalletError(null)
@@ -52,15 +55,15 @@ export default function LoginPage() {
     const anyUsable = wallets.find((w) => isUsable(w.readyState))
     const target = phantom || anyUsable
     if (!target) {
-      window.open('https://phantom.app/', '_blank')
+      setWalletError('Phantom кошелёк не установлен. Установите расширение на phantom.app')
       return
     }
     if (wallet?.adapter.name === target.adapter.name) {
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
       return
     }
+    pendingConnectRef.current = true
     select(target.adapter.name)
-    setPendingConnect(true)
   }, [wallets, wallet, select, connect])
 
   const handleWalletLogin = async () => {
@@ -120,9 +123,19 @@ export default function LoginPage() {
           </div>
 
           {walletError && (
-            <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
-              {walletError}
-            </p>
+            <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
+              <p>{walletError}</p>
+              {walletError.includes('phantom.app') && (
+                <a
+                  href="https://phantom.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block font-semibold underline hover:text-red-600 dark:hover:text-red-300"
+                >
+                  Установить Phantom →
+                </a>
+              )}
+            </div>
           )}
 
           {notFound && (
@@ -146,25 +159,38 @@ export default function LoginPage() {
           )}
 
           {!connected ? (
-            <button
-              onClick={handleWalletConnect}
-              disabled={connecting}
-              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              {connecting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Подключение...
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  Подключить Phantom
-                </>
+            <div className="space-y-2">
+              <button
+                onClick={handleWalletConnect}
+                disabled={connecting}
+                className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                {connecting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Подключение...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    Подключить Phantom
+                  </>
+                )}
+              </button>
+              {connecting && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                  Ожидаем подтверждения в Phantom...{' '}
+                  <button
+                    onClick={() => { pendingConnectRef.current = false; disconnect().catch(() => {}); setWalletError('Подключение отменено') }}
+                    className="underline hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    Отмена
+                  </button>
+                </p>
               )}
-            </button>
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 rounded-xl px-4 py-3">
