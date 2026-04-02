@@ -8,6 +8,7 @@ import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
 import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole } from '@/lib/auth'
+import { getWallet, formatBalance } from '@/lib/tokens'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
@@ -23,8 +24,16 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
+  const [tokenBalance, setTokenBalance] = useState(0)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    setTokenBalance(getWallet().balance)
+    function refresh() { setTokenBalance(getWallet().balance) }
+    window.addEventListener('amanat-token-award', refresh)
+    return () => window.removeEventListener('amanat-token-award', refresh)
+  }, [])
 
   const DEFAULT_NAV: { href: string; labelKey: string }[] = [
     { href: '/', labelKey: 'map' },
@@ -86,6 +95,17 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* ADL token balance */}
+            {mounted && tokenBalance > 0 && (
+              <Link
+                href="/profile"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all"
+              >
+                <span className="text-emerald-400 font-bold text-[10px]">ADL</span>
+                <span className="text-emerald-400 font-semibold text-xs">{formatBalance(tokenBalance)}</span>
+              </Link>
+            )}
+
             {/* Locale switcher */}
             <button
               onClick={switchLocale}

@@ -179,10 +179,155 @@ export function useContractRegistry() {
     [getProgram, wallet.publicKey, toReadableError]
   )
 
+  /**
+   * Authority (akimat) accepts a submitted milestone — releases tranche from escrow to contractor.
+   */
+  const acceptMilestone = useCallback(
+    async (contractPubkey: PublicKey, contractorPubkey: PublicKey, milestoneIndex: number) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [escrowPDA] = getEscrowPDA(contractPubkey)
+
+        const tx = await (program.methods as any)
+          .acceptMilestone(milestoneIndex)
+          .accounts({
+            governmentContract: contractPubkey,
+            escrow: escrowPDA,
+            contractor: contractorPubkey,
+            authority: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+
+        console.log('Milestone accepted on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Authority rejects a submitted milestone — milestone goes back to pending, no payment.
+   */
+  const rejectMilestone = useCallback(
+    async (contractPubkey: PublicKey, milestoneIndex: number) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .rejectMilestone(milestoneIndex)
+          .accounts({
+            governmentContract: contractPubkey,
+            authority: wallet.publicKey,
+          })
+          .rpc()
+
+        console.log('Milestone rejected on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Anyone can call checkDeadline to mark overdue milestones.
+   * Should be called periodically or before viewing contract status.
+   */
+  const checkDeadline = useCallback(
+    async (contractPubkey: PublicKey) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .checkDeadline()
+          .accounts({
+            governmentContract: contractPubkey,
+            caller: wallet.publicKey,
+          })
+          .rpc()
+
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Authority terminates a contract — marks it terminated, no further milestones accepted.
+   */
+  const terminateContract = useCallback(
+    async (contractPubkey: PublicKey) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .terminateContract()
+          .accounts({
+            governmentContract: contractPubkey,
+            authority: wallet.publicKey,
+          })
+          .rpc()
+
+        console.log('Contract terminated on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
   return {
     registerContract,
     fetchContract,
     submitMilestone,
+    acceptMilestone,
+    rejectMilestone,
+    checkDeadline,
+    terminateContract,
     loading,
     error,
     connected: !!wallet.publicKey,

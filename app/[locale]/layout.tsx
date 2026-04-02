@@ -9,6 +9,7 @@ import { SolanaProviderWrapper } from '@/components/SolanaProviderWrapper'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/components/AuthContext'
 import { AccessibilityProvider } from '@/components/AccessibilityProvider'
+import TokenNotification from '@/components/TokenNotification'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -42,6 +43,7 @@ export default async function LocaleLayout({
               <AccessibilityProvider>
                 <SolanaProviderWrapper>
                   <Navbar />
+                  <TokenNotification />
                   {children}
                 </SolanaProviderWrapper>
               </AccessibilityProvider>
