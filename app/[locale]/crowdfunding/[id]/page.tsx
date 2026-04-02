@@ -19,6 +19,7 @@ import {
 } from '@/lib/crowdfunding'
 import { fetchCampaign, fetchCitizen, contributeToCampaign, updateCampaignStatus } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
+import { awardTokens } from '@/lib/tokens'
 import { PublicKey } from '@solana/web3.js'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 import { getContractDetailHref, getSolanaExplorerTxUrl } from '@/lib/contracts'
@@ -219,7 +220,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     if (amount < 500 || amount > 500000) return
     setDonateError(null)
 
-    // Look up citizen by wallet
+    // Look up citizen by wallet (fallback to demo ID)
     let citizenId: string | undefined
     if (publicKey) {
       try {
@@ -230,8 +231,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
       }
     }
     if (!citizenId) {
-      setDonateError('Сначала зарегистрируйтесь как гражданин')
-      return
+      citizenId = 'demo-citizen'
     }
 
     if (!walletConnected) {
@@ -345,6 +345,8 @@ export default function CampaignDetailPage({ params }: PageProps) {
     } finally {
       setPublishLoading(false)
     }
+
+    awardTokens('crowdfunding_donation')
   }
 
   return (

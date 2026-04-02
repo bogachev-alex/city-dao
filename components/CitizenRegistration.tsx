@@ -12,6 +12,7 @@ import { DISTRICTS, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
 import { useAuth } from '@/components/AuthContext'
 import type { AuthUser } from '@/lib/auth'
+import { awardTokens } from '@/lib/tokens'
 
 const PHONE_RE = /^\+7\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}$/
 
@@ -225,6 +226,7 @@ export default function CitizenRegistration() {
       name: trimmedName || `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
     }
     login(authUser)
+    awardTokens('registration')
     setStep('done')
   }
 

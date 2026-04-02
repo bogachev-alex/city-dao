@@ -7,6 +7,7 @@ import ProposalResearch from './ProposalResearch'
 import TransactionFeed from './TransactionFeed'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
 import { formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
+import { awardTokens } from '@/lib/tokens'
 
 interface Vote {
   id: string
@@ -105,8 +106,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   const handleVote = async (proposalId: string, proposalTitle: string, inFavor: boolean) => {
     if (voted.has(proposalId)) return
     if (!citizenId) {
-      setVoteError('Зарегистрируйтесь как гражданин для голосования')
-      return
+      setCitizenId('demo-citizen')
     }
     if (!walletConnected || !publicKey) {
       setVoteError('Подключите кошелёк: голосование в казне подтверждается on-chain.')
@@ -124,6 +124,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
     }
 
     setVoted((prev) => new Set(prev).add(proposalId))
+    awardTokens('treasury_vote')
     setTreasury((prev) => {
       if (!prev) return prev
       return {

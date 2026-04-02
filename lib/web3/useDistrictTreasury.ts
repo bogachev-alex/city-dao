@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
-import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
+import { AnchorProvider, BN, Program } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/district_treasury.json'
 
@@ -137,8 +137,109 @@ export function useDistrictTreasury() {
     }
   }, [wallet.publicKey, getProgram, getTreasuryPDA, getProposalPDA, getBallotPDA, toReadableError])
 
+  // Initialize a treasury PDA for a district (one-time, called by akimat authority).
+  const initTreasury = useCallback(async (district: string) => {
+    if (!wallet.publicKey) throw new Error('Wallet not connected')
+    const program = getProgram()
+    if (!program) throw new Error('Program not initialized')
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [treasuryPDA] = getTreasuryPDA(district)
+
+      const tx = await (program.methods as any)
+        .initTreasury(district)
+        .accounts({
+          districtTreasury: treasuryPDA,
+          authority: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+
+      console.log('Treasury initialized:', tx)
+      return { tx, pda: treasuryPDA.toBase58() }
+    } catch (err: any) {
+      const msg = toReadableError(err)
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [wallet.publicKey, getProgram, getTreasuryPDA, toReadableError])
+
+  // Deposit SOL into the district treasury.
+  const deposit = useCallback(async (district: string, amount: number) => {
+    if (!wallet.publicKey) throw new Error('Wallet not connected')
+    const program = getProgram()
+    if (!program) throw new Error('Program not initialized')
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [treasuryPDA] = getTreasuryPDA(district)
+
+      const tx = await (program.methods as any)
+        .deposit(new BN(amount))
+        .accounts({
+          districtTreasury: treasuryPDA,
+          depositor: wallet.publicKey,
+        })
+        .rpc()
+
+      console.log('Treasury deposit tx:', tx)
+      return { tx }
+    } catch (err: any) {
+      const msg = toReadableError(err)
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [wallet.publicKey, getProgram, getTreasuryPDA, toReadableError])
+
+  // Execute an approved spending proposal (transfers funds from treasury).
+  const executeProposal = useCallback(async (
+    district: string,
+    proposalPubkey: PublicKey,
+  ) => {
+    if (!wallet.publicKey) throw new Error('Wallet not connected')
+    const program = getProgram()
+    if (!program) throw new Error('Program not initialized')
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [treasuryPDA] = getTreasuryPDA(district)
+
+      const tx = await (program.methods as any)
+        .executeProposal()
+        .accounts({
+          districtTreasury: treasuryPDA,
+          spendingProposal: proposalPubkey,
+          executor: wallet.publicKey,
+        })
+        .rpc()
+
+      console.log('Proposal executed on-chain:', tx)
+      return { tx }
+    } catch (err: any) {
+      const msg = toReadableError(err)
+      setError(msg)
+      throw new Error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [wallet.publicKey, getProgram, getTreasuryPDA, toReadableError])
+
   return {
     voteOnProposal,
+    initTreasury,
+    deposit,
+    executeProposal,
     getTreasuryPDA,
     loading,
     error,
