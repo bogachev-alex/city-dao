@@ -392,6 +392,108 @@ export default function CampaignDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Campaign info */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+              <h2 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Информация о кампании
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Категория</div>
+                  <div className="text-gray-900 dark:text-white">{category.icon} {category.label}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Район</div>
+                  <div className="text-gray-900 dark:text-white">{campaign.district}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Автор</div>
+                  <div className="text-gray-900 dark:text-white">{campaign.creator}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Создано</div>
+                  <div className="text-gray-900 dark:text-white">{new Date(campaign.created_at).toLocaleDateString('ru-KZ')}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Дедлайн</div>
+                  <div className="text-gray-900 dark:text-white">{new Date(campaign.deadline).toLocaleDateString('ru-KZ')}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Гос. субсидия</div>
+                  <div className="text-emerald-600 dark:text-emerald-400 font-medium">{category.statePercent}%</div>
+                </div>
+              </div>
+            </div>
+
+            {/* On-chain status */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+              <h2 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Статус в блокчейне
+              </h2>
+              {!onChainChecked ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">Проверка on-chain…</div>
+              ) : campaign.onChainPubkey || onChainInfo ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  {displayOnChainAddress && (
+                    <div className="col-span-2 sm:col-span-3">
+                      <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain адрес</div>
+                      <OnChainLink
+                        address={displayOnChainAddress}
+                        label={`${displayOnChainAddress.slice(0, 6)}...${displayOnChainAddress.slice(-6)}`}
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                      />
+                    </div>
+                  )}
+                  {onChainInfo && (
+                    <>
+                      <div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain собрано</div>
+                        <div className="text-gray-900 dark:text-white">
+                          {formatTenge(Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain цель граждан</div>
+                        <div className="text-gray-900 dark:text-white">
+                          {formatTenge(Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain доноров</div>
+                        <div className="text-gray-900 dark:text-white">
+                          {Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? 0)}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {onChainInfoError && <div className="col-span-full text-xs text-yellow-600 dark:text-yellow-400">{onChainInfoError}</div>}
+                  {!campaign.onChainPubkey && onChainInfo && (
+                    <div className="col-span-full text-xs text-gray-500 dark:text-gray-400">
+                      Аккаунт найден в сети; при необходимости сохраните PDA в БД (поле onChainPubkey).
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Кампания пока не опубликована в on-chain.</div>
+                  <button
+                    onClick={handlePublishOnChain}
+                    disabled={publishLoading || solanaLoading}
+                    className="px-3 py-2 rounded-lg text-xs font-medium border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-60"
+                  >
+                    {publishLoading || solanaLoading ? 'Публикация в on-chain...' : 'Добавить в on-chain'}
+                  </button>
+                  {publishError && <div className="text-xs text-red-500">{publishError}</div>}
+                </div>
+              )}
+            </div>
+
             {/* Progress section */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <h2 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -712,98 +814,6 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </p>
               </div>
             )}
-
-            {/* Campaign info */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">Информация о кампании</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Категория</span>
-                  <span className="text-gray-900 dark:text-white">{category.icon} {category.label}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Район</span>
-                  <span className="text-gray-900 dark:text-white">{campaign.district}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Автор</span>
-                  <span className="text-gray-900 dark:text-white">{campaign.creator}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Создано</span>
-                  <span className="text-gray-900 dark:text-white">{new Date(campaign.created_at).toLocaleDateString('ru-KZ')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Дедлайн</span>
-                  <span className="text-gray-900 dark:text-white">{new Date(campaign.deadline).toLocaleDateString('ru-KZ')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 dark:text-gray-500">Гос. субсидия</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">{category.statePercent}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* On-chain status: DB onChainPubkey OR live account read from devnet (PDA match) */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">Статус в блокчейне</h3>
-              {!onChainChecked ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">Проверка on-chain…</div>
-              ) : campaign.onChainPubkey || onChainInfo ? (
-                <div className="space-y-2 text-sm">
-                  {displayOnChainAddress && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400 dark:text-gray-500">On-chain адрес</span>
-                      <OnChainLink
-                        address={displayOnChainAddress}
-                        label={`${displayOnChainAddress.slice(0, 6)}...${displayOnChainAddress.slice(-6)}`}
-                        className="text-indigo-600 dark:text-indigo-400 hover:underline"
-                      />
-                    </div>
-                  )}
-                  {onChainInfo && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400 dark:text-gray-500">On-chain собрано</span>
-                        <span className="text-gray-900 dark:text-white">
-                          {formatTenge(Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0))}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400 dark:text-gray-500">On-chain цель граждан</span>
-                        <span className="text-gray-900 dark:text-white">
-                          {formatTenge(Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0))}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400 dark:text-gray-500">On-chain доноров</span>
-                        <span className="text-gray-900 dark:text-white">
-                          {Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? 0)}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  {onChainInfoError && <div className="text-xs text-yellow-600 dark:text-yellow-400">{onChainInfoError}</div>}
-                  {!campaign.onChainPubkey && onChainInfo && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Аккаунт найден в сети; при необходимости сохраните PDA в БД (поле onChainPubkey).
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Кампания пока не опубликована в on-chain.</div>
-                  <button
-                    onClick={handlePublishOnChain}
-                    disabled={publishLoading || solanaLoading}
-                    className="px-3 py-2 rounded-lg text-xs font-medium border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-60"
-                  >
-                    {publishLoading || solanaLoading ? 'Публикация в on-chain...' : 'Добавить в on-chain'}
-                  </button>
-                  {publishError && <div className="text-xs text-red-500">{publishError}</div>}
-                </div>
-              )}
-            </div>
 
             {/* NFT rewards */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">

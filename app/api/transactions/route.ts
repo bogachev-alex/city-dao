@@ -5,8 +5,8 @@ import { DEMO_TRANSACTIONS, type TxType } from '@/lib/demoTransactions'
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/transactions — on-chain tx signatures from DB (crowdfunding, penalties) + optional demo fill
- * Query: district (filter by campaign/contract district), limit (1–100), demo=0 to disable demo padding
+ * GET /api/transactions — real transactions from DB (crowdfunding, penalties, treasury votes) + optional demo fill
+ * Query: district (filter by campaign/contract/treasury district), limit (1–100), demo=0 to disable demo padding
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -15,17 +15,21 @@ export async function GET(req: NextRequest) {
   const mergeDemo = searchParams.get('demo') !== '0'
   const takeEach = Math.min(limit * 3, 150)
 
-  const contribWhere = {
-    txSignature: { not: null },
-    ...(district ? { campaign: { district } } : {}),
-  }
+  const isDistrictPage = !!district
 
-  const penaltyWhere = {
-    txSignature: { not: null },
-    ...(district ? { contract: { district } } : {}),
-  }
+  const contribWhere = isDistrictPage
+    ? { campaign: { district } }
+    : { txSignature: { not: null } }
 
-  const [contributions, penalties] = await Promise.all([
+  const penaltyWhere = isDistrictPage
+    ? { contract: { district } }
+    : { txSignature: { not: null } }
+
+  const voteWhere = isDistrictPage
+    ? { proposal: { treasury: { district } } }
+    : { txSignature: { not: null } }
+
+  const [contributions, penalties, votes] = await Promise.all([
     prisma.campaignContribution.findMany({
       where: contribWhere,
       include: { campaign: { select: { id: true, title: true, district: true } } },
@@ -35,6 +39,15 @@ export async function GET(req: NextRequest) {
     prisma.penalty.findMany({
       where: penaltyWhere,
       include: { contract: { select: { id: true, title: true, district: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: takeEach,
+    }),
+    prisma.proposalVote.findMany({
+      where: voteWhere,
+      include: {
+        citizen: { select: { walletAddress: true } },
+        proposal: { select: { id: true, title: true, treasury: { select: { district: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
       take: takeEach,
     }),
@@ -52,10 +65,10 @@ export async function GET(req: NextRequest) {
   const rows: Row[] = []
 
   for (const c of contributions) {
-    if (!c.txSignature) continue
+    const sig = c.txSignature || `cf-${c.id}`
     const amount = Number(c.amount)
     rows.push({
-      signature: c.txSignature,
+      signature: sig,
       type: 'cf_contribute',
       description: `Краудфандинг «${c.campaign.title}»${c.anonymous ? ' (анонимно)' : ''}: ${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`,
       timestamp: c.createdAt,
@@ -66,20 +79,30 @@ export async function GET(req: NextRequest) {
   const penaltyTypeRu: Record<string, string> = {
     TIME_OVERDUE: 'просрочка',
     QUALITY_REJECTED: 'качество',
-    GHOST_SITE: 'несанкционированный съём',
+    GHOST_SITE: 'брошенный объект',
   }
 
   for (const p of penalties) {
-    if (!p.txSignature) continue
+    const sig = p.txSignature || `penalty-${p.id}`
     const amount = Number(p.amountTenge)
     const kind = penaltyTypeRu[p.type] || p.type
     rows.push({
-      signature: p.txSignature,
+      signature: sig,
       type: 'trigger_penalty',
-      description: `Штраф (${kind}): ${p.contract.title}`,
+      description: `Штраф (${kind}): ${p.contract.title} — ${new Intl.NumberFormat('ru-KZ').format(amount)} ₸ → казна района`,
       timestamp: p.createdAt,
       amount,
       contractId: p.contractId,
+    })
+  }
+
+  for (const v of votes) {
+    const sig = (v as any).txSignature || `vote-${v.id}`
+    rows.push({
+      signature: sig,
+      type: 'treasury_vote',
+      description: `Голосование: «${v.proposal.title}» — ${v.inFavor ? 'За' : 'Против'}`,
+      timestamp: v.createdAt,
     })
   }
 

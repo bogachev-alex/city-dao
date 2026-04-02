@@ -450,7 +450,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           </svg>
           {t('recentTransactions')}
         </h3>
-        <TransactionFeed district={district} maxItems={12} variant="embedded" />
+        <TransactionFeed district={district} maxItems={12} variant="embedded" includeDemo={false} />
       </div>
     </div>
   )
