@@ -666,7 +666,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
           <div className="space-y-4">
             {/* Donate card */}
             {campaign.status === 'active' && !donated && (
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 sticky top-24">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Внести взнос</h3>
 
                 {/* Preset amounts */}
