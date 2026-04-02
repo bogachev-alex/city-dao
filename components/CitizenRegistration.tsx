@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useConnection } from '@solana/wallet-adapter-react'
@@ -37,6 +37,15 @@ export default function CitizenRegistration() {
   const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
   const { login, logout } = useAuth()
 
+  // After select() the adapter name changes — connect() in the next effect tick
+  const pendingConnectRef = useRef(false)
+  useEffect(() => {
+    if (pendingConnectRef.current && wallet && !connected && !connecting) {
+      pendingConnectRef.current = false
+      connect().catch(() => {})
+    }
+  }, [wallet?.adapter.name, connected, connecting, connect])
+
   const handleConnect = useCallback(() => {
     const phantom = wallets.find(
       (w) => w.adapter.name === 'Phantom' && w.readyState === WalletReadyState.Installed
@@ -51,9 +60,9 @@ export default function CitizenRegistration() {
       connect().catch(() => {})
       return
     }
+    pendingConnectRef.current = true
     select(target.adapter.name)
-    setTimeout(() => connect().catch(() => {}), 100)
-  }, [wallets, wallet, select, connect])
+  }, [wallets, wallet, connected, connecting, select, connect])
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
