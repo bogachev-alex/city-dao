@@ -25,10 +25,6 @@ export async function GET(req: NextRequest) {
     ? { contract: { district } }
     : { txSignature: { not: null } }
 
-  const voteWhere = isDistrictPage
-    ? { proposal: { treasury: { district } } }
-    : { txSignature: { not: null } }
-
   const [contributions, penalties, votes] = await Promise.all([
     prisma.campaignContribution.findMany({
       where: contribWhere,
@@ -42,15 +38,17 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
       take: takeEach,
     }),
-    prisma.proposalVote.findMany({
-      where: voteWhere,
-      include: {
-        citizen: { select: { walletAddress: true } },
-        proposal: { select: { id: true, title: true, treasury: { select: { district: true } } } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: takeEach,
-    }),
+    isDistrictPage
+      ? prisma.proposalVote.findMany({
+          where: { proposal: { treasury: { district } } },
+          include: {
+            citizen: { select: { walletAddress: true } },
+            proposal: { select: { id: true, title: true, treasury: { select: { district: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: takeEach,
+        })
+      : Promise.resolve([]),
   ])
 
   type Row = {

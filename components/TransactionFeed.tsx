@@ -57,8 +57,9 @@ export default function TransactionFeed({
   useEffect(() => {
     setLoading(true)
 
-    // On-chain mode: fetch real Solana transactions
-    if (dataSource === 'onchain') {
+    const useApiOnly = !includeDemo && !!district
+
+    if (dataSource === 'onchain' && !useApiOnly) {
       fetchParsedTransactions(maxItems, connection)
         .then((txs: OnChainTx[]) => {
           if (txs.length > 0) {
@@ -72,7 +73,6 @@ export default function TransactionFeed({
             setDemoAppended(false)
           } else {
             if (includeDemo) {
-              // No on-chain txs yet, fall back to demo
               setItems(demoItems())
               setDemoAppended(true)
             } else {
@@ -94,7 +94,6 @@ export default function TransactionFeed({
       return
     }
 
-    // Mock mode: use API (DB + demo padding)
     const params = new URLSearchParams()
     params.set('limit', String(maxItems))
     if (district) params.set('district', district)
