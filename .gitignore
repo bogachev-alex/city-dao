@@ -22,6 +22,7 @@ tsconfig.tsbuildinfo
 tasks/
 
 .treasury-keys.json
+refund-keeper.json
 
 # Local-only (do not commit)
 .dockerignore

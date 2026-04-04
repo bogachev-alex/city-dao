@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { AccountMeta, PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
+import { MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS, PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/crowdfunding.json'
 
 const MAX_SEED_BYTES = 32
@@ -76,6 +76,13 @@ export function useCrowdfunding() {
     )
   }, [])
 
+  const getRefundExecVaultPDA = useCallback((campaignKey: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [SEEDS.cfRefundExec, campaignKey.toBuffer()],
+      PROGRAM_IDS.crowdfunding
+    )
+  }, [])
+
   // Derive donor record PDA
   const getDonorPDA = useCallback((campaignKey: PublicKey, donorKey: PublicKey) => {
     return PublicKey.findProgramAddressSync(
@@ -106,6 +113,7 @@ export function useCrowdfunding() {
       const onChainTitle = normalizeSeedString(title)
       const [campaignPDA] = getCampaignPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(campaignPDA)
+      const [refundExecVaultPDA] = getRefundExecVaultPDA(campaignPDA)
 
       const tx = await (program.methods as any)
         .initCampaign(
@@ -117,10 +125,12 @@ export function useCrowdfunding() {
           new BN(deadline),
           lat,
           lng,
+          new BN(MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS),
         )
         .accounts({
           campaign: campaignPDA,
           escrow: escrowPDA,
+          refundExecVault: refundExecVaultPDA,
           creator: wallet.publicKey,
           systemProgram: SystemProgram.programId,
         })
@@ -148,7 +158,15 @@ export function useCrowdfunding() {
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, toReadableError, readOnlyProgram])
+  }, [
+    wallet.publicKey,
+    getProgram,
+    getCampaignPDA,
+    getEscrowPDA,
+    getRefundExecVaultPDA,
+    toReadableError,
+    readOnlyProgram,
+  ])
 
   // Contribute to a campaign on-chain
   const contribute = useCallback(async (
@@ -240,6 +258,7 @@ export function useCrowdfunding() {
       try {
         const [campaignPDA] = getCampaignPDA(campaignCreator, campaignTitle)
         const [escrowPDA] = getEscrowPDA(campaignPDA)
+        const [refundExecVaultPDA] = getRefundExecVaultPDA(campaignPDA)
 
         const remainingAccounts: AccountMeta[] = donorWallets.flatMap((w) => {
           const [dr] = getDonorPDA(campaignPDA, w)
@@ -254,6 +273,7 @@ export function useCrowdfunding() {
           .accounts({
             campaign: campaignPDA,
             escrow: escrowPDA,
+            refundExecVault: refundExecVaultPDA,
             caller: wallet.publicKey,
             systemProgram: SystemProgram.programId,
           })
@@ -269,7 +289,7 @@ export function useCrowdfunding() {
         setLoading(false)
       }
     },
-    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getDonorPDA],
+    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getRefundExecVaultPDA, getDonorPDA],
   )
 
   /// Send pooled escrow to a contract destination (e.g. contract_registry escrow PDA) after match_funds.
@@ -374,6 +394,7 @@ export function useCrowdfunding() {
     fetchDonorRecords,
     getCampaignPDA,
     getEscrowPDA,
+    getRefundExecVaultPDA,
     getDonorPDA,
     loading,
     error,

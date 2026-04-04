@@ -2,6 +2,9 @@ use anchor_lang::prelude::*;
 
 declare_id!("3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj");
 
+/// Minimum SOL the creator must lock for automated `refund_all` execution (pays relayer after refunds).
+pub const MIN_REFUND_EXEC_DEPOSIT_LAMPORTS: u64 = 1_000_000; // 0.001 SOL
+
 #[program]
 pub mod crowdfunding {
     use super::*;
@@ -16,9 +19,14 @@ pub mod crowdfunding {
         deadline: i64,
         lat: f64,
         lng: f64,
+        refund_executor_deposit_lamports: u64,
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         require!(deadline > now, CrowdfundingError::DeadlinePassed);
+        require!(
+            refund_executor_deposit_lamports >= MIN_REFUND_EXEC_DEPOSIT_LAMPORTS,
+            CrowdfundingError::RefundExecDepositTooLow
+        );
 
         let state_percent: u64 = match category {
             CampaignCategory::Playground => 90,
@@ -60,6 +68,18 @@ pub mod crowdfunding {
         escrow.campaign = campaign.key();
         escrow.total_deposited = 0;
         escrow.bump = ctx.bumps.escrow;
+
+        ctx.accounts.refund_exec_vault.bump = ctx.bumps.refund_exec_vault;
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.creator.to_account_info(),
+                    to: ctx.accounts.refund_exec_vault.to_account_info(),
+                },
+            ),
+            refund_executor_deposit_lamports,
+        )?;
 
         emit!(CampaignCreated {
             campaign: campaign.key(),
@@ -344,6 +364,14 @@ pub struct InitCampaign<'info> {
         bump
     )]
     pub escrow: Account<'info, CampaignEscrow>,
+    #[account(
+        init,
+        payer = creator,
+        space = RefundExecVault::SPACE,
+        seeds = [b"cf_refund_exec", campaign.key().as_ref()],
+        bump
+    )]
+    pub refund_exec_vault: Account<'info, RefundExecVault>,
     #[account(mut)]
     pub creator: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -397,6 +425,14 @@ pub struct RefundAll<'info> {
         bump = escrow.bump
     )]
     pub escrow: Account<'info, CampaignEscrow>,
+    #[account(
+        mut,
+        seeds = [b"cf_refund_exec", campaign.key().as_ref()],
+        bump = refund_exec_vault.bump,
+        close = caller
+    )]
+    pub refund_exec_vault: Account<'info, RefundExecVault>,
+    #[account(mut)]
     pub caller: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -472,6 +508,15 @@ pub struct CampaignEscrow {
 
 impl CampaignEscrow {
     pub const SPACE: usize = 8 + 32 + 8 + 1;
+}
+
+#[account]
+pub struct RefundExecVault {
+    pub bump: u8,
+}
+
+impl RefundExecVault {
+    pub const SPACE: usize = 8 + 1;
 }
 
 #[account]
@@ -579,4 +624,6 @@ pub enum CrowdfundingError {
     RefundAmountMismatch,
     #[msg("Escrow balance too low for this refund (rent or ledger mismatch)")]
     InsufficientEscrowForRefund,
+    #[msg("Refund executor deposit below minimum (creator must fund relayer reimbursement)")]
+    RefundExecDepositTooLow,
 }

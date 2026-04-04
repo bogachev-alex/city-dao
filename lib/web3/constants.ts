@@ -38,7 +38,12 @@ export const SEEDS = {
   campaign: Buffer.from('campaign'),
   cfEscrow: Buffer.from('cf_escrow'),
   donor: Buffer.from('donor'),
+  /** PDA holding creator deposit that reimburses the relayer for `refund_all` tx fees. */
+  cfRefundExec: Buffer.from('cf_refund_exec'),
 } as const
+
+/** Minimum lamports the creator locks at `init_campaign` for automated refunds (matches on-chain constant). */
+export const MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS = 1_000_000
 
 // Almaty districts
 export const DISTRICTS = [
