@@ -14,6 +14,12 @@ import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { DISTRICTS } from '@/lib/contracts'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
+import {
+  CampaignDeadlinePicker,
+  combineLocalDateTime,
+  defaultDeadlineParts,
+  toDateInputValue,
+} from '@/components/CampaignDeadlinePicker'
 
 // Category key to Prisma enum
 const CATEGORY_ENUM: Record<CampaignCategory, string> = {
@@ -24,23 +30,13 @@ const CATEGORY_ENUM: Record<CampaignCategory, string> = {
   commercial: 'COMMERCIAL',
 }
 
-/** Value for `<input type="datetime-local" />` in the user's local timezone. */
-function toDatetimeLocalValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function defaultDeadlineLocal(daysFromNow: number): string {
-  return toDatetimeLocalValue(new Date(Date.now() + daysFromNow * 86_400_000))
-}
-
 export default function NewCampaignPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<CampaignCategory>('landscaping')
   const [district, setDistrict] = useState(DISTRICTS[0])
   const [targetAmount, setTargetAmount] = useState<string>('')
-  const [deadlineLocal, setDeadlineLocal] = useState(() => defaultDeadlineLocal(30))
+  const [deadline, setDeadline] = useState(() => defaultDeadlineParts(30))
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
@@ -53,10 +49,10 @@ export default function NewCampaignPage() {
   const stateMatch = getStateMatch(totalAmount, category)
   const categoryConfig = CATEGORY_CONFIG[category]
 
-  const deadlineEndsAt = useMemo(() => {
-    const t = new Date(deadlineLocal).getTime()
-    return Number.isNaN(t) ? null : new Date(t)
-  }, [deadlineLocal])
+  const deadlineEndsAt = useMemo(
+    () => combineLocalDateTime(deadline.date, deadline.time),
+    [deadline.date, deadline.time]
+  )
 
   const deadlineOffsetMs =
     deadlineEndsAt !== null ? deadlineEndsAt.getTime() - Date.now() : Number.NaN
@@ -79,7 +75,7 @@ export default function NewCampaignPage() {
     setCategory('landscaping')
     setDistrict(DISTRICTS[2] || DISTRICTS[0])
     setTargetAmount('3500000')
-    setDeadlineLocal(defaultDeadlineLocal(45))
+    setDeadline(defaultDeadlineParts(45))
     setError(null)
   }
 
@@ -330,20 +326,18 @@ export default function NewCampaignPage() {
 
             <div className="space-y-3">
               <div>
-                <label htmlFor="cf-deadline-local" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                  Дедлайн сбора (дата и время)
-                </label>
-                <input
-                  id="cf-deadline-local"
-                  type="datetime-local"
-                  step={60}
-                  value={deadlineLocal}
-                  min={toDatetimeLocalValue(new Date())}
-                  onChange={(e) => setDeadlineLocal(e.target.value)}
-                  className="w-full max-w-md bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm [color-scheme:light] dark:[color-scheme:dark]"
+                <span className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Дедлайн сбора — календарь и время
+                </span>
+                <CampaignDeadlinePicker
+                  date={deadline.date}
+                  time={deadline.time}
+                  onDateChange={(date) => setDeadline((d) => ({ ...d, date }))}
+                  onTimeChange={(time) => setDeadline((d) => ({ ...d, time }))}
+                  minDateStr={toDateInputValue(new Date())}
                 />
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Календарь и время в часовом поясе вашего браузера; в блокчейн и БД уходит одна и та же метка (UTC).
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  Время в часовом поясе браузера; в смарт-контракт и БД сохраняется та же метка (UTC).
                 </p>
               </div>
               <div>
@@ -353,7 +347,7 @@ export default function NewCampaignPage() {
                     <button
                       key={d}
                       type="button"
-                      onClick={() => setDeadlineLocal(defaultDeadlineLocal(d))}
+                      onClick={() => setDeadline(defaultDeadlineParts(d))}
                       className="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-500/40"
                     >
                       +{d} дн.
