@@ -81,13 +81,13 @@ export async function POST(req: NextRequest) {
       contractorId: true,
       lat: true,
       lng: true,
-      contractor: { select: { name: true } },
+      contractor: { select: { name: true, walletAddress: true } },
     },
   })
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
-  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name)) {
+  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name, contract.contractor?.walletAddress)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
 

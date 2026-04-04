@@ -1,5 +1,6 @@
 import { PrismaClient } from '../lib/generated/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PLACEHOLDER_CONTRACTOR_NAME } from '../lib/crowdfundingContractConstants'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
@@ -58,9 +59,21 @@ async function main() {
     prisma.contractor.create({
       data: { name: 'ТОО GreenBuild', rating: 'AA', reputationScore: 80, onTimeRate: 0.83, acceptanceRate: 0.87, updateFrequency: 0.85, gpsAccuracy: 0.92, blockerSpeed: 0.78 },
     }),
+    prisma.contractor.create({
+      data: {
+        name: PLACEHOLDER_CONTRACTOR_NAME,
+        rating: 'C',
+        reputationScore: 0,
+        onTimeRate: 0,
+        acceptanceRate: 0,
+        updateFrequency: 0,
+        gpsAccuracy: 0,
+        blockerSpeed: 0,
+      },
+    }),
   ])
 
-  console.log(`Created ${contractors.length} contractors`)
+  console.log(`Created ${contractors.length} contractors (incl. placeholder for crowdfunding)`)
 
   // ═══════════════════════════════════════════════
   // CONTRACTS (10)
@@ -836,7 +849,7 @@ async function main() {
   console.log('Created 6 crowdfunding campaigns + 14 contributions')
 
   console.log('\n✓ Seed completed successfully!')
-  console.log('  8 contractors, 10 contracts, 8 treasuries, 10 citizens')
+  console.log('  9 contractors, 10 contracts, 8 treasuries, 10 citizens')
   console.log('  4 jury sessions, 4 penalties, 15 work logs, 12 NFTs')
   console.log('  13 proposals, 4 AI reports, 20 proposal votes')
   console.log('  6 suggestions, 15 suggestion votes')

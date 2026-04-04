@@ -349,7 +349,16 @@
     "blockersTitle": "Нысандағы кедергілер",
     "blockersHint": "Таңдалған аудан бойынша мердігерлердің «кедергі» жазбалары (тоқтау, материалдар, құжаттар).",
     "blockersEmpty": "Таңдалған аудан бойынша кедергі жазбалары жоқ.",
-    "blockersDistrict": "Аудан"
+    "blockersDistrict": "Аудан",
+    "crowdfundingQueueTitle": "Краудфандинг: мердігер тағайындау",
+    "crowdfundingQueueHint": "Азаматтар жинаған сомадан кейін жоба келісімшарты жасалды. Орындау үшін мердігерді таңдаңыз.",
+    "crowdfundingQueueEmpty": "Мердігерді күткен келісімшарттар жоқ.",
+    "crowdfundingQueueCampaign": "Науқан",
+    "crowdfundingQueueStatus": "Мәртебе",
+    "selectContractor": "Мердігер",
+    "assignContractor": "Тағайындау",
+    "assignSuccess": "Мердігер тағайындалды",
+    "assignError": "Тағайындау сәтсіз"
   },
   "jury": {
     "citizensOnlyTitle": "Тек азамат-алқабилер үшін",

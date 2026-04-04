@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth-server'
+import { PLACEHOLDER_CONTRACTOR_NAME } from '@/lib/crowdfundingContractConstants'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,7 +124,7 @@ export async function GET(
   return NextResponse.json(toJsonSafe(contract))
 }
 
-// PATCH /api/contracts/[id] — update contract status (AKIMAT only)
+// PATCH /api/contracts/[id] — update contract (AKIMAT only)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -134,13 +135,57 @@ export async function PATCH(
   const { id } = await params
   const body = await req.json()
 
+  const existing = await prisma.contract.findUnique({
+    where: { id },
+    include: { crowdfunding: { select: { id: true } }, contractor: { select: { id: true, name: true } } },
+  })
+  if (!existing) {
+    return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
+  }
+
+  let contractorId = body.contractorId as string | undefined
+  if (!contractorId && body.contractorName) {
+    const found = await prisma.contractor.findFirst({
+      where: { name: String(body.contractorName) },
+    })
+    if (found) {
+      contractorId = found.id
+    } else {
+      const created = await prisma.contractor.create({
+        data: { name: String(body.contractorName) },
+      })
+      contractorId = created.id
+    }
+  }
+
+  if (contractorId) {
+    if (!existing.crowdfunding) {
+      return NextResponse.json(
+        { error: 'contractorId can only be set via this route for contracts linked to a crowdfunding campaign' },
+        { status: 400 }
+      )
+    }
+    if (existing.contractor?.name !== PLACEHOLDER_CONTRACTOR_NAME) {
+      return NextResponse.json(
+        { error: 'Contractor is already assigned (only placeholder can be replaced here)' },
+        { status: 400 }
+      )
+    }
+    const next = await prisma.contractor.findUnique({ where: { id: contractorId } })
+    if (!next || next.name === PLACEHOLDER_CONTRACTOR_NAME) {
+      return NextResponse.json({ error: 'Invalid contractorId' }, { status: 400 })
+    }
+  }
+
   const contract = await prisma.contract.update({
     where: { id },
     data: {
       ...(body.status && { status: body.status }),
       ...(body.penaltyAmount !== undefined && { penaltyAmount: BigInt(body.penaltyAmount) }),
       ...(body.onChainPubkey && { onChainPubkey: body.onChainPubkey }),
+      ...(contractorId && { contractorId }),
     },
+    include: { contractor: { select: { id: true, name: true } }, crowdfunding: { select: { id: true } } },
   })
 
   return NextResponse.json(toJsonSafe(contract))
