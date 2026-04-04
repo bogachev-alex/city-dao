@@ -4,11 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { Link } from '@/i18n/routing'
-import { isSolanaTransactionSignature } from '@/lib/blockchainDashboardModel'
+import { getSolanaExplorerTxUrl, isSolanaTransactionSignature } from '@/lib/blockchainDashboardModel'
 import {
   DEMO_TRANSACTIONS,
   TX_TYPE_META,
-  getTxExplorerUrl,
   formatTxTime,
   truncateSig,
   type TxType,
@@ -23,6 +22,10 @@ export interface TransactionFeedItem {
   timestamp: string
   amount?: number
   contractId?: string
+  /** From API: Solana Explorer /tx or /address; client falls back to tx URL if signature is valid */
+  explorerUrl?: string | null
+  /** Short label for mono line (matches explorer target) */
+  chainLabel?: string | null
 }
 
 interface TransactionFeedProps {
@@ -72,6 +75,8 @@ export default function TransactionFeed({
               description: tx.description,
               timestamp: tx.timestamp,
               amount: tx.amount,
+              explorerUrl: getSolanaExplorerTxUrl(tx.signature),
+              chainLabel: truncateSig(tx.signature),
             })))
             setDemoAppended(false)
           } else {
@@ -142,6 +147,8 @@ export default function TransactionFeed({
         timestamp: x.timestamp.toISOString(),
         amount: x.amount,
         contractId: x.contractId,
+        explorerUrl: getSolanaExplorerTxUrl(x.signature),
+        chainLabel: truncateSig(x.signature),
       }))
     }
   }, [district, maxItems, includeDemo, dataSource])
@@ -185,7 +192,12 @@ export default function TransactionFeed({
           items.map((tx) => {
             const meta = TX_TYPE_META[tx.type]
             const ts = new Date(tx.timestamp)
-            const hasChainTx = isSolanaTransactionSignature(tx.signature)
+            const explorerHref =
+              tx.explorerUrl ||
+              (isSolanaTransactionSignature(tx.signature) ? getSolanaExplorerTxUrl(tx.signature) : null)
+            const refLabel =
+              (tx.chainLabel && tx.chainLabel.length > 0 ? tx.chainLabel : null) ||
+              truncateSig(tx.signature)
             const rowClass =
               'flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group'
             const inner = (
@@ -199,9 +211,9 @@ export default function TransactionFeed({
                   <div className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 leading-snug">{tx.description}</div>
                   <div className="flex items-center gap-1 mt-1">
                     <span className="font-mono text-[10px] text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">
-                      {truncateSig(tx.signature)}
+                      {refLabel}
                     </span>
-                    {hasChainTx ? (
+                    {explorerHref ? (
                       <svg
                         className="w-2.5 h-2.5 text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors"
                         fill="none"
@@ -217,13 +229,18 @@ export default function TransactionFeed({
                 </div>
               </>
             )
-            return hasChainTx ? (
+            return explorerHref ? (
               <a
                 key={tx.signature}
-                href={getTxExplorerUrl(tx.signature)}
+                href={explorerHref}
                 target="_blank"
                 rel="noreferrer"
                 className={rowClass}
+                title={
+                  explorerHref.includes('/address/')
+                    ? t('explorerAddressHint')
+                    : t('explorerTxHint')
+                }
               >
                 {inner}
               </a>
