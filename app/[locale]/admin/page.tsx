@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useConnection } from '@solana/wallet-adapter-react'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { DISTRICTS, formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { createContract, fetchContractors } from '@/lib/api'
@@ -83,6 +84,31 @@ export default function AdminPage() {
   const wallet = useWallet()
   const { connection } = useConnection()
   const { registerContract: registerContractOnChain } = useContractRegistry()
+  const pendingConnectRef = useRef(false)
+
+  useEffect(() => {
+    if (pendingConnectRef.current && wallet.wallet && !wallet.connected && !wallet.connecting) {
+      pendingConnectRef.current = false
+      wallet.connect().catch(() => {})
+    }
+  }, [wallet.wallet?.adapter.name, wallet.connected, wallet.connecting, wallet.connect])
+
+  const handleConnectWallet = useCallback(() => {
+    const isUsable = (s: WalletReadyState) => s === WalletReadyState.Installed || s === WalletReadyState.Loadable
+    const phantom = wallet.wallets.find((w) => w.adapter.name === 'Phantom' && isUsable(w.readyState))
+    const anyUsable = wallet.wallets.find((w) => isUsable(w.readyState))
+    const target = phantom || anyUsable
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+    if (wallet.wallet?.adapter.name === target.adapter.name) {
+      wallet.connect().catch(() => {})
+      return
+    }
+    pendingConnectRef.current = true
+    wallet.select(target.adapter.name)
+  }, [wallet])
 
   useEffect(() => {
     if (!loading && user?.role !== 'AKIMAT') {
@@ -366,6 +392,56 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Wallet connection */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-7 h-7 rounded-full bg-purple-50 dark:bg-purple-500/20 flex items-center justify-center">
+              <svg width="14" height="14" fill="none" stroke="#8b5cf6" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <span className="text-gray-900 dark:text-white font-semibold text-sm">Кошелёк Solana</span>
+            <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">обязательно для блокчейн</span>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 ml-10">
+            Кошелёк акимата используется для подписания on-chain транзакции. Может совпадать с кошельком гражданина или подрядчика.
+          </p>
+          {!wallet.connected ? (
+            <button
+              onClick={handleConnectWallet}
+              disabled={wallet.connecting}
+              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {wallet.connecting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Подключение...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Подключить Phantom
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">Кошелёк подключён</div>
+                <div className="text-gray-500 dark:text-gray-400 font-mono text-xs truncate">{wallet.publicKey?.toBase58()}</div>
+              </div>
+              <span className="text-xs text-gray-400">akimat</span>
+            </div>
+          )}
+        </div>
+
         {/* Tab nav */}
         <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1 mb-6">
           {[
@@ -620,7 +696,7 @@ export default function AdminPage() {
             </button>
             {!wallet.publicKey && (
               <div className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
-                {t('connectWalletHint')}
+                Подключите кошелёк выше для регистрации в блокчейне
               </div>
             )}
           </div>
