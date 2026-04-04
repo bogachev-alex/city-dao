@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { DEMO_CAMPAIGNS } from '@/lib/crowdfunding'
+import { promoteCrowdfundingToContract } from '@/lib/crowdfundingPromoteToContract'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,8 +95,8 @@ export async function POST(
   const newRaised = campaign.citizenRaised + amountBig
   const isFunded = newRaised >= campaign.citizenTarget
 
-  const [contribution, updatedCampaign] = await prisma.$transaction([
-    prisma.campaignContribution.create({
+  const { contribution, updatedCampaign } = await prisma.$transaction(async (tx) => {
+    const contributionRow = await tx.campaignContribution.create({
       data: {
         campaignId: id,
         citizenId: resolvedCitizenId,
@@ -103,16 +104,24 @@ export async function POST(
         anonymous: anonymous || false,
         txSignature: txSignature || null,
       },
-    }),
-    prisma.crowdfundingCampaign.update({
+    })
+    const updated = await tx.crowdfundingCampaign.update({
       where: { id },
       data: {
         citizenRaised: { increment: amountBig },
         donorCount: { increment: 1 },
         ...(isFunded && campaign.status === 'ACTIVE' ? { status: 'FUNDED' } : {}),
       },
-    }),
-  ])
+    })
+    if (updated.status === 'FUNDED' && !updated.contractId) {
+      await promoteCrowdfundingToContract(tx, updated)
+    }
+    const campaignAfter = await tx.crowdfundingCampaign.findUnique({ where: { id } })
+    return {
+      contribution: contributionRow,
+      updatedCampaign: campaignAfter ?? updated,
+    }
+  })
 
   return NextResponse.json({ contribution, campaign: updatedCampaign, nftType }, { status: 201 })
 }
@@ -144,9 +153,25 @@ export async function PATCH(
   }
 
   if (action === 'link_contract') {
-    // Link to a government contract and start work
+    // Link to a government contract and start work (or confirm auto-created contract after on-chain registry)
     if (campaign.status !== 'MATCHED') {
       return NextResponse.json({ error: 'Campaign must be MATCHED before linking' }, { status: 400 })
+    }
+    if (campaign.contractId) {
+      if (contractId && contractId !== campaign.contractId) {
+        return NextResponse.json(
+          { error: 'contractId does not match the campaign-linked contract' },
+          { status: 400 }
+        )
+      }
+      const updated = await prisma.crowdfundingCampaign.update({
+        where: { id },
+        data: { status: 'IN_PROGRESS' },
+      })
+      return NextResponse.json(updated)
+    }
+    if (!contractId) {
+      return NextResponse.json({ error: 'contractId required when campaign has no linked contract' }, { status: 400 })
     }
     const updated = await prisma.crowdfundingCampaign.update({
       where: { id },

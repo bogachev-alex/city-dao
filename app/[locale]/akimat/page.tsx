@@ -48,6 +48,28 @@ export default function AkimatCabinetPage() {
   >([])
   const [blockersDistrict, setBlockersDistrict] = useState<string>('')
 
+  type CfQueueRow = {
+    id: string
+    title: string
+    district: string
+    contractor: { id: string; name: string }
+    crowdfunding: {
+      id: string
+      title: string
+      district: string
+      status: string
+      citizenRaised: string
+      citizenTarget: string
+      stateDeposited: boolean
+    } | null
+  }
+  const [cfQueue, setCfQueue] = useState<CfQueueRow[]>([])
+  const [cfContractors, setCfContractors] = useState<{ id: string; name: string }[]>([])
+  const [cfLoading, setCfLoading] = useState(true)
+  const [cfPick, setCfPick] = useState<Record<string, string>>({})
+  const [cfBusyId, setCfBusyId] = useState<string | null>(null)
+  const [cfMsg, setCfMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
   const districtOptions = useMemo(() => {
     if (!data?.treasuries?.length) return ['Ауэзовский', 'Медеуский', 'Бостандыкский']
     return data.treasuries.map((t) => t.district)
@@ -95,6 +117,26 @@ export default function AkimatCabinetPage() {
       .then((json) => setBlockers(Array.isArray(json) ? json : []))
       .catch(() => setBlockers([]))
   }, [user, blockersDistrict, data?.treasuries, authHeader])
+
+  useEffect(() => {
+    if (!user || user.role !== 'AKIMAT') return
+    setCfLoading(true)
+    setCfMsg(null)
+    fetch('/api/akimat/crowdfunding-queue', { headers: { ...authHeader() } })
+      .then(async (r) => {
+        if (!r.ok) throw new Error('fail')
+        return r.json() as { queue: CfQueueRow[]; contractors: { id: string; name: string }[] }
+      })
+      .then((json) => {
+        setCfQueue(Array.isArray(json.queue) ? json.queue : [])
+        setCfContractors(Array.isArray(json.contractors) ? json.contractors : [])
+      })
+      .catch(() => {
+        setCfQueue([])
+        setCfContractors([])
+      })
+      .finally(() => setCfLoading(false))
+  }, [user, authHeader])
 
   if (authLoading || loading) {
     return (
@@ -205,6 +247,120 @@ export default function AkimatCabinetPage() {
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 max-w-2xl">{t('actionsHint')}</p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('crowdfundingQueueTitle')}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-2xl">{t('crowdfundingQueueHint')}</p>
+          {cfMsg && (
+            <div
+              className={`mb-3 text-sm rounded-lg px-3 py-2 ${
+                cfMsg.type === 'ok'
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400'
+              }`}
+            >
+              {cfMsg.text}
+            </div>
+          )}
+          {cfLoading ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 text-center text-gray-500 text-sm">
+              …
+            </div>
+          ) : cfQueue.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+              {t('crowdfundingQueueEmpty')}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cfQueue.map((row) => (
+                <div
+                  key={row.id}
+                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col lg:flex-row lg:items-end gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{row.title}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {row.district}
+                      {row.crowdfunding && (
+                        <>
+                          {' · '}
+                          {t('crowdfundingQueueStatus')}: {row.crowdfunding.status}
+                        </>
+                      )}
+                    </div>
+                    {row.crowdfunding && (
+                      <Link
+                        href={`/crowdfunding/${row.crowdfunding.id}`}
+                        className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline mt-2 inline-block"
+                      >
+                        {t('crowdfundingQueueCampaign')}: {row.crowdfunding.title}
+                      </Link>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{t('selectContractor')}</span>
+                      <select
+                        value={cfPick[row.id] || ''}
+                        onChange={(e) => setCfPick((p) => ({ ...p, [row.id]: e.target.value }))}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white min-w-[200px]"
+                      >
+                        <option value="">—</option>
+                        {cfContractors.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!cfPick[row.id] || cfBusyId === row.id}
+                      onClick={async () => {
+                        const cid = cfPick[row.id]
+                        if (!cid) return
+                        setCfBusyId(row.id)
+                        setCfMsg(null)
+                        try {
+                          const res = await fetch(`/api/contracts/${row.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', ...authHeader() },
+                            body: JSON.stringify({ contractorId: cid }),
+                          })
+                          const data = await res.json().catch(() => ({}))
+                          if (!res.ok) {
+                            setCfMsg({ type: 'err', text: (data as { error?: string }).error || t('assignError') })
+                            return
+                          }
+                          setCfMsg({ type: 'ok', text: t('assignSuccess') })
+                          setCfQueue((q) => q.filter((x) => x.id !== row.id))
+                          setCfPick((p) => {
+                            const next = { ...p }
+                            delete next[row.id]
+                            return next
+                          })
+                        } catch {
+                          setCfMsg({ type: 'err', text: t('assignError') })
+                        } finally {
+                          setCfBusyId(null)
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {cfBusyId === row.id ? '…' : t('assignContractor')}
+                    </button>
+                    <Link
+                      href={getContractDetailHref(row.id)}
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 py-2"
+                    >
+                      {t('openContract')}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section>

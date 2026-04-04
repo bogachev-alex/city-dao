@@ -349,7 +349,16 @@
     "blockersTitle": "Блокеры на объектах",
     "blockersHint": "Записи типа «блокер» от подрядчиков по выбранному району (простой, материалы, документы).",
     "blockersEmpty": "Нет записей-блокеров за выбранный район.",
-    "blockersDistrict": "Район"
+    "blockersDistrict": "Район",
+    "crowdfundingQueueTitle": "Краудфандинг: назначить подрядчика",
+    "crowdfundingQueueHint": "После сбора суммы граждан создан контракт-черновик. Выберите подрядчика для исполнения.",
+    "crowdfundingQueueEmpty": "Нет контрактов, ожидающих назначения подрядчика.",
+    "crowdfundingQueueCampaign": "Кампания",
+    "crowdfundingQueueStatus": "Статус",
+    "selectContractor": "Подрядчик",
+    "assignContractor": "Назначить",
+    "assignSuccess": "Подрядчик назначен",
+    "assignError": "Не удалось назначить"
   },
   "jury": {
     "citizensOnlyTitle": "Только для граждан-присяжных",
