@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
   }
 
   const contractors = await prisma.contractor.findMany({
+    where: { walletAddress: { not: null } },
     include: {
       _count: { select: { contracts: true } },
     },
