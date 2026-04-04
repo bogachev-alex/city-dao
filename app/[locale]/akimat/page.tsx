@@ -173,9 +173,9 @@ export default function AkimatCabinetPage() {
         }
       })
       .then((json) => {
-        const q = Array.isArray(json.queue) ? json.queue : []
+        const q = (Array.isArray(json.queue) ? json.queue : []) as Record<string, unknown>[]
         setCfQueue(
-          q.map((c: Record<string, unknown>) => ({
+          q.map((c) => ({
             id: String(c.id),
             title: String(c.title ?? ''),
             district: String(c.district ?? ''),
