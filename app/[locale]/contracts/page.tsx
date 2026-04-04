@@ -58,6 +58,7 @@ export default function ContractsPage() {
   const [amountMinFilter, setAmountMinFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [contractorScope, setContractorScope] = useState<'mine' | 'all'>('mine')
+  const [sortBy, setSortBy] = useState<string>('createdAtDesc')
 
   const dataSource = useDataSource()
   const isContractor = user?.role === 'CONTRACTOR'
@@ -288,6 +289,36 @@ export default function ContractsPage() {
     return filtered.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
   }, [filtered, isContractor, contractorScope, contractorNameNorm])
 
+  const sorted = useMemo(() => {
+    const arr = [...filteredForDisplay]
+    switch (sortBy) {
+      case 'createdAtDesc':
+        return arr.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return tb - ta
+        })
+      case 'createdAtAsc':
+        return arr.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return ta - tb
+        })
+      case 'deadlineAsc':
+        return arr.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+      case 'deadlineDesc':
+        return arr.sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())
+      case 'amountDesc':
+        return arr.sort((a, b) => b.amount_usdc - a.amount_usdc)
+      case 'amountAsc':
+        return arr.sort((a, b) => a.amount_usdc - b.amount_usdc)
+      case 'status':
+        return arr.sort((a, b) => a.status.localeCompare(b.status))
+      default:
+        return arr
+    }
+  }, [filteredForDisplay, sortBy])
+
   const contractsForStats = useMemo(() => {
     if (isContractor && contractorScope === 'mine') {
       return contracts.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
@@ -415,6 +446,22 @@ export default function ContractsPage() {
                 className="w-full min-w-[140px] sm:w-36 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
               />
             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('sortByLabel')}</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              >
+                <option value="createdAtDesc">{t('sortNewest')}</option>
+                <option value="createdAtAsc">{t('sortOldest')}</option>
+                <option value="deadlineAsc">{t('sortDeadlineAsc')}</option>
+                <option value="deadlineDesc">{t('sortDeadlineDesc')}</option>
+                <option value="amountDesc">{t('sortAmountDesc')}</option>
+                <option value="amountAsc">{t('sortAmountAsc')}</option>
+                <option value="status">{t('sortStatus')}</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -453,7 +500,7 @@ export default function ContractsPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {t('found')}{' '}
-            <span className="text-gray-900 dark:text-white font-medium">{filteredForDisplay.length}</span>{' '}
+            <span className="text-gray-900 dark:text-white font-medium">{sorted.length}</span>{' '}
             {t('contractsCount')}
           </div>
           {user?.role === 'AKIMAT' && (
@@ -470,9 +517,9 @@ export default function ContractsPage() {
         </div>
 
         {/* Contract grid */}
-        {filteredForDisplay.length > 0 ? (
+        {sorted.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredForDisplay.map((contract) => (
+            {sorted.map((contract) => (
               <ContractCard key={contract.id} contract={contract} />
             ))}
           </div>
@@ -484,8 +531,7 @@ export default function ContractsPage() {
               </svg>
             </div>
             <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">{t('notFound')}</div>
-            {isContractor && contractorScope === 'mine' && filtered.length > 0 ? (
-              <p className="text-gray-400 dark:text-gray-500 text-sm max-w-md mx-auto mb-3">{t('contractorMineEmpty')}</p>
+            {isContractor && contractorScope === 'mine' && filtered.length > 0 ? (              <p className="text-gray-400 dark:text-gray-500 text-sm max-w-md mx-auto mb-3">{t('contractorMineEmpty')}</p>
             ) : null}
             <div className="text-gray-400 dark:text-gray-500 text-sm">{t('tryChangeFilters')}</div>
           </div>

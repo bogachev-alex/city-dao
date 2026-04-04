@@ -56,7 +56,15 @@
     "contractorScopeMine": "Менің келісімшарттарым",
     "contractorScopeAll": "Барлық тізілім",
     "contractorDeskLink": "Мердігер кабинеті",
-    "contractorMineEmpty": "Сіз мердігер ретінде көрсетілген келісімшарт жоқ. «Барлық тізілім» бөлімін қараңыз немесе тапсырыс берушіге хабарласыңыз."
+    "contractorMineEmpty": "Сіз мердігер ретінде көрсетілген келісімшарт жоқ. «Барлық тізілім» бөлімін қараңыз немесе тапсырыс берушіге хабарласыңыз.",
+    "sortByLabel": "Сұрыптау",
+    "sortNewest": "Алдымен жаңалары",
+    "sortOldest": "Алдымен ескілері",
+    "sortDeadlineAsc": "Мерзім (жақын)",
+    "sortDeadlineDesc": "Мерзім (кейінірек)",
+    "sortAmountDesc": "Сома (кему)",
+    "sortAmountAsc": "Сома (өсу)",
+    "sortStatus": "Күй бойынша"
   },
   "contractDetail": {
     "notFound": "Келісімшарт табылмады",
@@ -414,7 +422,8 @@
       "daysLeft": "{days} күн қалды",
       "penaltyLabel": "Айыппұл:",
       "openContract": "Келісімшартты ашу",
-      "onChain": "Блокчейнде"
+      "onChain": "Блокчейнде",
+      "addedDateLabel": "Қосылған"
     },
     "milestoneTracker": {
       "pending": "Күту",

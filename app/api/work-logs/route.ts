@@ -90,6 +90,9 @@ export async function POST(req: NextRequest) {
   if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name, contract.contractor?.walletAddress)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
+  if (!contract.contractorId) {
+    return NextResponse.json({ error: 'Contract has no contractor assigned' }, { status: 400 })
+  }
 
   if (!isWorkLogType(body.type)) {
     return NextResponse.json({ error: 'Invalid work log type' }, { status: 400 })
