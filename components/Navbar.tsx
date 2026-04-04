@@ -7,7 +7,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
-import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole } from '@/lib/auth'
+import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole, isDemoSessionUser } from '@/lib/auth'
 import { getWallet, formatBalance } from '@/lib/tokens'
 import { useWallet } from '@solana/wallet-adapter-react'
 
@@ -27,8 +27,45 @@ export default function Navbar() {
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
   const { connected: walletAdapterConnected, publicKey: walletPublicKey } = useWallet()
+  const [availableRoles, setAvailableRoles] = useState<UserRole[]>(ALL_ROLES)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    if (!user) { setAvailableRoles(ALL_ROLES); return }
+    if (isDemoSessionUser(user)) { setAvailableRoles(ALL_ROLES); return }
+
+    let cancelled = false
+    async function load() {
+      if (!user) return
+      try {
+        const roles: UserRole[] = [user.role]
+        const res = await fetch(`/api/roles?wallet=${encodeURIComponent(user.id)}`)
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          if (data.roles?.length) {
+            const dbRoles = data.roles as UserRole[]
+            for (const r of dbRoles) {
+              if (!roles.includes(r)) roles.push(r)
+            }
+          }
+        }
+        const akRaw = localStorage.getItem('akimat_profile')
+        if (akRaw) {
+          try {
+            const ak = JSON.parse(akRaw)
+            if (ak.walletAddress === user.id && !roles.includes('AKIMAT')) roles.push('AKIMAT')
+          } catch {}
+        }
+        if (!cancelled) setAvailableRoles(roles)
+      } catch {
+        if (!cancelled) setAvailableRoles([user.role])
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [user])
 
   useEffect(() => {
     setTokenBalance(getWallet().balance)
@@ -168,9 +205,11 @@ export default function Navbar() {
                   />
                   <span>{ROLE_ICONS[user.role]}</span>
                   <span className="max-w-[80px] truncate">{user.name}</span>
-                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M19 9l-7 7-7-7" />
-                  </svg>
+                  {availableRoles.length > 1 && (
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
                 </button>
                 {roleSwitcherOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -198,7 +237,7 @@ export default function Navbar() {
                     <div className="px-3 pt-2 pb-1">
                       <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">Роль</p>
                     </div>
-                    {ALL_ROLES.map((role) => (
+                    {availableRoles.map((role) => (
                       <button
                         key={role}
                         onClick={() => {
@@ -284,7 +323,7 @@ export default function Navbar() {
                 <div className="pt-2 pb-1 px-3 text-xs text-gray-500 uppercase tracking-widest">
                   Переключить роль
                 </div>
-                {ALL_ROLES.map((role) => (
+                {availableRoles.map((role) => (
                   <button
                     key={role}
                     onClick={() => {

@@ -84,20 +84,42 @@ export default function LoginPage() {
     setChecking(true)
     setNotFound(false)
     try {
-      const res = await fetch(`/api/citizens?wallet=${publicKey.toBase58()}`)
-      if (res.ok) {
-        const data = await res.json()
-        // Use stored name from registration if available
-        const stored = localStorage.getItem('citizen_profile')
-        const name = stored ? JSON.parse(stored).name : undefined
-        const authUser = walletToAuthUser(publicKey.toBase58())
-        if (name) authUser.name = name
-        login(authUser)
-      } else {
-        setNotFound(true)
+      const wallet = publicKey.toBase58()
+      const rolesRes = await fetch(`/api/roles?wallet=${encodeURIComponent(wallet)}`)
+      let dbRoles: string[] = []
+      let dbNames: Record<string, string> = {}
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json()
+        dbRoles = rolesData.roles || []
+        dbNames = rolesData.names || {}
       }
+
+      const localRoles: string[] = []
+      const localNames: Record<string, string> = {}
+      const cpRaw = localStorage.getItem('contractor_profile')
+      if (cpRaw) { try { const cp = JSON.parse(cpRaw); if (cp.walletAddress === wallet) { localRoles.push('CONTRACTOR'); localNames['CONTRACTOR'] = cp.name } } catch {} }
+      const akRaw = localStorage.getItem('akimat_profile')
+      if (akRaw) { try { const ak = JSON.parse(akRaw); if (ak.walletAddress === wallet) { localRoles.push('AKIMAT'); localNames['AKIMAT'] = ak.name } } catch {} }
+      const ciRaw = localStorage.getItem('citizen_profile')
+      if (ciRaw) { try { const ci = JSON.parse(ciRaw); if (ci.walletAddress === wallet) { localRoles.push('CITIZEN'); localNames['CITIZEN'] = ci.name } } catch {} }
+
+      const allRoles = new Set([...dbRoles, ...localRoles])
+      if (!allRoles.size) {
+        const citizenRes = await fetch(`/api/citizens?wallet=${wallet}`)
+        if (citizenRes.ok) {
+          allRoles.add('CITIZEN')
+        }
+      }
+
+      if (!allRoles.size) {
+        setNotFound(true)
+        return
+      }
+
+      const pickRole = (Array.from(allRoles) as UserRole[])[0]
+      const name = dbNames[pickRole] || localNames[pickRole] || `${wallet.slice(0, 4)}...${wallet.slice(-4)}`
+      login({ role: pickRole, id: wallet, name })
     } catch {
-      // If API unreachable (no DB), fall through to demo mode
       login(walletToAuthUser(publicKey.toBase58()))
     } finally {
       setChecking(false)
@@ -245,7 +267,15 @@ export default function LoginPage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Ещё нет аккаунта?{' '}
             <Link href="/register" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
-              Зарегистрироваться
+              Гражданин
+            </Link>
+            {' · '}
+            <Link href="/register-contractor" className="text-amber-600 dark:text-amber-400 font-medium hover:underline">
+              Подрядчик
+            </Link>
+            {' · '}
+            <Link href="/register-akimat" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
+              Акимат
             </Link>
           </p>
         </div>

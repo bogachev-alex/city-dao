@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { DISTRICTS, formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
-import { createContract } from '@/lib/api'
+import { createContract, fetchContractors } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+import { tengeToLamports, lamportsToTenge } from '@/lib/web3/constants'
 import { useAuth } from '@/components/AuthContext'
 
 interface MilestoneInput {
@@ -26,9 +30,17 @@ const CATEGORIES = [
   'Инфраструктура',
 ]
 
+interface ContractorOption {
+  id: string
+  name: string
+  rating: string
+  _count?: { contracts: number }
+}
+
 interface ContractFormData {
   title: string
   contractor: string
+  contractorId: string
   amount_usdc: number | ''
   deadline: string
   district: string
@@ -41,6 +53,7 @@ interface ContractFormData {
 const INITIAL_FORM: ContractFormData = {
   title: '',
   contractor: '',
+  contractorId: '',
   amount_usdc: '',
   deadline: '',
   district: '',
@@ -66,8 +79,36 @@ export default function AdminPage() {
   const [onChainTx, setOnChainTx] = useState<string | null>(null)
   const [onChainPda, setOnChainPda] = useState<string | null>(null)
 
+  const [contractors, setContractors] = useState<ContractorOption[]>([])
+
   const wallet = useWallet()
+  const { connection } = useConnection()
   const { registerContract: registerContractOnChain } = useContractRegistry()
+  const pendingConnectRef = useRef(false)
+
+  useEffect(() => {
+    if (pendingConnectRef.current && wallet.wallet && !wallet.connected && !wallet.connecting) {
+      pendingConnectRef.current = false
+      wallet.connect().catch(() => {})
+    }
+  }, [wallet.wallet?.adapter.name, wallet.connected, wallet.connecting, wallet.connect])
+
+  const handleConnectWallet = useCallback(() => {
+    const isUsable = (s: WalletReadyState) => s === WalletReadyState.Installed || s === WalletReadyState.Loadable
+    const phantom = wallet.wallets.find((w) => w.adapter.name === 'Phantom' && isUsable(w.readyState))
+    const anyUsable = wallet.wallets.find((w) => isUsable(w.readyState))
+    const target = phantom || anyUsable
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+    if (wallet.wallet?.adapter.name === target.adapter.name) {
+      wallet.connect().catch(() => {})
+      return
+    }
+    pendingConnectRef.current = true
+    wallet.select(target.adapter.name)
+  }, [wallet])
 
   useEffect(() => {
     if (!loading && user?.role !== 'AKIMAT') {
@@ -75,22 +116,46 @@ export default function AdminPage() {
     }
   }, [user, loading, router])
 
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await fetchContractors()
+        if (Array.isArray(data)) setContractors(data)
+      } catch {}
+    }
+    void load()
+  }, [])
+
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
+
+  const ALMATY_BOUNDS = {
+    latMin: 43.18, latMax: 43.35,
+    lngMin: 76.75, lngMax: 77.05,
+  }
+
+  const randomAlmatyCoords = () => {
+    const lat = (ALMATY_BOUNDS.latMin + Math.random() * (ALMATY_BOUNDS.latMax - ALMATY_BOUNDS.latMin)).toFixed(4)
+    const lng = (ALMATY_BOUNDS.lngMin + Math.random() * (ALMATY_BOUNDS.lngMax - ALMATY_BOUNDS.lngMin)).toFixed(4)
+    return { lat, lng }
+  }
 
   const fillTestData = () => {
     const now = Date.now()
     const suffix = String(now).slice(-4)
     const deadline = new Date(now + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const defaultContractor = contractors.length > 0 ? contractors[0] : null
+    const coords = randomAlmatyCoords()
     setForm({
       title: `Тестовый контракт #${suffix}: ремонт тротуара`,
-      contractor: 'ТОО ТестПодряд',
+      contractor: defaultContractor?.name || 'ТОО ТестПодряд',
+      contractorId: defaultContractor?.id || '',
       amount_usdc: 120000000,
       deadline,
-      district: DISTRICTS[0],
+      district: DISTRICTS[Math.floor(Math.random() * DISTRICTS.length)],
       category: CATEGORIES[0],
-      lat: '43.2551',
-      lng: '76.9126',
+      lat: coords.lat,
+      lng: coords.lng,
       milestones: [
         { desc: 'Подготовка участка и демонтаж', deadline_days: 10, tranche_pct: 30 },
         { desc: 'Основные строительные работы', deadline_days: 25, tranche_pct: 50 },
@@ -111,11 +176,30 @@ export default function AdminPage() {
     setSubmitStep('blockchain')
 
     try {
+      // 0) Ensure sufficient SOL for rent
+      if (wallet.publicKey) {
+        const minRent = 0.01 * LAMPORTS_PER_SOL
+        const balance = await connection.getBalance(wallet.publicKey)
+        if (balance < minRent) {
+          const sig = await connection.requestAirdrop(wallet.publicKey, Math.floor(0.05 * LAMPORTS_PER_SOL))
+          await connection.confirmTransaction(sig, 'confirmed')
+        }
+      }
+
       // 1) Must be registered on-chain first
+      // Convert tenge → lamports. Cap so the 20% escrow deposit doesn't drain the wallet,
+      // but ensure it's large enough to cover rent-exempt minimum (~0.001 SOL).
+      const fullLamports = tengeToLamports(Number(form.amount_usdc))
+      const walletBalance = wallet.publicKey ? await connection.getBalance(wallet.publicKey) : 0
+      const maxEscrowLamports = Math.floor(walletBalance * 0.3)
+      const maxTotalForEscrow = Math.floor(maxEscrowLamports / 0.2)
+      const rentExemptMinimum = 2_000_000 // ~0.002 SOL, safe margin
+      const minTotal = Math.ceil(rentExemptMinimum / 0.2) // 10M lamports
+      const onChainAmount = Math.max(minTotal, Math.min(fullLamports, maxTotalForEscrow))
       const result = await registerContractOnChain(
         form.title,
         form.district,
-        Number(form.amount_usdc),
+        onChainAmount,
         new Date(form.deadline).getTime() / 1000,
         form.milestones.map((m) => ({
           description: m.desc,
@@ -138,6 +222,7 @@ export default function AdminPage() {
       const contractData = {
         title: form.title,
         contractorName: form.contractor,
+        contractorId: form.contractorId || undefined,
         totalAmount: Number(form.amount_usdc),
         deadline: form.deadline,
         district: form.district,
@@ -307,6 +392,56 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Wallet connection */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-7 h-7 rounded-full bg-purple-50 dark:bg-purple-500/20 flex items-center justify-center">
+              <svg width="14" height="14" fill="none" stroke="#8b5cf6" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <span className="text-gray-900 dark:text-white font-semibold text-sm">Кошелёк Solana</span>
+            <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">обязательно для блокчейн</span>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 ml-10">
+            Кошелёк акимата используется для подписания on-chain транзакции. Может совпадать с кошельком гражданина или подрядчика.
+          </p>
+          {!wallet.connected ? (
+            <button
+              onClick={handleConnectWallet}
+              disabled={wallet.connecting}
+              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {wallet.connecting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Подключение...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Подключить Phantom
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">Кошелёк подключён</div>
+                <div className="text-gray-500 dark:text-gray-400 font-mono text-xs truncate">{wallet.publicKey?.toBase58()}</div>
+              </div>
+              <span className="text-xs text-gray-400">akimat</span>
+            </div>
+          )}
+        </div>
+
         {/* Tab nav */}
         <div className="flex gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1 mb-6">
           {[
@@ -347,13 +482,25 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">{t('contractorLabel')}</label>
-                  <input
-                    type="text"
-                    value={form.contractor}
-                    onChange={(e) => setForm({ ...form, contractor: e.target.value })}
-                    placeholder="ТОО СтройАлматы"
-                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
-                  />
+                  <select
+                    value={form.contractorId}
+                    onChange={(e) => {
+                      const c = contractors.find((x) => x.id === e.target.value)
+                      if (c) {
+                        setForm({ ...form, contractor: c.name, contractorId: c.id })
+                      } else {
+                        setForm({ ...form, contractor: '', contractorId: '' })
+                      }
+                    }}
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm appearance-none"
+                  >
+                    <option value="">— Выберите подрядчика —</option>
+                    {contractors.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.rating}, {c._count?.contracts ?? 0} контр.)
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">{t('amountLabel')}</label>
@@ -365,8 +512,9 @@ export default function AdminPage() {
                     className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
                   />
                   {form.amount_usdc && (
-                    <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                      {t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸
+                    <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1 space-y-0.5">
+                      <div>{t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸</div>
+                      <div>On-chain: {(tengeToLamports(Number(form.amount_usdc)) / LAMPORTS_PER_SOL).toFixed(4)} SOL (escrow 20%: {(tengeToLamports(Number(form.amount_usdc)) * 0.2 / LAMPORTS_PER_SOL).toFixed(4)} SOL)</div>
                     </div>
                   )}
                 </div>
@@ -548,7 +696,7 @@ export default function AdminPage() {
             </button>
             {!wallet.publicKey && (
               <div className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
-                {t('connectWalletHint')}
+                Подключите кошелёк выше для регистрации в блокчейне
               </div>
             )}
           </div>

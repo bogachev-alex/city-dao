@@ -31,6 +31,7 @@ export async function createContract(
     title: string
     description?: string
     contractorName: string
+    contractorId?: string
     totalAmount: number
     deadline: string
     district: string
