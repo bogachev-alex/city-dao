@@ -136,6 +136,10 @@ export default function CrowdfundingPage() {
               <div><span className="font-medium text-gray-900 dark:text-white">Проект запускается</span> — через Amanat Protocol с жюри</div>
             </div>
           </div>
+          <p className="mt-4 text-xs text-gray-600 dark:text-gray-400 border-t border-emerald-200/60 dark:border-emerald-500/20 pt-3">
+            У каждой кампании есть срок сбора (дата и время дедлайна). Если к этому моменту цель граждан не достигнута,
+            собранные средства возвращаются донорам — средства не удерживаются на неудачной кампании.
+          </p>
         </div>
 
         {/* Filters */}

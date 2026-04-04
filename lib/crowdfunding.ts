@@ -82,8 +82,52 @@ export function getCampaignProgress(campaign: Campaign): number {
   return Math.min(100, Math.round((campaign.citizen_raised / campaign.citizen_target) * 100))
 }
 
+const MS_MIN = 60_000
+const MS_HOUR = 60 * MS_MIN
+const MS_DAY = 24 * MS_HOUR
+
+/** Remaining or elapsed time broken into calendar-like components (floor-based). */
+export function getDeadlineComponents(
+  deadlineIso: string,
+  nowMs: number = Date.now()
+): { isPast: boolean; days: number; hours: number; minutes: number } {
+  const deadlineMs = new Date(deadlineIso).getTime()
+  const delta = deadlineMs - nowMs
+  const isPast = delta <= 0
+  const absMs = Math.abs(delta)
+  const days = Math.floor(absMs / MS_DAY)
+  const hours = Math.floor((absMs % MS_DAY) / MS_HOUR)
+  const minutes = Math.floor((absMs % MS_HOUR) / MS_MIN)
+  return { isPast, days, hours, minutes }
+}
+
+/** Russian countdown / "ago" label for crowdfunding deadline (hours + minutes). */
+export function formatCrowdfundingCountdown(
+  deadlineIso: string,
+  nowMs: number = Date.now()
+): string {
+  const { isPast, days, hours, minutes } = getDeadlineComponents(deadlineIso, nowMs)
+  if (!isPast) {
+    if (days > 0) {
+      const parts: string[] = [`${days} дн.`]
+      if (hours > 0) parts.push(`${hours} ч.`)
+      if (minutes > 0) parts.push(`${minutes} мин`)
+      return parts.join(' ')
+    }
+    if (hours > 0) {
+      return minutes > 0 ? `${hours} ч. ${minutes} мин` : `${hours} ч.`
+    }
+    if (minutes > 0) return `${minutes} мин`
+    return 'меньше минуты'
+  }
+  if (days > 0) return `${days} дн. назад`
+  if (hours > 0) return `${hours} ч. назад`
+  if (minutes > 0) return `${minutes} мин. назад`
+  return 'только что'
+}
+
 export function getDaysLeft(deadline: string): number {
-  return Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / MS_DAY)
 }
 
 const KZT_PER_SOL = 80_000

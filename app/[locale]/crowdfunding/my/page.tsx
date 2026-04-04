@@ -7,7 +7,7 @@ import {
   Campaign,
   formatTenge,
   getCampaignProgress,
-  getDaysLeft,
+  formatCrowdfundingCountdown,
   CAMPAIGN_STATUS_CONFIG,
   CATEGORY_CONFIG,
   DONOR_TIER_CONFIG,
@@ -128,7 +128,7 @@ export default function MyCrowdfundingPage() {
               const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
               const tierConfig = DONOR_TIER_CONFIG[donation.tier]
               const category = CATEGORY_CONFIG[campaign.category]
-              const daysLeft = getDaysLeft(campaign.deadline)
+              const countdown = formatCrowdfundingCountdown(campaign.deadline)
 
               return (
                 <Link key={donation.campaignId} href={`/crowdfunding/${campaign.id}`}>
@@ -164,6 +164,12 @@ export default function MyCrowdfundingPage() {
                         />
                       </div>
                     </div>
+
+                    {campaign.status === 'active' && progress < 100 && (
+                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                        До дедлайна: <span className="text-gray-700 dark:text-gray-300">{countdown}</span>
+                      </div>
+                    )}
 
                     {/* Refund notice for expired */}
                     {campaign.status === 'expired' && (
