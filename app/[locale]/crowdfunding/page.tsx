@@ -11,6 +11,7 @@ import {
   CAMPAIGN_STATUS_CONFIG,
   formatTenge,
   normalizeCampaign,
+  getEffectiveCrowdfundingStatus,
 } from '@/lib/crowdfunding'
 import { fetchCampaigns } from '@/lib/api'
 import { DISTRICTS } from '@/lib/contracts'
@@ -57,14 +58,15 @@ export default function CrowdfundingPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filtered = campaigns.filter((c) => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false
+    const effective = getEffectiveCrowdfundingStatus(c)
+    if (statusFilter !== 'all' && effective !== statusFilter) return false
     if (categoryFilter !== 'all' && c.category !== categoryFilter) return false
     if (districtFilter !== 'all' && c.district !== districtFilter) return false
     if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase()) && !c.description.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
-  const activeCampaigns = campaigns.filter((c) => c.status === 'active')
+  const activeCampaigns = campaigns.filter((c) => getEffectiveCrowdfundingStatus(c) === 'active')
   const totalRaised = campaigns.reduce((sum, c) => sum + c.citizen_raised, 0)
   const totalDonors = campaigns.reduce((sum, c) => sum + c.donor_count, 0)
   const fundedCount = campaigns.filter((c) => c.status === 'funded' || c.status === 'in_progress' || c.status === 'completed').length

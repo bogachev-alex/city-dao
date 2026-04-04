@@ -130,6 +130,23 @@ export function getDaysLeft(deadline: string): number {
   return Math.ceil((new Date(deadline).getTime() - Date.now()) / MS_DAY)
 }
 
+/** True when the campaign deadline (ISO string) is in the past. */
+export function isCrowdfundingDeadlinePassed(deadlineIso: string, nowMs: number = Date.now()): boolean {
+  return getDeadlineComponents(deadlineIso, nowMs).isPast
+}
+
+/**
+ * Status for UI and filters when the API still says ACTIVE but the deadline passed
+ * or the citizen goal is already met.
+ */
+export function getEffectiveCrowdfundingStatus(c: Campaign, nowMs: number = Date.now()): CampaignStatus {
+  const progress = getCampaignProgress(c)
+  if (c.status === 'active' && progress >= 100) return 'funded'
+  if (c.status !== 'active') return c.status
+  if (getDeadlineComponents(c.deadline, nowMs).isPast && progress < 100) return 'expired'
+  return 'active'
+}
+
 const KZT_PER_SOL = 80_000
 const KZT_PER_USDT = 510
 

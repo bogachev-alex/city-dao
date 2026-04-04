@@ -17,6 +17,8 @@ import {
   DonorTier,
   getDonorTier,
   normalizeCampaign,
+  getEffectiveCrowdfundingStatus,
+  isCrowdfundingDeadlinePassed,
 } from '@/lib/crowdfunding'
 import { fetchCampaign, fetchCitizen, contributeToCampaign, updateCampaignStatus } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
@@ -219,12 +221,23 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const dc = displayCampaign!
   const progress = getCampaignProgress(dc)
   const daysLeft = getDaysLeft(dc.deadline)
+  const deadlinePassed = isCrowdfundingDeadlinePassed(dc.deadline)
+  const effectiveStatus = getEffectiveCrowdfundingStatus(dc)
+  const canDonate = effectiveStatus === 'active'
   const deadlineCountdown = formatCrowdfundingCountdown(dc.deadline)
   const category = CATEGORY_CONFIG[dc.category]
-  const status = CAMPAIGN_STATUS_CONFIG[dc.status]
+  const status = CAMPAIGN_STATUS_CONFIG[effectiveStatus]
   const remaining = Math.max(0, dc.citizen_target - dc.citizen_raised)
 
   const handleDonate = async () => {
+    if (!canDonate) {
+      setDonateError(
+        deadlinePassed && progress < 100
+          ? 'Срок сбора истёк — новые взносы не принимаются.'
+          : 'Эта кампания сейчас не принимает взносы.'
+      )
+      return
+    }
     const amount = customAmount ? parseInt(customAmount) : donationAmount
     if (amount < 500 || amount > 500000) return
     setDonateError(null)
@@ -419,6 +432,16 @@ export default function CampaignDetailPage({ params }: PageProps) {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {deadlinePassed && campaign.status === 'active' && progress < 100 && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-200"
+          >
+            <span className="font-semibold">Срок сбора истёк.</span>{' '}
+            Новые взносы не принимаются. Если цель граждан не была достигнута к дедлайну, возврат средств
+            выполняется по правилам смарт-контракта и платформы.
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
@@ -458,7 +481,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <div className="text-emerald-600 dark:text-emerald-400 font-medium">{category.statePercent}%</div>
                 </div>
               </div>
-              {dc.status === 'active' && progress < 100 && (
+              {dc.status === 'active' && progress < 100 && !deadlinePassed && (
                 <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-200/90 leading-relaxed">
                   К дедлайну сбор должен достичь цели граждан. Если к указанной дате и времени цель не набрана,
                   взносы возвращаются донорам (смарт-контракт / политика платформы).
@@ -707,7 +730,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Donate card */}
-            {campaign.status === 'active' && !donated && (
+            {canDonate && !donated && (
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Внести взнос</h3>
 
@@ -771,8 +794,10 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   </div>
                 )}
                 <button
+                  type="button"
                   onClick={handleDonate}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg transition-colors text-sm"
+                  disabled={!canDonate || solanaLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none text-white font-medium py-3 rounded-lg transition-colors text-sm"
                 >
                   Внести {formatTenge(customAmount ? parseInt(customAmount) || 0 : donationAmount)}
                 </button>
@@ -835,7 +860,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
             )}
 
             {/* Funded / expired state */}
-            {campaign.status === 'funded' && (
+            {(effectiveStatus === 'funded' || dc.status === 'in_progress') && (
               <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
@@ -854,16 +879,30 @@ export default function CampaignDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {campaign.status === 'expired' && (
+            {effectiveStatus === 'expired' && (
               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="20" height="20" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="font-semibold text-red-700 dark:text-red-400">Кампания не собрала средства</span>
+                  <span className="font-semibold text-red-700 dark:text-red-400">
+                    {campaign.status === 'expired'
+                      ? 'Кампания не собрала средства'
+                      : 'Срок сбора истёк'}
+                  </span>
                 </div>
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  Все взносы ({formatTenge(campaign.citizen_raised)}) были автоматически возвращены {campaign.donor_count} участникам. 100% суммы, 0% комиссии.
+                  {campaign.status === 'expired' ? (
+                    <>
+                      Все взносы ({formatTenge(campaign.citizen_raised)}) были автоматически возвращены{' '}
+                      {campaign.donor_count} участникам. 100% суммы, 0% комиссии.
+                    </>
+                  ) : (
+                    <>
+                      К дедлайну не набрана цель граждан. Новые взносы недоступны. Возврат уже внесённых средств
+                      — по правилам on-chain программы и политики платформы (после вызова возврата в кошельке).
+                    </>
+                  )}
                 </p>
               </div>
             )}

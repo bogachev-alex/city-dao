@@ -13,6 +13,7 @@ import {
   DONOR_TIER_CONFIG,
   DonorTier,
   normalizeCampaign,
+  getEffectiveCrowdfundingStatus,
 } from '@/lib/crowdfunding'
 import { fetchCampaigns } from '@/lib/api'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
@@ -46,7 +47,7 @@ export default function MyCrowdfundingPage() {
   const totalDonated = MY_DONATIONS.reduce((sum, d) => sum + d.amount, 0)
   const activeDonations = MY_DONATIONS.filter((d) => {
     const c = allCampaigns.find((c) => c.id === d.campaignId)
-    return c && c.status === 'active'
+    return c && getEffectiveCrowdfundingStatus(c) === 'active'
   })
   const nftCount = MY_DONATIONS.length
 
@@ -125,7 +126,8 @@ export default function MyCrowdfundingPage() {
               const campaign = allCampaigns.find((c) => c.id === donation.campaignId)
               if (!campaign) return null
               const progress = getCampaignProgress(campaign)
-              const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
+              const effective = getEffectiveCrowdfundingStatus(campaign)
+              const status = CAMPAIGN_STATUS_CONFIG[effective]
               const tierConfig = DONOR_TIER_CONFIG[donation.tier]
               const category = CATEGORY_CONFIG[campaign.category]
               const countdown = formatCrowdfundingCountdown(campaign.deadline)
@@ -165,19 +167,25 @@ export default function MyCrowdfundingPage() {
                       </div>
                     </div>
 
-                    {campaign.status === 'active' && progress < 100 && (
+                    {effective === 'active' && progress < 100 && (
                       <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
                         До дедлайна: <span className="text-gray-700 dark:text-gray-300">{countdown}</span>
                       </div>
                     )}
 
                     {/* Refund notice for expired */}
-                    {campaign.status === 'expired' && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-emerald-600">
+                    {effective === 'expired' && (
+                      <div
+                        className={`mt-3 flex items-center gap-2 text-xs ${
+                          campaign.status === 'expired' ? 'text-emerald-600' : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
                         <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Средства возвращены на кошелёк
+                        {campaign.status === 'expired'
+                          ? 'Средства возвращены на кошелёк'
+                          : 'Срок сбора истёк — новые взносы недоступны'}
                       </div>
                     )}
                   </div>
@@ -192,7 +200,8 @@ export default function MyCrowdfundingPage() {
           <div className="space-y-3">
             {MY_CREATED.map((campaign) => {
               const progress = getCampaignProgress(campaign)
-              const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
+              const effective = getEffectiveCrowdfundingStatus(campaign)
+              const status = CAMPAIGN_STATUS_CONFIG[effective]
               const category = CATEGORY_CONFIG[campaign.category]
 
               return (
