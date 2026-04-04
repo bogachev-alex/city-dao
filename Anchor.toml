@@ -8,7 +8,7 @@ skip-lint = false
 [programs.devnet]
 citizen_registry = "2Gjs7gsyaBayR38AACScCPz3ZgRf3JZvAoW63A5jKCd3"
 contract_registry = "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4"
-crowdfunding = "3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj"
+crowdfunding = "3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY"
 district_treasury = "HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ"
 jury_mechanism = "HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd"
 penalty_engine = "9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT"
