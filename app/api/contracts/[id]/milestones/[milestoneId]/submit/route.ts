@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthPayload, requireRole } from '@/lib/auth-server'
+import { ownsContract } from '@/lib/ownsContract'
 
 export const dynamic = 'force-dynamic'
 
 const JURORS = 3
 const HOUR_MS = 60 * 60 * 1000
-const DEMO_CONTRACTOR_ID = 'demo-contractor-1'
-const DEMO_CONTRACTOR_NAME = 'ТОО СтройАлматы'
-
-function ownsContract(authId: string, contractorId: string, contractorName?: string | null): boolean {
-  if (contractorId === authId) return true
-  if (authId === DEMO_CONTRACTOR_ID && contractorName === DEMO_CONTRACTOR_NAME) return true
-  return false
-}
 
 /**
  * POST /api/contracts/[id]/milestones/[milestoneId]/submit
