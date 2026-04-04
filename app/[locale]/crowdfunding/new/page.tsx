@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
 import {
@@ -24,13 +24,23 @@ const CATEGORY_ENUM: Record<CampaignCategory, string> = {
   commercial: 'COMMERCIAL',
 }
 
+/** Value for `<input type="datetime-local" />` in the user's local timezone. */
+function toDatetimeLocalValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function defaultDeadlineLocal(daysFromNow: number): string {
+  return toDatetimeLocalValue(new Date(Date.now() + daysFromNow * 86_400_000))
+}
+
 export default function NewCampaignPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<CampaignCategory>('landscaping')
   const [district, setDistrict] = useState(DISTRICTS[0])
   const [targetAmount, setTargetAmount] = useState<string>('')
-  const [deadline, setDeadline] = useState<number>(30)
+  const [deadlineLocal, setDeadlineLocal] = useState(() => defaultDeadlineLocal(30))
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
@@ -43,7 +53,20 @@ export default function NewCampaignPage() {
   const stateMatch = getStateMatch(totalAmount, category)
   const categoryConfig = CATEGORY_CONFIG[category]
 
-  const canSubmit = title.length >= 10 && description.length >= 50 && totalAmount >= 100000
+  const deadlineEndsAt = useMemo(() => {
+    const t = new Date(deadlineLocal).getTime()
+    return Number.isNaN(t) ? null : new Date(t)
+  }, [deadlineLocal])
+
+  const deadlineOffsetMs =
+    deadlineEndsAt !== null ? deadlineEndsAt.getTime() - Date.now() : Number.NaN
+
+  const canSubmit =
+    title.length >= 10 &&
+    description.length >= 50 &&
+    totalAmount >= 100_000 &&
+    Number.isFinite(deadlineOffsetMs) &&
+    deadlineOffsetMs >= 60_000
 
   const fillTestData = () => {
     const now = Date.now()
@@ -56,7 +79,7 @@ export default function NewCampaignPage() {
     setCategory('landscaping')
     setDistrict(DISTRICTS[2] || DISTRICTS[0])
     setTargetAmount('3500000')
-    setDeadline(45)
+    setDeadlineLocal(defaultDeadlineLocal(45))
     setError(null)
   }
 
@@ -85,9 +108,14 @@ export default function NewCampaignPage() {
       return
     }
 
+    if (!deadlineEndsAt) {
+      setError('Укажите корректную дату и время дедлайна')
+      return
+    }
+
     let onChainPubkey: string
     try {
-      const deadlineTimestamp = Math.floor((Date.now() + deadline * 24 * 60 * 60 * 1000) / 1000)
+      const deadlineTimestamp = Math.floor(deadlineEndsAt.getTime() / 1000)
       const result = await createOnChain(
         title, description, district, category,
         totalAmount, deadlineTimestamp,
@@ -108,7 +136,7 @@ export default function NewCampaignPage() {
         district,
         category: CATEGORY_ENUM[category],
         targetAmount: totalAmount,
-        deadline: new Date(Date.now() + deadline * 24 * 60 * 60 * 1000).toISOString(),
+        deadline: deadlineEndsAt.toISOString(),
         creatorId: citizenId,
         onChainPubkey,
       })
@@ -300,24 +328,53 @@ export default function NewCampaignPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Срок сбора (дней)</label>
-              <div className="flex gap-2">
-                {[30, 45, 60].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDeadline(d)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      deadline === d
-                        ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
-                        : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    {d} дней
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="cf-deadline-local" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                  Дедлайн сбора (дата и время)
+                </label>
+                <input
+                  id="cf-deadline-local"
+                  type="datetime-local"
+                  step={60}
+                  value={deadlineLocal}
+                  min={toDatetimeLocalValue(new Date())}
+                  onChange={(e) => setDeadlineLocal(e.target.value)}
+                  className="w-full max-w-md bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm [color-scheme:light] dark:[color-scheme:dark]"
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Календарь и время в часовом поясе вашего браузера; в блокчейн и БД уходит одна и та же метка (UTC).
+                </p>
               </div>
+              <div>
+                <span className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">Быстро: от сейчас</span>
+                <div className="flex flex-wrap gap-2">
+                  {[30, 45, 60].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDeadlineLocal(defaultDeadlineLocal(d))}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-500/40"
+                    >
+                      +{d} дн.
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {deadlineEndsAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Выбрано окончание:{' '}
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">
+                    {deadlineEndsAt.toLocaleString('ru-KZ', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                  {Number.isFinite(deadlineOffsetMs) && deadlineOffsetMs < 60_000 && (
+                    <span className="text-red-500 block mt-1">Укажите момент не раньше чем через 1 минуту от текущего времени.</span>
+                  )}
+                  {Number.isFinite(deadlineOffsetMs) && deadlineOffsetMs < 0 && (
+                    <span className="text-red-500 block mt-1">Дедлайн в прошлом — выберите будущую дату и время.</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
