@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
-import { AccountMeta, PublicKey, SystemProgram } from '@solana/web3.js'
+import type { AnchorWallet } from '@solana/wallet-adapter-react'
+import { AccountMeta, PublicKey, SystemProgram, Transaction, VersionedTransaction } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS, PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/crowdfunding.json'
@@ -34,9 +35,31 @@ const READ_ONLY_WALLET = {
   signAllTransactions: async <T extends { serialize(): Uint8Array }>(txs: T[]) => txs,
 }
 
+function useAnchorCompatibleWallet(): AnchorWallet | null {
+  const wallet = useWallet()
+  return useMemo(() => {
+    const { publicKey, signTransaction, signAllTransactions } = wallet
+    if (!publicKey || !signTransaction) return null
+    return {
+      publicKey,
+      signTransaction,
+      signAllTransactions:
+        signAllTransactions ??
+        (async <T extends Transaction | VersionedTransaction>(txs: T[]) => {
+          const out: T[] = []
+          for (const tx of txs) {
+            out.push(await signTransaction(tx))
+          }
+          return out
+        }),
+    }
+  }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions])
+}
+
 export function useCrowdfunding() {
   const { connection } = useConnection()
   const wallet = useWallet()
+  const anchorWallet = useAnchorCompatibleWallet()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,14 +73,22 @@ export function useCrowdfunding() {
     if (raw.includes('Attempt to load a program that does not exist')) {
       return `Crowdfunding program is not deployed on ${PROGRAM_IDS.crowdfunding.toBase58()} in ${SOLANA_NETWORK}.`
     }
+    if (raw.includes('AccountNotSigner') && raw.toLowerCase().includes('creator')) {
+      return (
+        `${raw}\n\n` +
+        'Likely cause: devnet still runs an older crowdfunding program (without refund_exec_vault). ' +
+        'The client then lines up accounts in the wrong order and the on-chain "creator" slot is not your wallet. ' +
+        'Fix: deploy the current program (`anchor build -p crowdfunding` then `anchor deploy -p crowdfunding`).'
+      )
+    }
     return raw || 'Crowdfunding operation failed'
   }, [])
 
   const getProgram = useCallback(() => {
-    if (!wallet.publicKey || !wallet.signTransaction) return null
-    const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
+    if (!anchorWallet) return null
+    const provider = new AnchorProvider(connection, anchorWallet as any, { commitment: 'confirmed' })
     return new Program(idl as any, provider)
-  }, [connection, wallet])
+  }, [connection, anchorWallet])
 
   // Derive campaign PDA
   const getCampaignPDA = useCallback((creator: PublicKey, title: string) => {
@@ -104,7 +135,11 @@ export function useCrowdfunding() {
   ) => {
     if (!wallet.publicKey) throw new Error('Wallet not connected')
     const program = getProgram()
-    if (!program) throw new Error('Program not initialized')
+    if (!program) {
+      throw new Error(
+        'Wallet cannot sign transactions (missing signTransaction). Try another wallet or reconnect.',
+      )
+    }
 
     setLoading(true)
     setError(null)
@@ -178,7 +213,11 @@ export function useCrowdfunding() {
   ) => {
     if (!wallet.publicKey) throw new Error('Wallet not connected')
     const program = getProgram()
-    if (!program) throw new Error('Program not initialized')
+    if (!program) {
+      throw new Error(
+        'Wallet cannot sign transactions (missing signTransaction). Try another wallet or reconnect.',
+      )
+    }
 
     setLoading(true)
     setError(null)
