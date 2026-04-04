@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj");
+declare_id!("3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY");
 
 /// Minimum SOL the creator must lock for automated `refund_all` execution (pays relayer after refunds).
 pub const MIN_REFUND_EXEC_DEPOSIT_LAMPORTS: u64 = 1_000_000; // 0.001 SOL

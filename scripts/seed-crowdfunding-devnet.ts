@@ -26,7 +26,7 @@ const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com'
 const WALLET_PATH = process.env.SOLANA_WALLET || path.join(os.homedir(), '.config/solana/id.json')
 const API_BASE = process.env.API_BASE || 'http://localhost:3000'
 
-const CROWDFUNDING_PROGRAM_ID = new PublicKey('3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj')
+const CROWDFUNDING_PROGRAM_ID = new PublicKey('3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY')
 
 const MIN_REFUND_EXEC_DEPOSIT = 1_000_000
 

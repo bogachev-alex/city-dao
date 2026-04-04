@@ -21,7 +21,7 @@ export const PROGRAM_IDS = {
   juryMechanism: new PublicKey('HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd'),
   penaltyEngine: new PublicKey('9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT'),
   districtTreasury: new PublicKey('HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ'),
-  crowdfunding: new PublicKey('3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj'),
+  crowdfunding: new PublicKey('3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY'),
 } as const
 
 // PDA seeds
