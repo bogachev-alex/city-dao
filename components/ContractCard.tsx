@@ -12,6 +12,7 @@ import {
   formatContractTitleForDisplay,
 } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 interface ContractCardProps {
   contract: Contract
@@ -103,7 +104,9 @@ export default function ContractCard({ contract }: ContractCardProps) {
         {/* Amount */}
         <div className="mb-3">
           <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('contractAmount')}</div>
-          <div className="text-gray-900 dark:text-white font-semibold text-sm break-words">{formatTengeWithCrypto(contract.amount_usdc)}</div>
+          <CryptoTooltip amount={contract.amount_usdc}>
+            <span className="text-gray-900 dark:text-white font-semibold text-sm break-words">{formatTengeWithCrypto(contract.amount_usdc)}</span>
+          </CryptoTooltip>
         </div>
         <div className="flex items-center justify-between mb-3">
           <div className="text-xs text-gray-400 dark:text-gray-500">{t('deadline')}</div>
@@ -141,9 +144,11 @@ export default function ContractCard({ contract }: ContractCardProps) {
             <svg width="14" height="14" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <span className="text-xs text-red-600 dark:text-red-400 font-medium animate-pulse">
-              {t('penaltyLabel')} {formatTengeWithCrypto(contract.penalty_amount)}
-            </span>
+            <CryptoTooltip amount={contract.penalty_amount}>
+              <span className="text-xs text-red-600 dark:text-red-400 font-medium animate-pulse">
+                {t('penaltyLabel')} {formatTengeWithCrypto(contract.penalty_amount)}
+              </span>
+            </CryptoTooltip>
           </div>
         )}
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
