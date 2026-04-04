@@ -383,6 +383,10 @@
         {
           "name": "caller",
           "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -551,6 +555,21 @@
       "code": 6010,
       "name": "InvalidCategory",
       "msg": "Invalid campaign category"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidRefundAccounts",
+      "msg": "Invalid refund accounts: expected [donor_record, donor_wallet, ...] pairs"
+    },
+    {
+      "code": 6012,
+      "name": "RefundAmountMismatch",
+      "msg": "Refunded lamports must match escrow total_deposited"
+    },
+    {
+      "code": 6013,
+      "name": "InsufficientEscrowForRefund",
+      "msg": "Escrow balance too low for this refund (rent or ledger mismatch)"
     }
   ],
   "types": [

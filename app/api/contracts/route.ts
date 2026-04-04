@@ -74,7 +74,13 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
       })
 
-      const contractorIds = Array.from(new Set(baseContracts.map((c) => c.contractorId).filter(Boolean)))
+      const contractorIds = Array.from(
+        new Set(
+          baseContracts
+            .map((c) => c.contractorId)
+            .filter((id): id is string => id != null && id !== '')
+        )
+      )
       const contractors = contractorIds.length
         ? await prisma.contractor.findMany({
             where: { id: { in: contractorIds } },
@@ -113,7 +119,8 @@ export async function GET(req: NextRequest) {
         })
         .map((c) => ({
           ...c,
-          contractor: contractorById.get(c.contractorId) || null,
+          contractor:
+            c.contractorId != null ? contractorById.get(c.contractorId) ?? null : null,
           milestones: milestonesByContract.get(c.id) || [],
         }))
 

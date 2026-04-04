@@ -50,6 +50,8 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [onChainInfoError, setOnChainInfoError] = useState<string | null>(null)
   const [onChainChecked, setOnChainChecked] = useState(false)
   const [onChainDonors, setOnChainDonors] = useState<any[]>([])
+  const [refundBusy, setRefundBusy] = useState(false)
+  const [refundError, setRefundError] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
   const {
     contribute: contributeOnChain,
@@ -58,6 +60,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     fetchCampaignAccountByAddress,
     fetchDonorRecords,
     getCampaignPDA,
+    refundAll: refundAllOnChain,
     loading: solanaLoading,
   } = useCrowdfunding()
   const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
@@ -228,6 +231,55 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const category = CATEGORY_CONFIG[dc.category]
   const status = CAMPAIGN_STATUS_CONFIG[effectiveStatus]
   const remaining = Math.max(0, dc.citizen_target - dc.citizen_raised)
+
+  const onChainDeadlinePassed =
+    onChainInfo?.deadline != null &&
+    Number.isFinite(Number(onChainInfo.deadline)) &&
+    Date.now() > Number(onChainInfo.deadline) * 1000
+
+  const onChainStatusActive =
+    onChainInfo?.status != null &&
+    typeof onChainInfo.status === 'object' &&
+    Object.prototype.hasOwnProperty.call(onChainInfo.status, 'active')
+
+  const canRefundOnChain =
+    walletConnected &&
+    !!displayOnChainAddress &&
+    !!onChainInfo &&
+    onChainStatusActive &&
+    (onChainDeadlinePassed || deadlinePassed) &&
+    progress < 100
+
+  const handleRefundOnChain = async () => {
+    setRefundError(null)
+    if (!campaign || !displayOnChainAddress || !onChainInfo?.creator) {
+      setRefundError('Недостаточно данных для on-chain возврата.')
+      return
+    }
+    setRefundBusy(true)
+    try {
+      const creatorPK = new PublicKey(onChainInfo.creator)
+      const seedTitle = normalizeCrowdfundingTitleSeed(campaign.title)
+      const pda = new PublicKey(displayOnChainAddress)
+      const donors = await fetchDonorRecords(pda)
+      const wallets = donors.map((d) => d.donor as PublicKey)
+      await refundAllOnChain(creatorPK, seedTitle, wallets)
+      try {
+        const r = await updateCampaignStatus(campaign.id, 'expire')
+        if (r && typeof r === 'object' && 'error' in r && (r as { error?: string }).error) {
+          console.warn('PATCH expire:', (r as { error: string }).error)
+        }
+      } catch {
+        /* demo campaign id or network */
+      }
+      setOnChainRefreshKey((k) => k + 1)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setRefundError(msg || 'Ошибка возврата on-chain')
+    } finally {
+      setRefundBusy(false)
+    }
+  }
 
   const handleDonate = async () => {
     if (!canDonate) {
@@ -907,6 +959,30 @@ export default function CampaignDetailPage({ params }: PageProps) {
               </div>
             )}
 
+            {canRefundOnChain && (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50/90 dark:bg-amber-500/10 p-5">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-200 text-sm mb-2">
+                  Возврат SOL on-chain
+                </h3>
+                <p className="text-xs text-amber-800 dark:text-amber-200/90 mb-3 leading-relaxed">
+                  Дедлайн прошёл, цель граждан не достигнута, в программе кампания ещё Active. Подпишите транзакцию
+                  <code className="mx-1 text-[10px]">refund_all</code>
+                  — средства из escrow вернутся на кошельки доноров (по списку on-chain). Комиссию сети оплачивает ваш кошелёк.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRefundOnChain}
+                  disabled={refundBusy || solanaLoading}
+                  className="w-full py-2.5 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white"
+                >
+                  {refundBusy || solanaLoading ? 'Отправка…' : 'Вернуть средства донорам'}
+                </button>
+                {refundError && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 text-center">{refundError}</p>
+                )}
+              </div>
+            )}
+
             {/* NFT rewards */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">Награды для доноров</h3>
@@ -931,6 +1007,16 @@ export default function CampaignDetailPage({ params }: PageProps) {
       </div>
     </div>
   )
+}
+
+/** Match on-chain PDA seed (max 32 UTF-8 bytes) — same as `useCrowdfunding` / program `init_campaign`. */
+function normalizeCrowdfundingTitleSeed(title: string): string {
+  const enc = new TextEncoder()
+  let out = title
+  while (enc.encode(out).length > 32) {
+    out = out.slice(0, -1)
+  }
+  return out
 }
 
 function getTimeAgo(timestamp: string): string {
