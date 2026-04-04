@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { Link } from '@/i18n/routing'
@@ -50,6 +50,8 @@ export default function TransactionFeed({
   const t = useTranslations('components.transactionFeed')
   const dataSource = useDataSource()
   const { connection } = useConnection()
+  const connectionRef = useRef(connection)
+  connectionRef.current = connection
   const [items, setItems] = useState<TransactionFeedItem[]>([])
   const [demoAppended, setDemoAppended] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -60,7 +62,7 @@ export default function TransactionFeed({
     const useApiOnly = !includeDemo && !!district
 
     if (dataSource === 'onchain' && !useApiOnly) {
-      fetchParsedTransactions(maxItems, connection)
+      fetchParsedTransactions(maxItems, connectionRef.current)
         .then((txs: OnChainTx[]) => {
           if (txs.length > 0) {
             setItems(txs.map((tx) => ({
@@ -141,7 +143,7 @@ export default function TransactionFeed({
         contractId: x.contractId,
       }))
     }
-  }, [district, maxItems, includeDemo, dataSource, connection])
+  }, [district, maxItems, includeDemo, dataSource])
 
   const inner = (
     <>

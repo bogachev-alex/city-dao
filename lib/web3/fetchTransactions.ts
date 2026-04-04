@@ -9,6 +9,28 @@ import { Connection, PublicKey, type ConfirmedSignatureInfo } from '@solana/web3
 import { PROGRAM_IDS, SOLANA_RPC_URL } from './constants'
 import type { TxType } from '@/lib/demoTransactions'
 
+// ─── Module-level TTL cache (60 s) to avoid rate-limiting on public devnet RPC ───
+interface CacheEntry {
+  data: OnChainTx[]
+  expiresAt: number
+}
+const _cache: Map<string, CacheEntry> = new Map()
+const CACHE_TTL_MS = 60_000
+
+function getCached(key: string): OnChainTx[] | null {
+  const entry = _cache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    _cache.delete(key)
+    return null
+  }
+  return entry.data
+}
+
+function setCache(key: string, data: OnChainTx[]): void {
+  _cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS })
+}
+
 export interface OnChainTx {
   signature: string
   type: TxType
@@ -62,6 +84,10 @@ export async function fetchOnChainTransactions(
   limit: number = 20,
   connection?: Connection,
 ): Promise<OnChainTx[]> {
+  const cacheKey = `onchain:${limit}`
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
   const conn = connection || new Connection(
     SOLANA_RPC_URL,
     'confirmed',
@@ -109,6 +135,7 @@ export async function fetchOnChainTransactions(
     }
   })
 
+  setCache(cacheKey, txs)
   return txs
 }
 
@@ -126,11 +153,16 @@ function camelToSnake(str: string): string {
 /**
  * Fetch and parse transactions with full log data.
  * More expensive (one RPC call per tx) but gives instruction-level detail.
+ * Results are cached for 60 s to avoid rate-limiting on public devnet RPC.
  */
 export async function fetchParsedTransactions(
   limit: number = 10,
   connection?: Connection,
 ): Promise<OnChainTx[]> {
+  const cacheKey = `parsed:${limit}`
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
   const conn = connection || new Connection(
     SOLANA_RPC_URL,
     'confirmed',
@@ -197,5 +229,6 @@ export async function fetchParsedTransactions(
     })
   }
 
+  setCache(cacheKey, txs)
   return txs
 }

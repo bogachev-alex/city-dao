@@ -9,6 +9,7 @@ import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
 import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole, isDemoSessionUser } from '@/lib/auth'
 import { getWallet, formatBalance } from '@/lib/tokens'
+import { useWallet } from '@solana/wallet-adapter-react'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
@@ -25,6 +26,7 @@ export default function Navbar() {
   const [isPending, startTransition] = useTransition()
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
+  const { connected: walletAdapterConnected, publicKey: walletPublicKey } = useWallet()
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>(ALL_ROLES)
 
   useEffect(() => { setMounted(true) }, [])
@@ -96,7 +98,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
+    <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm dark:shadow-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3 group" data-tour="logo">
@@ -190,15 +192,19 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* User block */}
+            {/* User block — combined wallet status + role switcher */}
             {mounted && user ? (
-              <div className="relative hidden md:block" data-tour="auth">
+              <div className="relative hidden md:flex items-center" data-tour="auth">
                 <button
                   onClick={() => setRoleSwitcherOpen((v) => !v)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
                 >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${walletAdapterConnected ? 'bg-purple-500 animate-pulse' : 'bg-gray-400 dark:bg-gray-600'}`}
+                    title={walletAdapterConnected ? `Phantom: ${walletPublicKey?.toBase58().slice(0, 6)}...${walletPublicKey?.toBase58().slice(-4)}` : 'Phantom не подключён'}
+                  />
                   <span>{ROLE_ICONS[user.role]}</span>
-                  <span className="max-w-[100px] truncate">{user.name}</span>
+                  <span className="max-w-[80px] truncate">{user.name}</span>
                   {availableRoles.length > 1 && (
                     <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path d="M19 9l-7 7-7-7" />
@@ -206,9 +212,30 @@ export default function Navbar() {
                   )}
                 </button>
                 {roleSwitcherOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-gray-800">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest">Переключить роль</p>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                    {/* Phantom status */}
+                    <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-800">
+                      {walletAdapterConnected && walletPublicKey ? (
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse shrink-0" />
+                          <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
+                            {walletPublicKey.toBase58().slice(0, 6)}...{walletPublicKey.toBase58().slice(-4)}
+                          </span>
+                        </div>
+                      ) : (
+                        <Link
+                          href="/login"
+                          onClick={() => setRoleSwitcherOpen(false)}
+                          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-600 shrink-0" />
+                          Подключить Phantom
+                        </Link>
+                      )}
+                    </div>
+                    {/* Role switcher */}
+                    <div className="px-3 pt-2 pb-1">
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">Роль</p>
                     </div>
                     {availableRoles.map((role) => (
                       <button
@@ -218,25 +245,25 @@ export default function Navbar() {
                           setRoleSwitcherOpen(false)
                           router.push(HOME_PATH_BY_ROLE[role] as any)
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
+                        className={`w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
                           user.role === role
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'text-gray-300 hover:bg-gray-800'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                         }`}
                       >
                         <span>{ROLE_ICONS[role]}</span>
                         <span>{ROLE_LABELS[role]}</span>
                         {user.role === role && (
-                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="ml-auto">
+                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="ml-auto shrink-0">
                             <path d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </button>
                     ))}
-                    <div className="border-t border-gray-800">
+                    <div className="border-t border-gray-200 dark:border-gray-800">
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                        className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                       >
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

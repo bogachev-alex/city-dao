@@ -31,6 +31,7 @@ export default function LoginPage() {
 
   // Use ref (not state) to avoid stale closure race between select() and connect()
   const pendingConnectRef = useRef(false)
+  const [connectingTooLong, setConnectingTooLong] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -45,6 +46,18 @@ export default function LoginPage() {
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
     }
   }, [wallet?.adapter.name, connected, connecting, connect])
+
+  // If connecting takes >5s — show hint; >15s — auto-reset
+  useEffect(() => {
+    if (!connecting) { setConnectingTooLong(false); return }
+    const hintTimer = setTimeout(() => setConnectingTooLong(true), 5000)
+    const resetTimer = setTimeout(() => {
+      pendingConnectRef.current = false
+      disconnect().catch(() => {})
+      setWalletError('Время ожидания истекло. Попробуйте снова.')
+    }, 15000)
+    return () => { clearTimeout(hintTimer); clearTimeout(resetTimer) }
+  }, [connecting, disconnect])
 
   const handleWalletConnect = useCallback(() => {
     setWalletError(null)
@@ -202,15 +215,22 @@ export default function LoginPage() {
                 )}
               </button>
               {connecting && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-                  Ожидаем подтверждения в Phantom...{' '}
-                  <button
-                    onClick={() => { pendingConnectRef.current = false; disconnect().catch(() => {}); setWalletError('Подключение отменено') }}
-                    className="underline hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    Отмена
-                  </button>
-                </p>
+                <div className="space-y-1.5 text-center">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Ожидаем подтверждения в Phantom...{' '}
+                    <button
+                      onClick={() => { pendingConnectRef.current = false; disconnect().catch(() => {}); setWalletError('Подключение отменено') }}
+                      className="underline hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      Отмена
+                    </button>
+                  </p>
+                  {connectingTooLong && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
+                      Проверьте иконку Phantom в панели браузера — возможно там ждёт подтверждение подключения
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           ) : (

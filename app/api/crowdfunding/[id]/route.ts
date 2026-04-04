@@ -73,6 +73,17 @@ export async function POST(
     return NextResponse.json({ error: 'Campaign deadline has passed' }, { status: 400 })
   }
 
+  // Resolve citizenId: validate it exists, fall back to first available citizen for demo sessions
+  let resolvedCitizenId = citizenId
+  const citizenExists = await prisma.citizen.findUnique({ where: { id: citizenId }, select: { id: true } })
+  if (!citizenExists) {
+    const fallback = await prisma.citizen.findFirst({ select: { id: true } })
+    if (!fallback) {
+      return NextResponse.json({ error: 'No citizens registered in the system' }, { status: 400 })
+    }
+    resolvedCitizenId = fallback.id
+  }
+
   // Determine NFT tier
   let nftType: string | null = null
   if (amountBig >= BigInt(50_000)) nftType = 'DONOR_FOUNDER'
@@ -87,7 +98,7 @@ export async function POST(
     prisma.campaignContribution.create({
       data: {
         campaignId: id,
-        citizenId,
+        citizenId: resolvedCitizenId,
         amount: amountBig,
         anonymous: anonymous || false,
         txSignature: txSignature || null,
