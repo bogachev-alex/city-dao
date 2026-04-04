@@ -117,7 +117,11 @@ export default function NewCampaignPage() {
         totalAmount, deadlineTimestamp,
         43.25, 76.91, // default Almaty coordinates
       )
-      setTxInfo(result.tx)
+      setTxInfo(
+        result.reusedExisting
+          ? 'Кампания с таким названием уже есть on-chain — каталог обновлён тем же адресом.'
+          : result.tx
+      )
       onChainPubkey = result.pda
     } catch (err: any) {
       setError(`On-chain создание кампании не выполнено: ${err?.message || 'неизвестная ошибка'}`)

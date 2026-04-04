@@ -127,15 +127,28 @@ export function useCrowdfunding() {
         .rpc()
 
       console.log('Campaign created on-chain:', tx)
-      return { tx, pda: campaignPDA.toBase58() }
-    } catch (err: any) {
+      return { tx, pda: campaignPDA.toBase58(), reusedExisting: false as const }
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err ?? '')
+      const pdaLikelyExists = raw.includes('already in use')
+
+      if (pdaLikelyExists && wallet.publicKey) {
+        try {
+          const [campaignPDA] = getCampaignPDA(wallet.publicKey, title)
+          await (readOnlyProgram.account as any).crowdfundingCampaignAccount.fetch(campaignPDA)
+          return { tx: '', pda: campaignPDA.toBase58(), reusedExisting: true as const }
+        } catch {
+          // Account missing or not a campaign — surface original failure
+        }
+      }
+
       const msg = toReadableError(err)
       setError(msg)
       throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, toReadableError])
+  }, [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, toReadableError, readOnlyProgram])
 
   // Contribute to a campaign on-chain
   const contribute = useCallback(async (
