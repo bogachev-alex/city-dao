@@ -44,6 +44,9 @@ export async function POST(
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
+  if (!contract.contractorId) {
+    return NextResponse.json({ error: 'Contract has no contractor assigned' }, { status: 400 })
+  }
   if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name, contract.contractor?.walletAddress)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
@@ -86,6 +89,8 @@ export async function POST(
     ? body.photoHashes.filter((h): h is string => typeof h === 'string')
     : []
 
+  const workLogContractorId = contract.contractorId as string
+
   const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.milestone.update({
       where: { id: milestoneId },
@@ -113,7 +118,7 @@ export async function POST(
     await tx.workLog.create({
       data: {
         contractId,
-        contractorId: contract.contractorId,
+        contractorId: workLogContractorId,
         type: 'MILESTONE_CLAIM',
         title: `Сдача этапа: ${milestone.description.slice(0, 80)}`,
         description: body.evidenceNote?.trim() || 'Материалы переданы на проверку жюри.',

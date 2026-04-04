@@ -56,6 +56,8 @@ export interface Contract {
   subjectType?: string
   /** Contract signing date (startDate in DB) */
   signedAt?: string
+  /** Record creation timestamp (createdAt in DB) */
+  createdAt?: string
 }
 
 /** Same filters as goszakup.gov.kz: Алматы + «Работа» (type 2) + amount from 10M ₸ */
@@ -273,6 +275,7 @@ export function normalizeContract(c: any): Contract {
     customerName: c.customerName ?? undefined,
     subjectType: c.subjectType ?? undefined,
     signedAt: signed,
+    createdAt: c.createdAt ? (typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt).toISOString()) : undefined,
     milestones: (c.milestones || []).map((m: any) => ({
       id: m.id,
       desc: m.description || m.desc,

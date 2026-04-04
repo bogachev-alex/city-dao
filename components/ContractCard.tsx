@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   Contract,
@@ -19,10 +19,19 @@ interface ContractCardProps {
 
 export default function ContractCard({ contract }: ContractCardProps) {
   const t = useTranslations('components.contractCard')
+  const locale = useLocale()
   const daysLeft = getDaysUntilDeadline(contract.deadline)
   const completed = getMilestoneCompletedCount(contract)
   const total = contract.milestones.length
   const progressPct = Math.round((completed / total) * 100)
+
+  const createdLabel = contract.createdAt
+    ? new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(contract.createdAt))
+    : null
 
   const statusConfig = {
     active: { label: t('active'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
@@ -101,6 +110,13 @@ export default function ContractCard({ contract }: ContractCardProps) {
             {daysLeft < 0 ? t('overdueBy', { days: Math.abs(daysLeft) }) : t('daysLeft', { days: daysLeft })}
           </div>
         </div>
+
+        {createdLabel && (
+          <div className="flex items-center justify-between mb-3 text-xs">
+            <span className="text-gray-400 dark:text-gray-500">{t('addedDateLabel')}</span>
+            <span className="text-gray-500 dark:text-gray-400">{createdLabel}</span>
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="mb-3">

@@ -56,7 +56,15 @@
     "contractorScopeMine": "Мои контракты",
     "contractorScopeAll": "Весь реестр",
     "contractorDeskLink": "Кабинет подрядчика",
-    "contractorMineEmpty": "Нет контрактов, где вы указаны как подрядчик. Проверьте «Весь реестр» или обратитесь к заказчику."
+    "contractorMineEmpty": "Нет контрактов, где вы указаны как подрядчик. Проверьте «Весь реестр» или обратитесь к заказчику.",
+    "sortByLabel": "Сортировка",
+    "sortNewest": "Сначала новые",
+    "sortOldest": "Сначала старые",
+    "sortDeadlineAsc": "Дедлайн (скоро)",
+    "sortDeadlineDesc": "Дедлайн (позже)",
+    "sortAmountDesc": "Сумма (убыв.)",
+    "sortAmountAsc": "Сумма (возр.)",
+    "sortStatus": "По статусу"
   },
   "contractDetail": {
     "notFound": "Контракт не найден",
@@ -414,7 +422,8 @@
       "daysLeft": "{days} дн. осталось",
       "penaltyLabel": "Штраф:",
       "openContract": "Открыть контракт",
-      "onChain": "В блокчейне"
+      "onChain": "В блокчейне",
+      "addedDateLabel": "Добавлен"
     },
     "milestoneTracker": {
       "pending": "Ожидание",
