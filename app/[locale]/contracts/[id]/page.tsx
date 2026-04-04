@@ -22,6 +22,7 @@ import { PublicKey } from '@solana/web3.js'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
 import { useAuth } from '@/components/AuthContext'
+import { ownsContract } from '@/lib/ownsContract'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
 import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
@@ -312,7 +313,7 @@ export default function ContractDetailPage() {
   const onChainDaysLeft = onChainSnapshot ? getDaysUntilDeadline(onChainSnapshot.deadline) : null
 
   const isContractorView =
-    user?.role === 'CONTRACTOR' && !!contract.contractorId && user.id === contract.contractorId
+    user?.role === 'CONTRACTOR' && ownsContract(user.id, contract.contractorId, contract.contractor)
 
   const juryRejections =
     contract.jurySessions?.filter((s) => s.result === 'REJECT' || s.result === 'reject') ?? []
