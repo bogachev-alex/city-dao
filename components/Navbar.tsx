@@ -237,13 +237,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
                 >
                   <span>{ROLE_ICONS[user.role]}</span>
-                  <span className="max-w-[100px] truncate">{user.name}</span>
-                  {availableRoles.length > 1 && (
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </button>
+                        <span className="max-w-[100px] truncate">{roleNames[user.role] || user.name}</span>
                 {roleSwitcherOpen && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div className="px-3 py-2 border-b border-gray-800">
@@ -264,7 +258,7 @@ export default function Navbar() {
                         }`}
                       >
                         <span>{ROLE_ICONS[role]}</span>
-                        <span>{ROLE_LABELS[role]}</span>
+                        <span className="truncate">{roleNames[role] || ROLE_LABELS[role]}</span>
                         {user.role === role && (
                           <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="ml-auto">
                             <path d="M5 13l4 4L19 7" />
@@ -349,11 +343,8 @@ export default function Navbar() {
                         : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
-                    <span>{ROLE_ICONS[role]}</span>
-                    <span>{ROLE_LABELS[role]}</span>
-                  </button>
-                ))}
-                <button
+                        <span>{ROLE_ICONS[role]}</span>
+                        <span>{roleNames[role] || ROLE_LABELS[role]}</span>
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-500 dark:text-red-400"
                 >
