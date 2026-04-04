@@ -76,6 +76,7 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
 
   it('accepts valid contribution', async () => {
     prismaMock.crowdfundingCampaign.findUnique.mockResolvedValue(activeCampaign)
+    prismaMock.citizen.findUnique.mockResolvedValue({ id: 'c1' })
     prismaMock.campaignContribution.create.mockResolvedValue({ id: 'cont1' })
     prismaMock.crowdfundingCampaign.update.mockResolvedValue({ ...activeCampaign })
 

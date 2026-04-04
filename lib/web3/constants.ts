@@ -4,7 +4,10 @@ import { PublicKey } from '@solana/web3.js'
 export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
 export const SOLANA_NETWORK: SolanaCluster = 'devnet'
 // Force devnet for all wallet and RPC operations in this app.
-export const SOLANA_RPC_URL = 'https://api.devnet.solana.com'
+// Override with NEXT_PUBLIC_SOLANA_RPC_URL for a paid endpoint (avoids public rate limits).
+export const SOLANA_RPC_URL =
+  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SOLANA_RPC_URL) ||
+  'https://api.devnet.solana.com'
 /** Settlement token mint for contract economy (USDC on Solana). */
 export const USDC_MINT = new PublicKey(
   // Devnet USDC mint (SPL test token).

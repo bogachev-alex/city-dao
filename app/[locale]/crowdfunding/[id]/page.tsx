@@ -38,6 +38,8 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const [donationAmount, setDonationAmount] = useState<number>(5000)
   const [customAmount, setCustomAmount] = useState<string>('')
   const [donated, setDonated] = useState(false)
+  const [donatedOnChain, setDonatedOnChain] = useState(false)
+  const [onChainRefreshKey, setOnChainRefreshKey] = useState(0)
   const [donateError, setDonateError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
   const [publishLoading, setPublishLoading] = useState(false)
@@ -68,7 +70,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
         }
       })
       .catch(() => setCampaign(getCampaignById(params.id) || null))
-  }, [params.id])
+  }, [params.id, onChainRefreshKey])
 
   const resolvedCampaignPda = useMemo(() => {
     if (campaign?.onChainPubkey) return campaign.onChainPubkey
@@ -151,7 +153,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     return () => {
       cancelled = true
     }
-  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, publicKey, fetchCampaignAccount, fetchCampaignAccountByAddress])
+  }, [campaign?.creator_wallet, campaign?.title, campaign?.onChainPubkey, publicKey, fetchCampaignAccount, fetchCampaignAccountByAddress, onChainRefreshKey])
 
   useEffect(() => {
     if (!resolvedCampaignPda) {
@@ -168,14 +170,19 @@ export default function CampaignDetailPage({ params }: PageProps) {
 
   const displayCampaign = useMemo(() => {
     if (!onChainInfo || !campaign) return campaign
+    // Prefer the higher value: DB may be ahead of chain if some contributions were DB-only
+    const dbRaised = Number(campaign.citizen_raised ?? 0)
+    const chainRaised = Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0)
+    const dbDonors = Number(campaign.donor_count ?? 0)
+    const chainDonors = Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? 0)
     return {
       ...campaign,
       target_amount: Number(onChainInfo.targetAmount ?? onChainInfo.target_amount ?? campaign.target_amount),
       citizen_target: Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? campaign.citizen_target),
-      citizen_raised: Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? campaign.citizen_raised),
+      citizen_raised: Math.max(dbRaised, chainRaised),
       state_match: Number(onChainInfo.stateMatch ?? onChainInfo.state_match ?? campaign.state_match),
       state_deposited: onChainInfo.stateDeposited ?? onChainInfo.state_deposited ?? campaign.state_deposited,
-      donor_count: Number(onChainInfo.donorCount ?? onChainInfo.donor_count ?? campaign.donor_count),
+      donor_count: Math.max(dbDonors, chainDonors),
       deadline: onChainInfo.deadline ? new Date(Number(onChainInfo.deadline) * 1000).toISOString() : campaign.deadline,
     }
   }, [campaign, onChainInfo])
@@ -236,44 +243,61 @@ export default function CampaignDetailPage({ params }: PageProps) {
       citizenId = 'demo-citizen'
     }
 
-    if (!walletConnected) {
-      setDonateError('Подключите кошелёк для взноса')
-      return
-    }
-
     setDonated(false)
     setDonateError(null)
 
     let onChainTx: string | undefined
 
+    // Attempt on-chain contribution only when wallet is connected
     if (walletConnected) {
       try {
-        let creatorPK: PublicKey
+        let creatorPK: PublicKey | undefined
 
-        if (onChainInfo?.creator) {
-          creatorPK = new PublicKey(onChainInfo.creator)
+        // Resolve creator: prefer already-loaded onChainInfo, otherwise fetch by stored pubkey
+        let resolvedOnChainInfo = onChainInfo
+        if (!resolvedOnChainInfo?.creator && campaign.onChainPubkey) {
+          resolvedOnChainInfo = await fetchCampaignAccountByAddress(campaign.onChainPubkey)
+        }
+
+        if (resolvedOnChainInfo?.creator) {
+          creatorPK = new PublicKey(resolvedOnChainInfo.creator)
         } else if (campaign.creator_wallet) {
           try {
             creatorPK = new PublicKey(campaign.creator_wallet)
           } catch {
-            setDonateError('Некорректный кошелёк автора кампании. Попробуйте обновить страницу.')
-            setDonated(false)
-            return
+            // invalid creator_wallet (demo data) — skip on-chain, fall through to DB
           }
-        } else {
-          setDonateError('Кампания не опубликована on-chain')
+        }
+
+        if (!creatorPK) {
+          setDonateError('Не удалось определить автора кампании on-chain. Попробуйте обновить страницу.')
           setDonated(false)
           return
         }
 
-        const lamports = tengeToLamports(amount)
-        const result = await contributeOnChain(creatorPK, campaign.title, amount, lamports, false)
-        onChainTx = result.tx
-        setTxInfo(result.tx)
+        if (creatorPK) {
+          const lamports = tengeToLamports(amount)
+          const result = await contributeOnChain(creatorPK, campaign.title, amount, lamports, false)
+          onChainTx = result.tx
+          setTxInfo(result.tx)
+          setDonatedOnChain(true)
+        }
       } catch (err: any) {
-        setDonateError(err?.message || 'Ошибка on-chain взноса')
-        setDonated(false)
-        return
+        const msg: string = err?.message || ''
+        const isInsufficientFunds =
+          msg.toLowerCase().includes('insufficient') ||
+          msg.toLowerCase().includes('not enough') ||
+          msg.includes('0x1')
+        if (isInsufficientFunds) {
+          setDonateError(
+            `Недостаточно SOL в кошельке для on-chain взноса. ` +
+            `Запросите тестовый SOL: solana airdrop 2 (devnet)`
+          )
+          setDonated(false)
+          return
+        }
+        // Other on-chain error — still record in DB as off-chain fallback
+        console.warn('On-chain contribution failed, falling back to DB-only:', msg)
       }
     }
 
@@ -286,6 +310,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
         txSignature: onChainTx,
       })
       setDonated(true)
+      setOnChainRefreshKey((k) => k + 1)
     } catch (err: any) {
       console.warn('DB contribution failed:', err.message)
       if (!onChainTx) {
@@ -293,6 +318,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
         setDonated(false)
       } else {
         setDonated(true)
+        setOnChainRefreshKey((k) => k + 1)
       }
     }
   }
@@ -736,6 +762,14 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   )
                 })()}
 
+                {!walletConnected && (
+                  <div className="mb-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-xs text-amber-700 dark:text-amber-400">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0 mt-0.5">
+                      <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    <span>Phantom не подключён — взнос запишется только в БД. Для on-chain: <a href="/login" className="underline font-medium">войдите через Phantom</a>.</span>
+                  </div>
+                )}
                 <button
                   onClick={handleDonate}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg transition-colors text-sm"
@@ -782,7 +816,10 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <span className="font-semibold text-emerald-700 dark:text-emerald-400">Спасибо!</span>
                 </div>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                  Ваш взнос {formatTenge(customAmount ? parseInt(customAmount) || donationAmount : donationAmount)} записан в смарт-контракт. NFT будет выдан после подтверждения транзакции.
+                  {donatedOnChain
+                    ? `Взнос ${formatTenge(customAmount ? parseInt(customAmount) || donationAmount : donationAmount)} записан в смарт-контракт. NFT будет выдан после подтверждения транзакции.`
+                    : `Взнос ${formatTenge(customAmount ? parseInt(customAmount) || donationAmount : donationAmount)} зарегистрирован. Для on-chain записи подключите Phantom кошелёк через страницу входа.`
+                  }
                 </p>
                 {txInfo && (
                   <a

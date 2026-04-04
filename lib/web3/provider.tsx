@@ -21,7 +21,7 @@ export const SolanaProvider: FC<Props> = ({ children }) => {
 
   return (
     <ConnProvider endpoint={SOLANA_RPC_URL}>
-      <WalletProv wallets={wallets} autoConnect={false}>
+      <WalletProv wallets={wallets} autoConnect={true}>
         {children}
       </WalletProv>
     </ConnProvider>
