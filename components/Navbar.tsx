@@ -7,7 +7,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
-import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole, isDemoSessionUser } from '@/lib/auth'
+import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, DEMO_AUTH_USER, type UserRole, isDemoSessionUser } from '@/lib/auth'
 import { getWallet, formatBalance } from '@/lib/tokens'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
@@ -26,18 +26,26 @@ export default function Navbar() {
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>(ALL_ROLES)
+  const [roleNames, setRoleNames] = useState<Record<UserRole, string>>({} as Record<UserRole, string>)
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    if (!user) { setAvailableRoles(ALL_ROLES); return }
-    if (isDemoSessionUser(user)) { setAvailableRoles(ALL_ROLES); return }
+    if (!user) { setAvailableRoles(ALL_ROLES); setRoleNames({} as Record<UserRole, string>); return }
+    if (isDemoSessionUser(user)) {
+      setAvailableRoles(ALL_ROLES)
+      const names = {} as Record<UserRole, string>
+      for (const r of ALL_ROLES) names[r] = DEMO_AUTH_USER[r].name
+      setRoleNames(names)
+      return
+    }
 
     let cancelled = false
     async function load() {
       if (!user) return
       try {
         const roles: UserRole[] = [user.role]
+        const names = {} as Record<UserRole, string>
         const res = await fetch(`/api/roles?wallet=${encodeURIComponent(user.id)}`)
         if (cancelled) return
         if (res.ok) {
@@ -48,15 +56,46 @@ export default function Navbar() {
               if (!roles.includes(r)) roles.push(r)
             }
           }
+          if (data.names) {
+            for (const [k, v] of Object.entries(data.names)) {
+              names[k as UserRole] = v as string
+            }
+          }
         }
-        const akRaw = localStorage.getItem('akimat_profile')
-        if (akRaw) {
-          try {
-            const ak = JSON.parse(akRaw)
-            if (ak.walletAddress === user.id && !roles.includes('AKIMAT')) roles.push('AKIMAT')
-          } catch {}
+        try {
+          const raw = localStorage.getItem('citizen_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('CITIZEN')) roles.push('CITIZEN')
+              names['CITIZEN'] = p.name || names['CITIZEN']
+            }
+          }
+        } catch {}
+        try {
+          const raw = localStorage.getItem('contractor_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('CONTRACTOR')) roles.push('CONTRACTOR')
+              names['CONTRACTOR'] = p.name || names['CONTRACTOR']
+            }
+          }
+        } catch {}
+        try {
+          const raw = localStorage.getItem('akimat_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('AKIMAT')) roles.push('AKIMAT')
+              names['AKIMAT'] = p.name || names['AKIMAT']
+            }
+          }
+        } catch {}
+        if (!cancelled) {
+          setAvailableRoles(roles)
+          setRoleNames(names)
         }
-        if (!cancelled) setAvailableRoles(roles)
       } catch {
         if (!cancelled) setAvailableRoles([user.role])
       }
