@@ -50,6 +50,7 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [isDemo, setIsDemo] = useState(false)
   const [tokenWallet, setTokenWallet] = useState<TokenWallet>({ balance: 0, transactions: [] })
+  const [onChainBalance, setOnChainBalance] = useState<number | null>(null)
 
   // Load token wallet and listen for awards
   useEffect(() => {
@@ -58,6 +59,27 @@ export default function ProfilePage() {
     window.addEventListener('amanat-token-award', refresh)
     return () => window.removeEventListener('amanat-token-award', refresh)
   }, [])
+
+  // For real wallet users: fetch on-chain ADL balance
+  useEffect(() => {
+    if (!user || user.id.startsWith('demo-')) return
+    fetch(`/api/tokens/balance?wallet=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.configured && typeof data.balance === 'number') setOnChainBalance(data.balance) })
+      .catch(() => {})
+
+    function refreshOnChain() {
+      if (!user || user.id.startsWith('demo-')) return
+      setTimeout(() => {
+        fetch(`/api/tokens/balance?wallet=${user.id}`)
+          .then((r) => r.json())
+          .then((data) => { if (data.configured && typeof data.balance === 'number') setOnChainBalance(data.balance) })
+          .catch(() => {})
+      }, 3000) // wait for chain confirmation
+    }
+    window.addEventListener('amanat-token-award', refreshOnChain)
+    return () => window.removeEventListener('amanat-token-award', refreshOnChain)
+  }, [user])
 
   useEffect(() => {
     if (authLoading) return
@@ -232,7 +254,14 @@ export default function ProfilePage() {
               <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
                 <span className="text-emerald-400 font-bold text-xs">ADL</span>
               </div>
-              <span className="text-2xl font-bold text-emerald-400">{formatBalance(tokenWallet.balance)}</span>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-emerald-400">
+                  {onChainBalance !== null ? formatBalance(onChainBalance) : formatBalance(tokenWallet.balance)}
+                </span>
+                {onChainBalance !== null && (
+                  <div className="text-xs text-emerald-600">on-chain</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -241,7 +270,9 @@ export default function ProfilePage() {
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Демо-токен Amanat Protocol. Начисляется за активность: голосования, регистрация, краудфандинг.
+              {onChainBalance !== null
+                ? 'Реальный SPL-токен на Solana devnet. Начисляется за активность в протоколе.'
+                : 'Токен Amanat Protocol. Начисляется за активность: голосования, регистрация, краудфандинг.'}
             </div>
           </div>
 
