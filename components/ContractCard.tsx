@@ -38,15 +38,16 @@ export default function ContractCard({ contract }: ContractCardProps) {
   const contractHref = getContractDetailHref(contract.id, contract.onChainPubkey)
 
   return (
-    <div className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:shadow-md dark:hover:shadow-lg transition-all duration-200">
+    <div className="group relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:shadow-md dark:hover:shadow-lg transition-all duration-200">
+        {/* Stretched link — makes the whole card clickable */}
+        <Link href={contractHref} className="absolute inset-0 z-0 rounded-xl" aria-hidden="true" tabIndex={-1} />
+
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <Link href={contractHref} className="min-w-0">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug group-hover:text-emerald-600 dark:text-emerald-400 transition-colors line-clamp-2">
-              {formatContractTitleForDisplay(contract.title)}
-            </h3>
-          </Link>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 min-w-0 flex-1">
+            {formatContractTitleForDisplay(contract.title)}
+          </h3>
+          <span className={`relative z-10 shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
             {status.label}
           </span>
         </div>
@@ -130,17 +131,16 @@ export default function ContractCard({ contract }: ContractCardProps) {
           </div>
         )}
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
-          <Link
-            href={contractHref}
-            className="text-emerald-600 dark:text-emerald-400 hover:underline"
-          >
+          <span className="text-emerald-600 dark:text-emerald-400 group-hover:underline">
             {t('openContract')}
-          </Link>
-          <OnChainLink
-            address={getContractExplorerAddress(contract)}
-            label={t('onChain')}
-            className="text-indigo-600 dark:text-indigo-400 hover:underline"
-          />
+          </span>
+          <span className="relative z-10">
+            <OnChainLink
+              address={getContractExplorerAddress(contract)}
+              label={t('onChain')}
+              className="text-indigo-600 dark:text-indigo-400 hover:underline"
+            />
+          </span>
         </div>
       </div>
   )
