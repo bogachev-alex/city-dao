@@ -9,6 +9,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { DISTRICTS, formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { createContract, fetchContractors } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+import { tengeToLamports, lamportsToTenge } from '@/lib/web3/constants'
 import { useAuth } from '@/components/AuthContext'
 
 interface MilestoneInput {
@@ -160,9 +161,15 @@ export default function AdminPage() {
       }
 
       // 1) Must be registered on-chain first
-      // On-chain amount is in lamports — cap at wallet-friendly value to avoid
-      // the 20% escrow transfer draining the wallet. DB stores real tenge amount.
-      const onChainAmount = Math.min(Number(form.amount_usdc), 1_000_000)
+      // Convert tenge → lamports. Cap so the 20% escrow deposit doesn't drain the wallet,
+      // but ensure it's large enough to cover rent-exempt minimum (~0.001 SOL).
+      const fullLamports = tengeToLamports(Number(form.amount_usdc))
+      const walletBalance = wallet.publicKey ? await connection.getBalance(wallet.publicKey) : 0
+      const maxEscrowLamports = Math.floor(walletBalance * 0.3)
+      const maxTotalForEscrow = Math.floor(maxEscrowLamports / 0.2)
+      const rentExemptMinimum = 2_000_000 // ~0.002 SOL, safe margin
+      const minTotal = Math.ceil(rentExemptMinimum / 0.2) // 10M lamports
+      const onChainAmount = Math.max(minTotal, Math.min(fullLamports, maxTotalForEscrow))
       const result = await registerContractOnChain(
         form.title,
         form.district,
@@ -431,7 +438,7 @@ export default function AdminPage() {
                   {form.amount_usdc && (
                     <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1 space-y-0.5">
                       <div>{t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸</div>
-                      <div>On-chain: {Math.min(Number(form.amount_usdc), 1_000_000).toLocaleString()} lamports ≈ {(Math.min(Number(form.amount_usdc), 1_000_000) / LAMPORTS_PER_SOL).toFixed(4)} SOL</div>
+                      <div>On-chain: {(tengeToLamports(Number(form.amount_usdc)) / LAMPORTS_PER_SOL).toFixed(4)} SOL (escrow 20%: {(tengeToLamports(Number(form.amount_usdc)) * 0.2 / LAMPORTS_PER_SOL).toFixed(4)} SOL)</div>
                     </div>
                   )}
                 </div>
