@@ -23,9 +23,10 @@ test.describe('Public routes (ru)', () => {
     await expect(page.getByRole('heading', { name: /Вход в систему/i })).toBeVisible()
   })
 
-  test('blockchain dashboard', async ({ page }) => {
+  test('blockchain page redirects to home', async ({ page }) => {
     await page.goto('/ru/blockchain')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await page.waitForURL(/\/ru\/?$/)
+    await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 25_000 })
   })
 
   test('crowdfunding list', async ({ page }) => {
