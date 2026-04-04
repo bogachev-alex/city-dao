@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { DEMO_TRANSACTIONS, type TxType } from '@/lib/demoTransactions'
+import {
+  getSolanaExplorerAddressUrl,
+  getSolanaExplorerTxUrl,
+  isSolanaAddress,
+  isSolanaTransactionSignature,
+} from '@/lib/blockchainDashboardModel'
+
+function shortChainRef(s: string): string {
+  if (s.length <= 9) return s
+  return `${s.slice(0, 4)}…${s.slice(-4)}`
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +41,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.milestone.findMany({
       where: isDistrictPage ? { contract: { district } } : {},
-      include: { contract: { select: { id: true, title: true, district: true } } },
+      include: { contract: { select: { id: true, title: true, district: true, onChainPubkey: true } } },
       orderBy: { createdAt: 'desc' },
       take: takeEach,
     }),
@@ -43,13 +54,13 @@ export async function GET(req: NextRequest) {
         }),
     prisma.campaignContribution.findMany({
       where: contribWhere,
-      include: { campaign: { select: { id: true, title: true, district: true } } },
+      include: { campaign: { select: { id: true, title: true, district: true, onChainPubkey: true } } },
       orderBy: { createdAt: 'desc' },
       take: takeEach,
     }),
     prisma.penalty.findMany({
       where: penaltyWhere,
-      include: { contract: { select: { id: true, title: true, district: true } } },
+      include: { contract: { select: { id: true, title: true, district: true, onChainPubkey: true } } },
       orderBy: { createdAt: 'desc' },
       take: takeEach,
     }),
@@ -73,6 +84,10 @@ export async function GET(req: NextRequest) {
     timestamp: Date
     amount?: number
     contractId?: string
+    /** Valid Solana Explorer URL (/tx/... or /address/...) when we can derive it */
+    explorerUrl: string | null
+    /** Short ref shown in mono row (matches explorer target) */
+    chainLabel: string
   }
 
   const rows: Row[] = []
@@ -80,13 +95,23 @@ export async function GET(req: NextRequest) {
   for (const c of contracts) {
     const amount = Number(c.totalAmount)
     const contractorName = c.contractor?.name || 'Подрядчик'
-      rows.push({
-      signature: `contract-${c.id.slice(-8)}`,
+    const sig = `contract-${c.id.slice(-8)}`
+    const pk = c.onChainPubkey
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (pk && isSolanaAddress(pk)) {
+      explorerUrl = getSolanaExplorerAddressUrl(pk)
+      chainLabel = shortChainRef(pk)
+    }
+    rows.push({
+      signature: sig,
       type: 'register_contract',
       description: `Контракт: ${c.title} (${contractorName})`,
       timestamp: c.createdAt,
       amount,
       contractId: c.id,
+      explorerUrl,
+      chainLabel,
     })
   }
 
@@ -101,34 +126,68 @@ export async function GET(req: NextRequest) {
 
   for (const m of milestones) {
     const statusRu = milestoneStatusRu[m.status] || m.status
+    const sig = `milestone-${m.id.slice(-8)}`
+    const pk = m.contract.onChainPubkey
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (pk && isSolanaAddress(pk)) {
+      explorerUrl = getSolanaExplorerAddressUrl(pk)
+      chainLabel = shortChainRef(pk)
+    }
     rows.push({
-      signature: `milestone-${m.id.slice(-8)}`,
+      signature: sig,
       type: 'submit_milestone',
       description: `Этап «${m.description}» (${m.tranchePct}%) — ${statusRu}`,
       timestamp: m.createdAt,
       contractId: m.contractId,
+      explorerUrl,
+      chainLabel,
     })
   }
 
   for (const c of citizens) {
     const short = c.walletAddress ? `${c.walletAddress.slice(0, 4)}…${c.walletAddress.slice(-4)}` : c.id.slice(0, 8)
+    const sig = `citizen-${c.id.slice(-8)}`
+    const w = c.walletAddress
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (w && isSolanaAddress(w)) {
+      explorerUrl = getSolanaExplorerAddressUrl(w)
+      chainLabel = shortChainRef(w)
+    }
     rows.push({
-      signature: `citizen-${c.id.slice(-8)}`,
+      signature: sig,
       type: 'register_citizen',
       description: `Регистрация гражданина-присяжного (${short}, ${c.district})`,
       timestamp: c.createdAt,
+      explorerUrl,
+      chainLabel,
     })
   }
 
   for (const c of contributions) {
     const sig = c.txSignature || `cf-${c.campaign.title.slice(0, 20)}-${c.id.slice(-6)}`
     const amount = Number(c.amount)
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (c.txSignature && isSolanaTransactionSignature(c.txSignature)) {
+      explorerUrl = getSolanaExplorerTxUrl(c.txSignature)
+      chainLabel = shortChainRef(c.txSignature)
+    } else {
+      const campPk = c.campaign.onChainPubkey
+      if (campPk && isSolanaAddress(campPk)) {
+        explorerUrl = getSolanaExplorerAddressUrl(campPk)
+        chainLabel = shortChainRef(campPk)
+      }
+    }
     rows.push({
       signature: sig,
       type: 'cf_contribute',
       description: `Краудфандинг «${c.campaign.title}»${c.anonymous ? ' (анонимно)' : ''}: ${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`,
       timestamp: c.createdAt,
       amount,
+      explorerUrl,
+      chainLabel,
     })
   }
 
@@ -142,6 +201,18 @@ export async function GET(req: NextRequest) {
     const sig = p.txSignature || `penalty-${p.contract.title.slice(0, 20)}-${p.id.slice(-6)}`
     const amount = Number(p.amountTenge)
     const kind = penaltyTypeRu[p.type] || p.type
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (p.txSignature && isSolanaTransactionSignature(p.txSignature)) {
+      explorerUrl = getSolanaExplorerTxUrl(p.txSignature)
+      chainLabel = shortChainRef(p.txSignature)
+    } else {
+      const pk = p.contract.onChainPubkey
+      if (pk && isSolanaAddress(pk)) {
+        explorerUrl = getSolanaExplorerAddressUrl(pk)
+        chainLabel = shortChainRef(pk)
+      }
+    }
     rows.push({
       signature: sig,
       type: 'trigger_penalty',
@@ -149,17 +220,28 @@ export async function GET(req: NextRequest) {
       timestamp: p.createdAt,
       amount,
       contractId: p.contractId,
+      explorerUrl,
+      chainLabel,
     })
   }
 
   for (const v of votes) {
     const wallet = v.citizen?.walletAddress
     const short = wallet ? `${wallet.slice(0, 4)}…${wallet.slice(-4)}` : '—'
+    const sig = `vote-${v.proposal.title.slice(0, 20)}-${v.id.slice(-6)}`
+    let explorerUrl: string | null = null
+    let chainLabel = shortChainRef(sig)
+    if (wallet && isSolanaAddress(wallet)) {
+      explorerUrl = getSolanaExplorerAddressUrl(wallet)
+      chainLabel = shortChainRef(wallet)
+    }
     rows.push({
-      signature: `vote-${v.proposal.title.slice(0, 20)}-${v.id.slice(-6)}`,
+      signature: sig,
       type: 'treasury_vote',
       description: `Голосование: «${v.proposal.title}» — ${v.inFavor ? 'За' : 'Против'} (${short})`,
       timestamp: v.createdAt,
+      explorerUrl,
+      chainLabel,
     })
   }
 
@@ -181,6 +263,8 @@ export async function GET(req: NextRequest) {
         timestamp: tx.timestamp,
         amount: tx.amount,
         contractId: tx.contractId,
+        explorerUrl: getSolanaExplorerTxUrl(tx.signature),
+        chainLabel: shortChainRef(tx.signature),
       })
       seen.add(tx.signature)
       demoAppended = true
@@ -195,6 +279,8 @@ export async function GET(req: NextRequest) {
       timestamp: x.timestamp.toISOString(),
       amount: x.amount,
       contractId: x.contractId,
+      explorerUrl: x.explorerUrl,
+      chainLabel: x.chainLabel,
     })),
     demoAppended,
   })

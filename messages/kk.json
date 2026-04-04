@@ -552,7 +552,9 @@
       "empty": "Solana қолтаңбасы бар жазбалар жоқ",
       "viewAll": "Барлық on-chain операциялар →",
       "demoNote": "Нақты қолтаңбалар пайда болғанша демо-жазбалар қосылды",
-      "offChainRowHint": "Тек қолданбадағы жазба; Solana Explorer сілтемесі жоқ (on-chain қолтаңба жоқ)"
+      "offChainRowHint": "Тек қолданбадағы жазба; Explorer-де ашатын нәрсе жоқ (транзакция қолтаңбасы немесе белгілі on-chain мекенжай жоқ)",
+      "explorerTxHint": "Solana Explorer-де транзакцияны ашу",
+      "explorerAddressHint": "Solana Explorer-де on-chain шотты ашу"
     },
     "proposalResearch": {
       "aiAnalysis": "AI Талдау",

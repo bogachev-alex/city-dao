@@ -136,6 +136,13 @@ export function isSolanaTransactionSignature(signature: string): boolean {
   return BASE58_RE.test(signature)
 }
 
+/** Base58-encoded Solana account address (typical length 32–44). */
+export function isSolanaAddress(address: string): boolean {
+  const len = address.length
+  if (len < 32 || len > 44) return false
+  return BASE58_RE.test(address)
+}
+
 export function getSolanaExplorerTxUrl(signature: string): string {
   const cluster = SOLANA_NETWORK === 'mainnet-beta' ? '' : `?cluster=${SOLANA_NETWORK}`
   return `https://explorer.solana.com/tx/${signature}${cluster}`

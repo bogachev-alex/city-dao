@@ -552,7 +552,9 @@
       "empty": "Нет записей с подписью в Solana",
       "viewAll": "Все on-chain операции →",
       "demoNote": "Добавлены демо-записи до появления реальных подписей",
-      "offChainRowHint": "Только запись в приложении; ссылки на Solana Explorer нет (нет on-chain подписи)"
+      "offChainRowHint": "Только запись в приложении; в Explorer пока нечего открыть (нет подписи транзакции и известного on-chain адреса)",
+      "explorerTxHint": "Открыть транзакцию в Solana Explorer",
+      "explorerAddressHint": "Открыть on-chain аккаунт в Solana Explorer"
     },
     "proposalResearch": {
       "aiAnalysis": "AI Анализ",
