@@ -313,7 +313,7 @@ export default function ContractDetailPage() {
   const onChainDaysLeft = onChainSnapshot ? getDaysUntilDeadline(onChainSnapshot.deadline) : null
 
   const isContractorView =
-    user?.role === 'CONTRACTOR' && ownsContract(user.id, contract.contractorId, contract.contractor)
+    user?.role === 'CONTRACTOR' && ownsContract(user.id, contract.contractorId, contract.contractor, contract.contractorWalletAddress)
 
   const juryRejections =
     contract.jurySessions?.filter((s) => s.result === 'REJECT' || s.result === 'reject') ?? []

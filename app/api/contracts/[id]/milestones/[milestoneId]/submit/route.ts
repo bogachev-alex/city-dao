@@ -36,7 +36,7 @@ export async function POST(
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: {
-      contractor: { select: { name: true } },
+      contractor: { select: { name: true, walletAddress: true } },
       milestones: { orderBy: { sortOrder: 'asc' } },
     },
   })
@@ -44,7 +44,7 @@ export async function POST(
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
   }
-  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name)) {
+  if (!ownsContract(auth.id, contract.contractorId, contract.contractor?.name, contract.contractor?.walletAddress)) {
     return NextResponse.json({ error: 'Forbidden: not your contract' }, { status: 403 })
   }
 
