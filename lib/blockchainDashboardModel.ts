@@ -123,6 +123,19 @@ export function getProgramIdBase58(key: ProgramKey): string {
   return PROGRAM_IDS[key].toBase58()
 }
 
+/** Base58 alphabet for Solana addresses and signatures (excludes 0, O, I, l). */
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]+$/
+
+/**
+ * True if the string looks like a Solana transaction signature (base58, ~64 bytes encoded).
+ * Off-chain feed rows use placeholders like `milestone-abc123` — those must not become explorer /tx links.
+ */
+export function isSolanaTransactionSignature(signature: string): boolean {
+  const len = signature.length
+  if (len < 85 || len > 92) return false
+  return BASE58_RE.test(signature)
+}
+
 export function getSolanaExplorerTxUrl(signature: string): string {
   const cluster = SOLANA_NETWORK === 'mainnet-beta' ? '' : `?cluster=${SOLANA_NETWORK}`
   return `https://explorer.solana.com/tx/${signature}${cluster}`

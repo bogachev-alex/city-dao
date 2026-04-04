@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { Link } from '@/i18n/routing'
+import { isSolanaTransactionSignature } from '@/lib/blockchainDashboardModel'
 import {
   DEMO_TRANSACTIONS,
   TX_TYPE_META,
@@ -184,14 +185,11 @@ export default function TransactionFeed({
           items.map((tx) => {
             const meta = TX_TYPE_META[tx.type]
             const ts = new Date(tx.timestamp)
-            return (
-              <a
-                key={tx.signature}
-                href={getTxExplorerUrl(tx.signature)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group"
-              >
+            const hasChainTx = isSolanaTransactionSignature(tx.signature)
+            const rowClass =
+              'flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group'
+            const inner = (
+              <>
                 <span className="text-base mt-0.5 shrink-0">{meta.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
@@ -203,18 +201,36 @@ export default function TransactionFeed({
                     <span className="font-mono text-[10px] text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors">
                       {truncateSig(tx.signature)}
                     </span>
-                    <svg
-                      className="w-2.5 h-2.5 text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                    </svg>
+                    {hasChainTx ? (
+                      <svg
+                        className="w-2.5 h-2.5 text-gray-400 dark:text-gray-600 group-hover:text-emerald-500 transition-colors"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                      </svg>
+                    ) : null}
                   </div>
                 </div>
+              </>
+            )
+            return hasChainTx ? (
+              <a
+                key={tx.signature}
+                href={getTxExplorerUrl(tx.signature)}
+                target="_blank"
+                rel="noreferrer"
+                className={rowClass}
+              >
+                {inner}
               </a>
+            ) : (
+              <div key={tx.signature} className={`${rowClass} cursor-default`} title={t('offChainRowHint')}>
+                {inner}
+              </div>
             )
           })
         )}
