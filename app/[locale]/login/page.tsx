@@ -225,7 +225,11 @@ export default function LoginPage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Ещё нет аккаунта?{' '}
             <Link href="/register" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
-              Зарегистрироваться
+              Гражданин
+            </Link>
+            {' · '}
+            <Link href="/register-contractor" className="text-amber-600 dark:text-amber-400 font-medium hover:underline">
+              Подрядчик
             </Link>
           </p>
         </div>
