@@ -125,7 +125,7 @@ export default function AkimatCabinetPage() {
     fetch('/api/akimat/crowdfunding-queue', { headers: { ...authHeader() } })
       .then(async (r) => {
         if (!r.ok) throw new Error('fail')
-        return r.json() as { queue: CfQueueRow[]; contractors: { id: string; name: string }[] }
+        return (await r.json()) as { queue: CfQueueRow[]; contractors: { id: string; name: string }[] }
       })
       .then((json) => {
         setCfQueue(Array.isArray(json.queue) ? json.queue : [])
