@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { DISTRICTS, formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { createContract, fetchContractors } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
@@ -76,9 +78,9 @@ export default function AdminPage() {
   const [onChainPda, setOnChainPda] = useState<string | null>(null)
 
   const [contractors, setContractors] = useState<ContractorOption[]>([])
-  const [contractorSearch, setContractorSearch] = useState('')
 
   const wallet = useWallet()
+  const { connection } = useConnection()
   const { registerContract: registerContractOnChain } = useContractRegistry()
 
   useEffect(() => {
@@ -97,28 +99,36 @@ export default function AdminPage() {
     void load()
   }, [])
 
-  const filteredContractors = contractors.filter((c) =>
-    c.name.toLowerCase().includes(contractorSearch.toLowerCase())
-  )
-
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
+
+  const ALMATY_BOUNDS = {
+    latMin: 43.18, latMax: 43.35,
+    lngMin: 76.75, lngMax: 77.05,
+  }
+
+  const randomAlmatyCoords = () => {
+    const lat = (ALMATY_BOUNDS.latMin + Math.random() * (ALMATY_BOUNDS.latMax - ALMATY_BOUNDS.latMin)).toFixed(4)
+    const lng = (ALMATY_BOUNDS.lngMin + Math.random() * (ALMATY_BOUNDS.lngMax - ALMATY_BOUNDS.lngMin)).toFixed(4)
+    return { lat, lng }
+  }
 
   const fillTestData = () => {
     const now = Date.now()
     const suffix = String(now).slice(-4)
     const deadline = new Date(now + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const defaultContractor = contractors.length > 0 ? contractors[0] : null
+    const coords = randomAlmatyCoords()
     setForm({
       title: `Тестовый контракт #${suffix}: ремонт тротуара`,
       contractor: defaultContractor?.name || 'ТОО ТестПодряд',
       contractorId: defaultContractor?.id || '',
       amount_usdc: 120000000,
       deadline,
-      district: DISTRICTS[0],
+      district: DISTRICTS[Math.floor(Math.random() * DISTRICTS.length)],
       category: CATEGORIES[0],
-      lat: '43.2551',
-      lng: '76.9126',
+      lat: coords.lat,
+      lng: coords.lng,
       milestones: [
         { desc: 'Подготовка участка и демонтаж', deadline_days: 10, tranche_pct: 30 },
         { desc: 'Основные строительные работы', deadline_days: 25, tranche_pct: 50 },
@@ -139,11 +149,24 @@ export default function AdminPage() {
     setSubmitStep('blockchain')
 
     try {
+      // 0) Ensure sufficient SOL for rent
+      if (wallet.publicKey) {
+        const minRent = 0.01 * LAMPORTS_PER_SOL
+        const balance = await connection.getBalance(wallet.publicKey)
+        if (balance < minRent) {
+          const sig = await connection.requestAirdrop(wallet.publicKey, Math.floor(0.05 * LAMPORTS_PER_SOL))
+          await connection.confirmTransaction(sig, 'confirmed')
+        }
+      }
+
       // 1) Must be registered on-chain first
+      // On-chain amount is in lamports — cap at wallet-friendly value to avoid
+      // the 20% escrow transfer draining the wallet. DB stores real tenge amount.
+      const onChainAmount = Math.min(Number(form.amount_usdc), 1_000_000)
       const result = await registerContractOnChain(
         form.title,
         form.district,
-        Number(form.amount_usdc),
+        onChainAmount,
         new Date(form.deadline).getTime() / 1000,
         form.milestones.map((m) => ({
           description: m.desc,
@@ -376,43 +399,25 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">{t('contractorLabel')}</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={contractorSearch || form.contractor}
-                      onChange={(e) => {
-                        setContractorSearch(e.target.value)
-                        setForm({ ...form, contractor: e.target.value, contractorId: '' })
-                      }}
-                      onFocus={() => setContractorSearch(form.contractor)}
-                      onBlur={() => setTimeout(() => setContractorSearch(''), 200)}
-                      placeholder="Выберите или введите подрядчика..."
-                      className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
-                    />
-                    {contractorSearch && filteredContractors.length > 0 && (
-                      <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {filteredContractors.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setForm({ ...form, contractor: c.name, contractorId: c.id })
-                              setContractorSearch('')
-                            }}
-                            className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-sm flex items-center justify-between"
-                          >
-                            <span className="text-gray-900 dark:text-white">{c.name}</span>
-                            <span className="text-xs text-gray-400">{c.rating} · {c._count?.contracts ?? 0} контрактов</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {form.contractorId && (
-                    <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                      Выбран из реестра
-                    </p>
-                  )}
+                  <select
+                    value={form.contractorId}
+                    onChange={(e) => {
+                      const c = contractors.find((x) => x.id === e.target.value)
+                      if (c) {
+                        setForm({ ...form, contractor: c.name, contractorId: c.id })
+                      } else {
+                        setForm({ ...form, contractor: '', contractorId: '' })
+                      }
+                    }}
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm appearance-none"
+                  >
+                    <option value="">— Выберите подрядчика —</option>
+                    {contractors.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.rating}, {c._count?.contracts ?? 0} контр.)
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">{t('amountLabel')}</label>
@@ -424,8 +429,9 @@ export default function AdminPage() {
                     className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
                   />
                   {form.amount_usdc && (
-                    <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                      {t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸
+                    <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1 space-y-0.5">
+                      <div>{t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸</div>
+                      <div>On-chain: {Math.min(Number(form.amount_usdc), 1_000_000).toLocaleString()} lamports ≈ {(Math.min(Number(form.amount_usdc), 1_000_000) / LAMPORTS_PER_SOL).toFixed(4)} SOL</div>
                     </div>
                   )}
                 </div>
