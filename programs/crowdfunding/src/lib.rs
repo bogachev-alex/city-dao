@@ -176,22 +176,140 @@ pub mod crowdfunding {
         Ok(())
     }
 
-    pub fn refund_all(ctx: Context<RefundAll>) -> Result<()> {
+    /// After deadline: return each donor's `lamports` from the escrow PDA to their wallet.
+    /// `remaining_accounts` must be `[donor_record, donor_wallet, ...]` pairs for every donor.
+    pub fn refund_all<'info>(ctx: Context<'_, '_, '_, 'info, RefundAll<'info>>) -> Result<()> {
+        use anchor_lang::{AnchorSerialize, Discriminator};
+
+        let rem: Vec<AccountInfo<'info>> = ctx.remaining_accounts.iter().cloned().collect();
+
+        let campaign_key = ctx.accounts.campaign.key();
+        let deadline = ctx.accounts.campaign.deadline;
+        let status = ctx.accounts.campaign.status;
+        let donor_count = ctx.accounts.campaign.donor_count;
+        let expected_total = ctx.accounts.escrow.total_deposited;
+        let escrow_bump = ctx.accounts.escrow.bump;
+
+        let now = Clock::get()?.unix_timestamp;
+        require!(now > deadline, CrowdfundingError::DeadlineNotPassed);
+        require!(status == CampaignStatus::Active, CrowdfundingError::CampaignNotActive);
+
+        require!(rem.len() % 2 == 0, CrowdfundingError::InvalidRefundAccounts);
+        let rent = Rent::get()?;
+        let min_escrow_rent = rent.minimum_balance(CampaignEscrow::SPACE);
+        let signer_seeds: &[&[u8]] = &[b"cf_escrow", campaign_key.as_ref(), &[escrow_bump]];
+        let escrow_ai = ctx.accounts.escrow.to_account_info();
+        let system_ai = ctx.accounts.system_program.to_account_info();
+
+        if expected_total == 0 {
+            require!(rem.is_empty(), CrowdfundingError::InvalidRefundAccounts);
+            let campaign = &mut ctx.accounts.campaign;
+            let escrow = &mut ctx.accounts.escrow;
+            campaign.status = CampaignStatus::Expired;
+            escrow.total_deposited = 0;
+            emit!(RefundExecuted {
+                campaign: campaign.key(),
+                total_refunded: 0,
+                donor_count,
+            });
+            return Ok(());
+        }
+
+        require!(!rem.is_empty(), CrowdfundingError::InvalidRefundAccounts);
+
+        let mut refunded: u64 = 0;
+
+        for chunk in rem.chunks(2) {
+            let dr_ai = &chunk[0];
+            let donor_wallet = &chunk[1];
+            require!(
+                dr_ai.is_writable && donor_wallet.is_writable,
+                CrowdfundingError::InvalidRefundAccounts
+            );
+
+            let donor_record = {
+                let data = dr_ai.try_borrow_data()?;
+                let mut slice: &[u8] = &data;
+                DonorRecord::try_deserialize(&mut slice)?
+            };
+
+            require!(
+                donor_record.campaign == campaign_key,
+                CrowdfundingError::InvalidRefundAccounts
+            );
+            require!(
+                donor_record.donor == donor_wallet.key(),
+                CrowdfundingError::InvalidRefundAccounts
+            );
+
+            let (expected_pda, _) = Pubkey::find_program_address(
+                &[
+                    b"donor",
+                    campaign_key.as_ref(),
+                    donor_wallet.key().as_ref(),
+                ],
+                ctx.program_id,
+            );
+            require!(dr_ai.key() == expected_pda, CrowdfundingError::InvalidRefundAccounts);
+
+            let lamports = donor_record.lamports;
+            if lamports == 0 {
+                continue;
+            }
+
+            let after = escrow_ai
+                .lamports()
+                .checked_sub(lamports)
+                .ok_or(CrowdfundingError::Overflow)?;
+            require!(
+                after >= min_escrow_rent,
+                CrowdfundingError::InsufficientEscrowForRefund
+            );
+
+            anchor_lang::system_program::transfer(
+                CpiContext::new_with_signer(
+                    system_ai.clone(),
+                    anchor_lang::system_program::Transfer {
+                        from: escrow_ai.clone(),
+                        to: donor_wallet.clone(),
+                    },
+                    &[signer_seeds],
+                ),
+                lamports,
+            )?;
+
+            refunded = refunded
+                .checked_add(lamports)
+                .ok_or(CrowdfundingError::Overflow)?;
+
+            let mut cleared = donor_record;
+            cleared.amount = 0;
+            cleared.lamports = 0;
+            let mut data = dr_ai.try_borrow_mut_data()?;
+            require!(data.len() >= DonorRecord::SPACE, CrowdfundingError::Overflow);
+            let disc = DonorRecord::DISCRIMINATOR;
+            data[..disc.len()].copy_from_slice(&disc);
+            let mut w: &mut [u8] = &mut data[disc.len()..];
+            cleared
+                .serialize(&mut w)
+                .map_err(|_| error!(CrowdfundingError::Overflow))?;
+        }
+
+        require!(
+            refunded == expected_total,
+            CrowdfundingError::RefundAmountMismatch
+        );
+
         let campaign = &mut ctx.accounts.campaign;
         let escrow = &mut ctx.accounts.escrow;
 
-        let now = Clock::get()?.unix_timestamp;
-        require!(now > campaign.deadline, CrowdfundingError::DeadlineNotPassed);
-        require!(campaign.status == CampaignStatus::Active, CrowdfundingError::CampaignNotActive);
-
-        campaign.status = CampaignStatus::Expired;
-
         emit!(RefundExecuted {
             campaign: campaign.key(),
-            total_refunded: escrow.total_deposited,
-            donor_count: campaign.donor_count,
+            total_refunded: refunded,
+            donor_count,
         });
 
+        campaign.status = CampaignStatus::Expired;
         escrow.total_deposited = 0;
 
         Ok(())
@@ -280,6 +398,7 @@ pub struct RefundAll<'info> {
     )]
     pub escrow: Account<'info, CampaignEscrow>,
     pub caller: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -454,4 +573,10 @@ pub enum CrowdfundingError {
     NotMatched,
     #[msg("Invalid campaign category")]
     InvalidCategory,
+    #[msg("Invalid refund accounts: expected [donor_record, donor_wallet, ...] pairs")]
+    InvalidRefundAccounts,
+    #[msg("Refunded lamports must match escrow total_deposited")]
+    RefundAmountMismatch,
+    #[msg("Escrow balance too low for this refund (rent or ledger mismatch)")]
+    InsufficientEscrowForRefund,
 }
