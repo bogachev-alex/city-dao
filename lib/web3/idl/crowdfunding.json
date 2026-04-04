@@ -234,6 +234,37 @@
           }
         },
         {
+          "name": "refund_exec_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  120,
+                  101,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
           "name": "creator",
           "writable": true,
           "signer": true
@@ -279,6 +310,10 @@
         {
           "name": "lng",
           "type": "f64"
+        },
+        {
+          "name": "refund_executor_deposit_lamports",
+          "type": "u64"
         }
       ]
     },
@@ -339,6 +374,10 @@
     },
     {
       "name": "refund_all",
+      "docs": [
+        "After deadline: return each donor's `lamports` from the escrow PDA to their wallet.",
+        "`remaining_accounts` must be `[donor_record, donor_wallet, ...]` pairs for every donor."
+      ],
       "discriminator": [
         174,
         87,
@@ -381,7 +420,39 @@
           }
         },
         {
+          "name": "refund_exec_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  120,
+                  101,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
           "name": "caller",
+          "writable": true,
           "signer": true
         },
         {
@@ -430,6 +501,19 @@
         141,
         165,
         40
+      ]
+    },
+    {
+      "name": "RefundExecVault",
+      "discriminator": [
+        109,
+        247,
+        77,
+        15,
+        98,
+        31,
+        37,
+        44
       ]
     }
   ],
@@ -570,6 +654,11 @@
       "code": 6013,
       "name": "InsufficientEscrowForRefund",
       "msg": "Escrow balance too low for this refund (rent or ledger mismatch)"
+    },
+    {
+      "code": 6014,
+      "name": "RefundExecDepositTooLow",
+      "msg": "Refund executor deposit below minimum (creator must fund relayer reimbursement)"
     }
   ],
   "types": [
@@ -845,6 +934,18 @@
             "name": "created_at",
             "type": "i64"
           },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RefundExecVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
             "name": "bump",
             "type": "u8"

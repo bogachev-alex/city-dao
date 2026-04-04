@@ -14,6 +14,7 @@ import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { DISTRICTS } from '@/lib/contracts'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
+import { MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS } from '@/lib/web3/constants'
 import {
   CampaignDeadlinePicker,
   combineLocalDateTime,
@@ -222,6 +223,13 @@ export default function NewCampaignPage() {
             {error}
           </div>
         )}
+        <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50/80 dark:bg-blue-500/10 p-4 text-xs text-blue-900 dark:text-blue-200/90 leading-relaxed">
+          При публикации on-chain с кошелька создателя дополнительно резервируется{' '}
+          {(MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS / 1_000_000_000).toFixed(3)} SOL: это залог для автоматического
+          возврата взносов донорам после дедлайна (оплата комиссии сети за транзакцию{' '}
+          <code className="text-[10px]">refund_all</code>). После исполнения возврата залог перечисляется релееру
+          платформы; взносы доноров возвращаются из escrow отдельно.
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">

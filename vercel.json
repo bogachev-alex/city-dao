@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/crowdfunding-refunds",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

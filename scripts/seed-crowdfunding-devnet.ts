@@ -28,9 +28,12 @@ const API_BASE = process.env.API_BASE || 'http://localhost:3000'
 
 const CROWDFUNDING_PROGRAM_ID = new PublicKey('3vCqBvYEnXb1kW9CB4smrAMUzSrdTFfFv2XuMGw1Sdzj')
 
+const MIN_REFUND_EXEC_DEPOSIT = 1_000_000
+
 const SEEDS = {
   campaign: Buffer.from('campaign'),
   cfEscrow: Buffer.from('cf_escrow'),
+  cfRefundExec: Buffer.from('cf_refund_exec'),
 }
 
 // Category mapping: DB value → Anchor enum format
@@ -154,6 +157,13 @@ function getEscrowPDA(campaign: PublicKey): [PublicKey, number] {
   )
 }
 
+function getRefundExecVaultPDA(campaign: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [SEEDS.cfRefundExec, campaign.toBuffer()],
+    CROWDFUNDING_PROGRAM_ID,
+  )
+}
+
 async function accountExists(connection: Connection, pubkey: PublicKey): Promise<boolean> {
   const info = await connection.getAccountInfo(pubkey)
   return info !== null
@@ -209,6 +219,7 @@ async function main() {
     const seedTitle = normalizeSeedTitle(c.title)
     const [campaignPDA] = getCampaignPDA(keypair.publicKey, seedTitle)
     const [escrowPDA] = getEscrowPDA(campaignPDA)
+    const [refundVaultPDA] = getRefundExecVaultPDA(campaignPDA)
     const pda = campaignPDA.toBase58()
 
     const shortTitle = c.title.length > 45 ? c.title.slice(0, 45) + '…' : c.title
@@ -246,10 +257,12 @@ async function main() {
           new BN(Math.floor(c.deadline)),
           c.lat,
           c.lng,
+          new BN(MIN_REFUND_EXEC_DEPOSIT),
         )
         .accounts({
           campaign: campaignPDA,
           escrow: escrowPDA,
+          refundExecVault: refundVaultPDA,
           creator: keypair.publicKey,
           systemProgram: SystemProgram.programId,
         })
