@@ -3,6 +3,7 @@ import {
   getCitizenTarget, getStateMatch, getCampaignProgress,
   getDonorTier, formatTenge, normalizeCampaign, Campaign,
   getDeadlineComponents, formatCrowdfundingCountdown,
+  isCrowdfundingDeadlinePassed, getEffectiveCrowdfundingStatus,
 } from '@/lib/crowdfunding'
 
 describe('getCitizenTarget / getStateMatch', () => {
@@ -118,6 +119,69 @@ describe('formatCrowdfundingCountdown', () => {
   it('formats just expired as только что', () => {
     const deadline = new Date(now).toISOString()
     expect(formatCrowdfundingCountdown(deadline, now)).toBe('только что')
+  })
+})
+
+describe('isCrowdfundingDeadlinePassed / getEffectiveCrowdfundingStatus', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  const base = (over: Partial<Campaign> = {}): Campaign => ({
+    id: '1',
+    title: 'X',
+    description: '',
+    district: 'A',
+    category: 'playground',
+    status: 'active',
+    target_amount: 10_000_000,
+    citizen_target: 1_000_000,
+    state_match: 9_000_000,
+    citizen_raised: 100_000,
+    state_deposited: false,
+    donor_count: 1,
+    deadline: new Date('2026-01-15T12:00:00.000Z').toISOString(),
+    created_at: '',
+    creator: '',
+    creator_wallet: '',
+    creator_tier: '',
+    lat: 0,
+    lng: 0,
+    donors: [],
+    ...over,
+  })
+
+  it('isCrowdfundingDeadlinePassed is false before deadline', () => {
+    expect(isCrowdfundingDeadlinePassed(base().deadline, now)).toBe(false)
+  })
+
+  it('isCrowdfundingDeadlinePassed is true after deadline', () => {
+    expect(isCrowdfundingDeadlinePassed(new Date('2026-01-08T12:00:00.000Z').toISOString(), now)).toBe(true)
+  })
+
+  it('getEffectiveCrowdfundingStatus: active + past deadline + under goal → expired', () => {
+    expect(
+      getEffectiveCrowdfundingStatus(
+        base({
+          deadline: new Date('2026-01-08T12:00:00.000Z').toISOString(),
+        }),
+        now
+      )
+    ).toBe('expired')
+  })
+
+  it('getEffectiveCrowdfundingStatus: active + past deadline but goal met → funded', () => {
+    expect(
+      getEffectiveCrowdfundingStatus(
+        base({
+          deadline: new Date('2026-01-08T12:00:00.000Z').toISOString(),
+          citizen_raised: 1_000_000,
+        }),
+        now
+      )
+    ).toBe('funded')
+  })
+
+  it('getEffectiveCrowdfundingStatus: keeps funded from API', () => {
+    expect(getEffectiveCrowdfundingStatus(base({ status: 'funded' }), now)).toBe('funded')
   })
 })
 
