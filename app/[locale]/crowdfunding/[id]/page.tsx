@@ -9,6 +9,7 @@ import {
   Campaign,
   getCampaignProgress,
   getDaysLeft,
+  formatCrowdfundingCountdown,
   formatTenge,
   CATEGORY_CONFIG,
   CAMPAIGN_STATUS_CONFIG,
@@ -218,6 +219,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
   const dc = displayCampaign!
   const progress = getCampaignProgress(dc)
   const daysLeft = getDaysLeft(dc.deadline)
+  const deadlineCountdown = formatCrowdfundingCountdown(dc.deadline)
   const category = CATEGORY_CONFIG[dc.category]
   const status = CAMPAIGN_STATUS_CONFIG[dc.status]
   const remaining = Math.max(0, dc.citizen_target - dc.citizen_raised)
@@ -447,13 +449,21 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </div>
                 <div>
                   <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Дедлайн</div>
-                  <div className="text-gray-900 dark:text-white">{new Date(campaign.deadline).toLocaleDateString('ru-KZ')}</div>
+                  <div className="text-gray-900 dark:text-white">
+                    {new Date(dc.deadline).toLocaleString('ru-KZ', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </div>
                 </div>
                 <div>
                   <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">Гос. субсидия</div>
                   <div className="text-emerald-600 dark:text-emerald-400 font-medium">{category.statePercent}%</div>
                 </div>
               </div>
+              {dc.status === 'active' && progress < 100 && (
+                <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-200/90 leading-relaxed">
+                  К дедлайну сбор должен достичь цели граждан. Если к указанной дате и времени цель не набрана,
+                  взносы возвращаются донорам (смарт-контракт / политика платформы).
+                </div>
+              )}
             </div>
 
             {/* On-chain status */}
@@ -588,11 +598,15 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <div className="text-lg font-bold text-gray-900 dark:text-white">{dc.donor_count}</div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">участников</div>
                 </div>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-900 dark:text-white'}`}>
-                    {daysLeft < 0 ? 'Истёк' : `${daysLeft} дн.`}
+                <div className="text-center min-w-0 px-1">
+                  <div
+                    className={`text-sm sm:text-base font-bold leading-tight ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-900 dark:text-white'}`}
+                  >
+                    {deadlineCountdown}
                   </div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500">до дедлайна</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    {daysLeft < 0 ? 'после дедлайна' : 'до дедлайна'}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">x{Math.round(category.statePercent / Math.max(1, 100 - category.statePercent))}</div>

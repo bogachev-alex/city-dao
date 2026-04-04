@@ -129,7 +129,6 @@ export default function ContractorCabinetPage() {
             onChainPubkey: resolvedPubkey,
             status: toApiStatus(live.status),
             deadline: live.deadline || c.deadline,
-            totalAmount: String(live.amount_usdc ?? c.totalAmount),
           }
         }),
       }

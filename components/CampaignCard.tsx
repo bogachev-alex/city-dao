@@ -5,6 +5,7 @@ import {
   Campaign,
   getCampaignProgress,
   getDaysLeft,
+  formatCrowdfundingCountdown,
   formatTenge,
   CATEGORY_CONFIG,
   CAMPAIGN_STATUS_CONFIG,
@@ -17,6 +18,7 @@ interface CampaignCardProps {
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   const progress = getCampaignProgress(campaign)
   const daysLeft = getDaysLeft(campaign.deadline)
+  const countdownLabel = formatCrowdfundingCountdown(campaign.deadline)
   const category = CATEGORY_CONFIG[campaign.category]
   const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
   const statePercent = category.statePercent
@@ -58,13 +60,20 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
               <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right min-w-0 max-w-[11rem]">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
               {daysLeft < 0 ? 'Истёк' : 'Осталось'}
             </div>
-            <div className={`font-medium text-sm ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500'}`}>
-              {daysLeft < 0 ? `${Math.abs(daysLeft)} дн. назад` : `${daysLeft} дн.`}
+            <div
+              className={`font-medium text-sm leading-snug ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              {countdownLabel}
             </div>
+            {campaign.status === 'active' && progress < 100 && daysLeft >= 0 && (
+              <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight">
+                Без цели к дедлайну — возврат взносов
+              </div>
+            )}
           </div>
         </div>
 

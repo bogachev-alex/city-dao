@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   getCitizenTarget, getStateMatch, getCampaignProgress,
   getDonorTier, formatTenge, normalizeCampaign, Campaign,
+  getDeadlineComponents, formatCrowdfundingCountdown,
 } from '@/lib/crowdfunding'
 
 describe('getCitizenTarget / getStateMatch', () => {
@@ -45,6 +46,79 @@ describe('getDonorTier', () => {
   it('< 5000 → participant', () => expect(getDonorTier(4999)).toBe('participant'))
   it('5000 → patron', () => expect(getDonorTier(5000)).toBe('patron'))
   it('50000 → founder', () => expect(getDonorTier(50000)).toBe('founder'))
+})
+
+describe('getDeadlineComponents', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  it('splits 5d 3h 12m remaining', () => {
+    const deadline = new Date('2026-01-15T15:12:00.000Z').toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: false,
+      days: 5,
+      hours: 3,
+      minutes: 12,
+    })
+  })
+
+  it('splits 45 minutes remaining', () => {
+    const deadline = new Date(now + 45 * 60_000).toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: false,
+      days: 0,
+      hours: 0,
+      minutes: 45,
+    })
+  })
+
+  it('elapsed after deadline', () => {
+    const deadline = new Date('2026-01-08T12:00:00.000Z').toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: true,
+      days: 2,
+      hours: 0,
+      minutes: 0,
+    })
+  })
+
+  it('treats exact moment as past', () => {
+    const deadline = new Date(now).toISOString()
+    expect(getDeadlineComponents(deadline, now).isPast).toBe(true)
+  })
+})
+
+describe('formatCrowdfundingCountdown', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  it('formats future multi-day with hours and minutes', () => {
+    const deadline = new Date('2026-01-15T15:12:00.000Z').toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('5 дн. 3 ч. 12 мин')
+  })
+
+  it('formats hours and minutes without days', () => {
+    const deadline = new Date(now + (2 * 3600_000 + 5 * 60_000)).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('2 ч. 5 мин')
+  })
+
+  it('formats minutes only', () => {
+    const deadline = new Date(now + 45 * 60_000).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('45 мин')
+  })
+
+  it('formats under one minute', () => {
+    const deadline = new Date(now + 30_000).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('меньше минуты')
+  })
+
+  it('formats past as days ago', () => {
+    const deadline = new Date('2026-01-08T12:00:00.000Z').toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('2 дн. назад')
+  })
+
+  it('formats just expired as только что', () => {
+    const deadline = new Date(now).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('только что')
+  })
 })
 
 describe('normalizeCampaign TIER_MAP', () => {

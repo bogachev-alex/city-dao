@@ -7,7 +7,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
-import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole, isDemoSessionUser } from '@/lib/auth'
+import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, DEMO_AUTH_USER, type UserRole, isDemoSessionUser } from '@/lib/auth'
 import { getWallet, formatBalance } from '@/lib/tokens'
 import { useWallet } from '@solana/wallet-adapter-react'
 
@@ -28,18 +28,26 @@ export default function Navbar() {
   const [tokenBalance, setTokenBalance] = useState(0)
   const { connected: walletAdapterConnected, publicKey: walletPublicKey } = useWallet()
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>(ALL_ROLES)
+  const [roleNames, setRoleNames] = useState<Record<UserRole, string>>({} as Record<UserRole, string>)
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    if (!user) { setAvailableRoles(ALL_ROLES); return }
-    if (isDemoSessionUser(user)) { setAvailableRoles(ALL_ROLES); return }
+    if (!user) { setAvailableRoles(ALL_ROLES); setRoleNames({} as Record<UserRole, string>); return }
+    if (isDemoSessionUser(user)) {
+      setAvailableRoles(ALL_ROLES)
+      const names = {} as Record<UserRole, string>
+      for (const r of ALL_ROLES) names[r] = DEMO_AUTH_USER[r].name
+      setRoleNames(names)
+      return
+    }
 
     let cancelled = false
     async function load() {
       if (!user) return
       try {
         const roles: UserRole[] = [user.role]
+        const names = {} as Record<UserRole, string>
         const res = await fetch(`/api/roles?wallet=${encodeURIComponent(user.id)}`)
         if (cancelled) return
         if (res.ok) {
@@ -50,15 +58,46 @@ export default function Navbar() {
               if (!roles.includes(r)) roles.push(r)
             }
           }
+          if (data.names) {
+            for (const [k, v] of Object.entries(data.names)) {
+              names[k as UserRole] = v as string
+            }
+          }
         }
-        const akRaw = localStorage.getItem('akimat_profile')
-        if (akRaw) {
-          try {
-            const ak = JSON.parse(akRaw)
-            if (ak.walletAddress === user.id && !roles.includes('AKIMAT')) roles.push('AKIMAT')
-          } catch {}
+        try {
+          const raw = localStorage.getItem('citizen_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('CITIZEN')) roles.push('CITIZEN')
+              names['CITIZEN'] = p.name || names['CITIZEN']
+            }
+          }
+        } catch {}
+        try {
+          const raw = localStorage.getItem('contractor_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('CONTRACTOR')) roles.push('CONTRACTOR')
+              names['CONTRACTOR'] = p.name || names['CONTRACTOR']
+            }
+          }
+        } catch {}
+        try {
+          const raw = localStorage.getItem('akimat_profile')
+          if (raw) {
+            const p = JSON.parse(raw)
+            if (p.walletAddress === user.id) {
+              if (!roles.includes('AKIMAT')) roles.push('AKIMAT')
+              names['AKIMAT'] = p.name || names['AKIMAT']
+            }
+          }
+        } catch {}
+        if (!cancelled) {
+          setAvailableRoles(roles)
+          setRoleNames(names)
         }
-        if (!cancelled) setAvailableRoles(roles)
       } catch {
         if (!cancelled) setAvailableRoles([user.role])
       }
@@ -196,6 +235,7 @@ export default function Navbar() {
             {mounted && user ? (
               <div className="relative hidden md:flex items-center" data-tour="auth">
                 <button
+                  type="button"
                   onClick={() => setRoleSwitcherOpen((v) => !v)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
                 >
@@ -204,9 +244,9 @@ export default function Navbar() {
                     title={walletAdapterConnected ? `Phantom: ${walletPublicKey?.toBase58().slice(0, 6)}...${walletPublicKey?.toBase58().slice(-4)}` : 'Phantom не подключён'}
                   />
                   <span>{ROLE_ICONS[user.role]}</span>
-                  <span className="max-w-[80px] truncate">{user.name}</span>
+                  <span className="max-w-[100px] truncate">{roleNames[user.role] || user.name}</span>
                   {availableRoles.length > 1 && (
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden>
                       <path d="M19 9l-7 7-7-7" />
                     </svg>
                   )}
@@ -240,6 +280,7 @@ export default function Navbar() {
                     {availableRoles.map((role) => (
                       <button
                         key={role}
+                        type="button"
                         onClick={() => {
                           switchRole(role)
                           setRoleSwitcherOpen(false)
@@ -252,7 +293,7 @@ export default function Navbar() {
                         }`}
                       >
                         <span>{ROLE_ICONS[role]}</span>
-                        <span>{ROLE_LABELS[role]}</span>
+                        <span className="truncate">{roleNames[role] || ROLE_LABELS[role]}</span>
                         {user.role === role && (
                           <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="ml-auto shrink-0">
                             <path d="M5 13l4 4L19 7" />
@@ -262,6 +303,7 @@ export default function Navbar() {
                     ))}
                     <div className="border-t border-gray-200 dark:border-gray-800">
                       <button
+                        type="button"
                         onClick={handleLogout}
                         className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                       >
@@ -326,6 +368,7 @@ export default function Navbar() {
                 {availableRoles.map((role) => (
                   <button
                     key={role}
+                    type="button"
                     onClick={() => {
                       switchRole(role)
                       setMobileOpen(false)
@@ -338,10 +381,11 @@ export default function Navbar() {
                     }`}
                   >
                     <span>{ROLE_ICONS[role]}</span>
-                    <span>{ROLE_LABELS[role]}</span>
+                    <span>{roleNames[role] || ROLE_LABELS[role]}</span>
                   </button>
                 ))}
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-500 dark:text-red-400"
                 >
