@@ -24,7 +24,9 @@
     "idl:verify": "node scripts/verify-crowdfunding-idl.mjs",
     "crowdfunding:keypair": "node scripts/generate-crowdfunding-keypair.mjs",
     "crowdfunding:sync-id": "node scripts/sync-crowdfunding-program-id.mjs",
-    "crowdfunding:deploy": "bash scripts/deploy-crowdfunding-devnet.sh"
+    "crowdfunding:deploy": "bash scripts/deploy-crowdfunding-devnet.sh",
+    "seed:crowdfunding": "tsx scripts/seed-crowdfunding-devnet.ts",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -59,6 +61,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.19",
     "dotenv": "^17.3.1",
+    "husky": "^9.1.7",
     "jsdom": "^29.0.1",
     "pino-pretty": "^13.0.0",
     "postcss": "^8.4.39",
