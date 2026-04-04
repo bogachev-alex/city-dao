@@ -167,7 +167,10 @@ export default function AkimatCabinetPage() {
     fetch('/api/akimat/crowdfunding-queue', { headers: { ...authHeader() } })
       .then(async (r) => {
         if (!r.ok) throw new Error('fail')
-        return (await r.json()) as { queue: CfQueueRow[]; contractors: { id: string; name: string }[] }
+        return (await r.json()) as {
+          queue: unknown[]
+          contractors: { id: string; name: string; walletAddress?: string | null }[]
+        }
       })
       .then((json) => {
         const q = Array.isArray(json.queue) ? json.queue : []
@@ -187,7 +190,15 @@ export default function AkimatCabinetPage() {
             crowdfunding: (c.crowdfunding as CfQueueRow['crowdfunding']) ?? null,
           }))
         )
-        setCfContractors(Array.isArray(json.contractors) ? json.contractors : [])
+        setCfContractors(
+          Array.isArray(json.contractors)
+            ? json.contractors.map((c) => ({
+                id: c.id,
+                name: c.name,
+                walletAddress: c.walletAddress ?? null,
+              }))
+            : []
+        )
       })
       .catch(() => {
         setCfQueue([])
