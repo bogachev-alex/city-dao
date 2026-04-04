@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!walletAddress) {
-    return NextResponse.json({ error: 'Адрес кошелька обязателен' }, { status: 400 })
+    return NextResponse.json({ error: 'Адрес кошелка обязателен' }, { status: 400 })
   }
 
   const existing = await prisma.contractor.findFirst({
