@@ -233,11 +233,18 @@ export default function Navbar() {
             {mounted && user ? (
               <div className="relative hidden md:block" data-tour="auth">
                 <button
+                  type="button"
                   onClick={() => setRoleSwitcherOpen((v) => !v)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
                 >
                   <span>{ROLE_ICONS[user.role]}</span>
-                        <span className="max-w-[100px] truncate">{roleNames[user.role] || user.name}</span>
+                  <span className="max-w-[100px] truncate">{roleNames[user.role] || user.name}</span>
+                  {availableRoles.length > 1 && (
+                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
                 {roleSwitcherOpen && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div className="px-3 py-2 border-b border-gray-800">
@@ -246,6 +253,7 @@ export default function Navbar() {
                     {availableRoles.map((role) => (
                       <button
                         key={role}
+                        type="button"
                         onClick={() => {
                           switchRole(role)
                           setRoleSwitcherOpen(false)
@@ -268,6 +276,7 @@ export default function Navbar() {
                     ))}
                     <div className="border-t border-gray-800">
                       <button
+                        type="button"
                         onClick={handleLogout}
                         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                       >
@@ -332,6 +341,7 @@ export default function Navbar() {
                 {availableRoles.map((role) => (
                   <button
                     key={role}
+                    type="button"
                     onClick={() => {
                       switchRole(role)
                       setMobileOpen(false)
@@ -343,8 +353,12 @@ export default function Navbar() {
                         : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
-                        <span>{ROLE_ICONS[role]}</span>
-                        <span>{roleNames[role] || ROLE_LABELS[role]}</span>
+                    <span>{ROLE_ICONS[role]}</span>
+                    <span>{roleNames[role] || ROLE_LABELS[role]}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-500 dark:text-red-400"
                 >
