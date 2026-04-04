@@ -5,6 +5,7 @@ import {
   getReadOnlySolanaConnection,
 } from '@/lib/web3/fetchDistrictTreasuryBalance'
 import { getTreasuryPDA } from '@/lib/web3/pda'
+import { getDemoTreasury } from '@/lib/demoTreasury'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,66 +17,76 @@ export async function GET(
   const { district } = await params
   const decodedDistrict = decodeURIComponent(district)
 
-  const [treasury, penalties] = await Promise.all([
-    prisma.districtTreasury.findUnique({
-      where: { district: decodedDistrict },
-      include: {
-        proposals: {
-          include: {
-            aiResearch: true,
-            votes: {
-              select: {
-                id: true,
-                citizenId: true,
-                inFavor: true,
-                createdAt: true,
-                citizen: { select: { walletAddress: true } },
+  try {
+    const [treasury, penalties] = await Promise.all([
+      prisma.districtTreasury.findUnique({
+        where: { district: decodedDistrict },
+        include: {
+          proposals: {
+            include: {
+              aiResearch: true,
+              votes: {
+                select: {
+                  id: true,
+                  citizenId: true,
+                  inFavor: true,
+                  createdAt: true,
+                  citizen: { select: { walletAddress: true } },
+                },
+                orderBy: { createdAt: 'desc' },
               },
-              orderBy: { createdAt: 'desc' },
             },
+            orderBy: { createdAt: 'desc' },
           },
-          orderBy: { createdAt: 'desc' },
         },
-      },
-    }),
-    prisma.penalty.findMany({
-      where: { contract: { district: decodedDistrict } },
-      include: { contract: { select: { id: true, title: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    }),
-  ])
+      }),
+      prisma.penalty.findMany({
+        where: { contract: { district: decodedDistrict } },
+        include: { contract: { select: { id: true, title: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+    ])
 
-  if (!treasury) {
+    if (!treasury) {
+      // DB connected but district not seeded — fallback to demo
+      const demo = getDemoTreasury(decodedDistrict)
+      if (demo) return NextResponse.json(demo)
+      return NextResponse.json({ error: 'District not found' }, { status: 404 })
+    }
+
+    const balanceOnChain = await fetchDistrictTreasuryBalanceOnChain(
+      getReadOnlySolanaConnection(),
+      decodedDistrict
+    )
+
+    let pdaAddress: string | null = null
+    try {
+      const [pda] = getTreasuryPDA(decodedDistrict)
+      pdaAddress = pda.toBase58()
+    } catch {}
+
+    return NextResponse.json({
+      ...treasury,
+      balance: treasury.balance.toString(),
+      balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
+      pdaAddress,
+      totalPenaltyIncome: penalties.reduce((s, p) => s + Number(p.amountTenge), 0),
+      proposals: (treasury.proposals ?? []).map((p) => ({
+        ...p,
+        amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
+      })),
+      penalties: penalties.map((p) => ({
+        ...p,
+        amountTenge: typeof p.amountTenge === 'bigint' ? p.amountTenge.toString() : p.amountTenge,
+      })),
+    })
+  } catch {
+    // DB unavailable — serve demo data
+    const demo = getDemoTreasury(decodedDistrict)
+    if (demo) return NextResponse.json(demo)
     return NextResponse.json({ error: 'District not found' }, { status: 404 })
   }
-
-  const balanceOnChain = await fetchDistrictTreasuryBalanceOnChain(
-    getReadOnlySolanaConnection(),
-    decodedDistrict
-  )
-
-  let pdaAddress: string | null = null
-  try {
-    const [pda] = getTreasuryPDA(decodedDistrict)
-    pdaAddress = pda.toBase58()
-  } catch {}
-
-  return NextResponse.json({
-    ...treasury,
-    balance: treasury.balance.toString(),
-    balanceOnChain: balanceOnChain !== null ? balanceOnChain.toString() : null,
-    pdaAddress,
-    totalPenaltyIncome: penalties.reduce((s, p) => s + Number(p.amountTenge), 0),
-    proposals: (treasury.proposals ?? []).map((p) => ({
-      ...p,
-      amount: typeof p.amount === 'bigint' ? p.amount.toString() : p.amount,
-    })),
-    penalties: penalties.map((p) => ({
-      ...p,
-      amountTenge: typeof p.amountTenge === 'bigint' ? p.amountTenge.toString() : p.amountTenge,
-    })),
-  })
 }
 
 // POST /api/treasury/[district] — create spending proposal
