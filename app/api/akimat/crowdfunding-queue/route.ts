@@ -24,6 +24,10 @@ export async function GET(req: NextRequest) {
       },
       include: {
         contractor: { select: { id: true, name: true } },
+        milestones: {
+          orderBy: { sortOrder: 'asc' },
+          select: { description: true, deadlineDays: true, tranchePct: true, sortOrder: true },
+        },
         crowdfunding: {
           select: {
             id: true,
@@ -40,7 +44,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.contractor.findMany({
       where: { name: { not: PLACEHOLDER_CONTRACTOR_NAME } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, walletAddress: true },
       orderBy: { name: 'asc' },
     }),
   ])

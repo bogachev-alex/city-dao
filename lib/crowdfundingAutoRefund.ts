@@ -174,3 +174,105 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
 
   return { keeperConfigured: true, processed, skipped, details }
 }
+
+export type CrowdfundingRefundKeeperDiagnostics = {
+  cronSecretConfigured: boolean
+  keeperSecretConfigured: boolean
+  keeperKeypairValid: boolean
+  keeperPublicKey: string | null
+  keeperBalanceLamports: number | null
+  rpcUrl: string
+  rpcReachable: boolean
+  parseError: string | null
+  /** DB rows that match auto-refund candidate filter (may still be skipped on-chain). */
+  dbExpiredActiveWithPubkeyCount: number
+}
+
+/**
+ * Read-only checks for ops: env shape, keeper pubkey, RPC, balance (tx fees), queue size.
+ * Does not run refund_all or expose secrets.
+ */
+export async function diagnoseCrowdfundingRefundKeeper(): Promise<CrowdfundingRefundKeeperDiagnostics> {
+  const cronSecretConfigured = !!process.env.CRON_SECRET?.trim()
+  const raw = process.env.CROWDFUNDING_REFUND_KEEPER_SECRET
+  const keeperSecretConfigured = !!raw?.trim()
+  const rpcUrl = SOLANA_RPC_URL
+
+  let dbExpiredActiveWithPubkeyCount = 0
+  try {
+    dbExpiredActiveWithPubkeyCount = await prisma.crowdfundingCampaign.count({
+      where: {
+        onChainPubkey: { not: null },
+        status: 'ACTIVE',
+        deadline: { lt: new Date() },
+      },
+    })
+  } catch {
+    dbExpiredActiveWithPubkeyCount = -1
+  }
+
+  if (!keeperSecretConfigured) {
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: false,
+      keeperKeypairValid: false,
+      keeperPublicKey: null,
+      keeperBalanceLamports: null,
+      rpcUrl,
+      rpcReachable: false,
+      parseError: null,
+      dbExpiredActiveWithPubkeyCount,
+    }
+  }
+
+  try {
+    const arr = JSON.parse(raw!) as number[]
+    if (!Array.isArray(arr) || arr.length < 32) {
+      return {
+        cronSecretConfigured,
+        keeperSecretConfigured: true,
+        keeperKeypairValid: false,
+        keeperPublicKey: null,
+        keeperBalanceLamports: null,
+        rpcUrl,
+        rpcReachable: false,
+        parseError: 'Expected JSON array of at least 32 byte values (secret key)',
+        dbExpiredActiveWithPubkeyCount,
+      }
+    }
+    const kp = Keypair.fromSecretKey(Uint8Array.from(arr))
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
+    let rpcReachable = false
+    let keeperBalanceLamports: number | null = null
+    try {
+      await connection.getSlot()
+      rpcReachable = true
+      keeperBalanceLamports = await connection.getBalance(kp.publicKey)
+    } catch {
+      rpcReachable = false
+    }
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: true,
+      keeperKeypairValid: true,
+      keeperPublicKey: kp.publicKey.toBase58(),
+      keeperBalanceLamports,
+      rpcUrl,
+      rpcReachable,
+      parseError: null,
+      dbExpiredActiveWithPubkeyCount,
+    }
+  } catch (e) {
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: true,
+      keeperKeypairValid: false,
+      keeperPublicKey: null,
+      keeperBalanceLamports: null,
+      rpcUrl,
+      rpcReachable: false,
+      parseError: e instanceof Error ? e.message : String(e),
+      dbExpiredActiveWithPubkeyCount,
+    }
+  }
+}
