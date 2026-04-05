@@ -374,7 +374,7 @@ export default function ContractDetailPage() {
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Back nav */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
           <Link href="/contracts" className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm">
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M15 19l-7-7 7-7" />
@@ -386,7 +386,7 @@ export default function ContractDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">

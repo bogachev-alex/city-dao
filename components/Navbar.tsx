@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/routing'
 import { useLocale } from 'next-intl'
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useRef } from 'react'
 import { useTheme } from './ThemeProvider'
 import { useAuth } from './AuthContext'
 import { useA11y } from './AccessibilityProvider'
@@ -28,6 +28,9 @@ export default function Navbar() {
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
   const { connected: walletAdapterConnected, publicKey: walletPublicKey, disconnect: walletDisconnect } = useWallet()
+  const [langOpen, setLangOpen] = useState(false)
+  const langRef = useRef<HTMLDivElement>(null)
+  const roleRef = useRef<HTMLDivElement>(null)
 
   // Auto-login when any wallet connects and user has no session (or is demo)
   const { login: authLogin } = useAuth()
@@ -52,6 +55,16 @@ export default function Navbar() {
   const [roleNames, setRoleNames] = useState<Record<UserRole, string>>({} as Record<UserRole, string>)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (langOpen && langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false)
+      if (roleSwitcherOpen && roleRef.current && !roleRef.current.contains(e.target as Node)) setRoleSwitcherOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [langOpen, roleSwitcherOpen])
 
   useEffect(() => {
     if (!user) { setAvailableRoles(ALL_ROLES); setRoleNames({} as Record<UserRole, string>); return }
@@ -144,7 +157,6 @@ export default function Navbar() {
   const navItems = user ? NAV_BY_ROLE[user.role] : DEFAULT_NAV
   const navLinks = navItems.map((item) => ({ href: item.href, label: t(item.labelKey as any), tour: item.labelKey }))
 
-  const [langOpen, setLangOpen] = useState(false)
   const LOCALE_LABELS: Record<string, string> = { ru: 'RU', kk: 'KK', en: 'EN' }
   const switchToLocale = (next: string) => {
     setLangOpen(false)
@@ -208,7 +220,7 @@ export default function Navbar() {
             )}
 
             {/* Locale switcher */}
-            <div className="relative">
+            <div className="relative" ref={langRef}>
               <button
                 onClick={() => setLangOpen((v) => !v)}
                 disabled={isPending}
@@ -275,7 +287,7 @@ export default function Navbar() {
 
             {/* User block — combined wallet status + role switcher */}
             {mounted && user ? (
-              <div className="relative hidden md:flex items-center" data-tour="auth">
+              <div className="relative hidden md:flex items-center" data-tour="auth" ref={roleRef}>
                 <button
                   type="button"
                   onClick={() => setRoleSwitcherOpen((v) => !v)}

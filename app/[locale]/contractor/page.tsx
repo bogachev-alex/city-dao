@@ -276,7 +276,7 @@ export default function ContractorCabinetPage() {
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       <div className="bg-gradient-to-b from-slate-900 to-slate-950 dark:from-gray-900 dark:to-gray-950 border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div>
               <p className="text-emerald-400/90 text-sm font-medium mb-2 uppercase tracking-wider">{t('badge')}</p>
@@ -347,7 +347,7 @@ export default function ContractorCabinetPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {blockerNotice && (
           <section className="rounded-xl border border-orange-400/40 bg-orange-500/10 px-4 py-3">
             <div className="flex items-center justify-between gap-3">

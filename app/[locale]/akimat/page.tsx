@@ -242,7 +242,7 @@ export default function AkimatCabinetPage() {
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       <div className="bg-gradient-to-b from-emerald-950 to-slate-950 border-b border-emerald-900/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <p className="text-emerald-400/90 text-sm font-medium mb-2 uppercase tracking-wider">{t('badge')}</p>
           <h1 className="text-3xl font-bold text-white mb-2">{displayName}</h1>
           <p className="text-emerald-200/80 text-sm max-w-2xl">{t('subtitle')}</p>
@@ -286,7 +286,7 @@ export default function AkimatCabinetPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="text-emerald-500">⚡</span>

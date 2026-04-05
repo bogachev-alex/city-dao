@@ -69,7 +69,7 @@ export default function MyCrowdfundingPage() {
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <div className="bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
             <Link href="/crowdfunding" className="hover:text-emerald-600 transition-colors">
               Краудфандинг
@@ -82,7 +82,7 @@ export default function MyCrowdfundingPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/10 dark:to-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-5">
