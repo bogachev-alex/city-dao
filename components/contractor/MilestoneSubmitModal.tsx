@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
@@ -57,6 +57,7 @@ export default function MilestoneSubmitModal({
   const [photoHashes, setPhotoHashes] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const submitInFlightRef = useRef(false)
   const [solBalance, setSolBalance] = useState<number | null>(null)
 
   const selectedContract = useMemo(
@@ -123,6 +124,7 @@ export default function MilestoneSubmitModal({
   const lowSol = solBalance != null && solBalance < MIN_SOL_FOR_TX
 
   const submit = async () => {
+    if (submitInFlightRef.current) return
     if (!selectedContract || !milestoneId) {
       setFormError(t('errorPick'))
       return
@@ -132,6 +134,7 @@ export default function MilestoneSubmitModal({
       return
     }
 
+    submitInFlightRef.current = true
     setFormError(null)
     setSubmitting(true)
 
@@ -150,7 +153,6 @@ export default function MilestoneSubmitModal({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setFormError(typeof data.error === 'string' ? data.error : t('errorApi'))
-        setSubmitting(false)
         return
       }
 
@@ -161,7 +163,6 @@ export default function MilestoneSubmitModal({
           await submitMilestone(new PublicKey(pkStr), milestoneIndexOnChain, evidenceHash)
         } catch (e: unknown) {
           setFormError(e instanceof Error ? e.message : t('errorChain'))
-          setSubmitting(false)
           return
         }
       }
@@ -172,6 +173,7 @@ export default function MilestoneSubmitModal({
     } catch {
       setFormError(t('errorApi'))
     } finally {
+      submitInFlightRef.current = false
       setSubmitting(false)
     }
   }

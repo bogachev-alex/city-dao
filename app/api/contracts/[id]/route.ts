@@ -11,7 +11,14 @@ function toJsonSafe<T>(value: T): T {
   ) as T
 }
 
+/**
+ * Repair demo/seed data: milestone is UNDER_REVIEW but no active JurySession (e.g. goszakup seed).
+ * Do NOT bootstrap PENDING/SUBMITTED — that would race POST .../milestones/.../submit and cause 409.
+ * Set DISABLE_JURY_SESSION_BOOTSTRAP=1 to skip this side effect on GET entirely.
+ */
 async function ensureJurySessionForTesting(contractId: string) {
+  if (process.env.DISABLE_JURY_SESSION_BOOTSTRAP === '1') return
+
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: {
@@ -25,9 +32,7 @@ async function ensureJurySessionForTesting(contractId: string) {
   if (!contract) return
   if ((contract.jurySessions || []).length > 0) return
 
-  const milestone = (contract.milestones || []).find(
-    (m) => m.status === 'PENDING' || m.status === 'SUBMITTED' || m.status === 'UNDER_REVIEW'
-  )
+  const milestone = (contract.milestones || []).find((m) => m.status === 'UNDER_REVIEW')
   if (!milestone) return
 
   const jurors = await prisma.citizen.findMany({
