@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { render, renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { DEMO_AUTH_USER, type AuthUser } from '@/lib/auth'
 
@@ -150,11 +150,15 @@ describe('authHeader', () => {
 
 // ─── useAuth outside provider ─────────────────────────────────────────────────
 
+function ConsumerWithoutProvider() {
+  useAuth()
+  return null
+}
+
 describe('useAuth guard', () => {
   it('throws when used outside AuthProvider', () => {
-    // suppress React error boundary noise
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(() => renderHook(() => useAuth())).toThrow('useAuth must be used inside <AuthProvider>')
+    expect(() => render(<ConsumerWithoutProvider />)).toThrow('useAuth must be used inside <AuthProvider>')
     spy.mockRestore()
   })
 })
