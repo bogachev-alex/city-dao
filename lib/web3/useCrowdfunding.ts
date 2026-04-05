@@ -331,6 +331,49 @@ export function useCrowdfunding() {
     [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getRefundExecVaultPDA, getDonorPDA],
   )
 
+  /**
+   * Refund a single donor after deadline if citizen target not met.
+   * Permissionless: anyone may execute it; fee is paid to the caller from refund_exec_vault.
+   */
+  const refundOne = useCallback(
+    async (campaignCreator: PublicKey, campaignTitle: string, donorWallet: PublicKey) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+      try {
+        const [campaignPDA] = getCampaignPDA(campaignCreator, campaignTitle)
+        const [escrowPDA] = getEscrowPDA(campaignPDA)
+        const [refundExecVaultPDA] = getRefundExecVaultPDA(campaignPDA)
+        const [donorPDA] = getDonorPDA(campaignPDA, donorWallet)
+
+        const tx = await (program.methods as any)
+          .refundOne()
+          .accounts({
+            campaign: campaignPDA,
+            escrow: escrowPDA,
+            donorRecord: donorPDA,
+            donorWallet,
+            refundExecVault: refundExecVaultPDA,
+            caller: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+
+        return { tx }
+      } catch (err: any) {
+        const msg = err?.message || 'refund_one failed'
+        setError(msg)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    [wallet.publicKey, getProgram, getCampaignPDA, getEscrowPDA, getRefundExecVaultPDA, getDonorPDA],
+  )
+
   /// Send pooled escrow to a contract destination (e.g. contract_registry escrow PDA) after match_funds.
   const finalizeCampaign = useCallback(
     async (
@@ -427,6 +470,7 @@ export function useCrowdfunding() {
     contribute,
     matchFunds,
     refundAll,
+    refundOne,
     finalizeCampaign,
     fetchCampaignAccount,
     fetchCampaignAccountByAddress,
