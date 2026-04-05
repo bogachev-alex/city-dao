@@ -63,14 +63,21 @@ export async function POST(
     )
   }
 
-  const activeSession = await prisma.jurySession.findFirst({
+  // Legacy orphan: older stacks returned 409 if any active JurySession existed while milestone was still
+  // PENDING/SUBMITTED. Remove all in-flight sessions for this milestone, then create a fresh one.
+  const staleSessionIds = await prisma.jurySession.findMany({
     where: {
       milestoneId,
       status: { in: ['SELECTING', 'COMMIT_PHASE', 'REVEAL_PHASE'] },
     },
+    select: { id: true },
   })
-  if (activeSession) {
-    return NextResponse.json({ error: 'Jury session already active for this milestone' }, { status: 409 })
+  if (staleSessionIds.length > 0) {
+    const ids = staleSessionIds.map((s) => s.id)
+    await prisma.$transaction([
+      prisma.juryVote.deleteMany({ where: { sessionId: { in: ids } } }),
+      prisma.jurySession.deleteMany({ where: { id: { in: ids } } }),
+    ])
   }
 
   const jurors = await pickJurors(contract.district, JURORS)
