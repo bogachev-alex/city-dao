@@ -26,43 +26,52 @@ export default function HomePage() {
   const [stats, setStats] = useState({ contracts: 0, totalAmount: 0, penalized: 0, citizens: 0 })
 
   useEffect(() => {
-    if (dataSource === 'onchain') {
-      // On-chain mode: read contracts from Solana devnet
-      fetchAllContractsOnChain()
-        .then((contracts) => {
-          const list = contracts.length > 0 ? contracts : DEMO_CONTRACTS
+    Promise.all([
+      fetch('/api/contracts').then((r) => r.json()).catch(() => []),
+      fetch('/api/citizens').then((r) => r.json()).catch(() => []),
+    ]).then(async ([contracts, citizens]) => {
+      const contractList = Array.isArray(contracts) ? contracts : []
+      const citizenList = Array.isArray(citizens) ? citizens : []
+
+      if (contractList.length > 0) {
+        setStats({
+          contracts: contractList.length,
+          totalAmount: contractList.reduce(
+            (s: number, c: { totalAmount?: unknown; amount_usdc?: unknown }) =>
+              s + Number(c.totalAmount ?? c.amount_usdc ?? 0),
+            0
+          ),
+          penalized: contractList.filter((c: { status?: string }) => c.status === 'PENALIZED').length,
+          citizens: citizenList.length,
+        })
+        return
+      }
+
+      if (dataSource === 'onchain') {
+        try {
+          const chain = await fetchAllContractsOnChain()
+          const list = chain.length > 0 ? chain : DEMO_CONTRACTS
           setStats({
             contracts: list.length,
             totalAmount: list.reduce((s, c) => s + c.amount_usdc, 0),
             penalized: list.filter((c) => c.status === 'penalized').length,
-            citizens: 0, // citizen count requires separate program query
+            citizens: citizenList.length,
           })
-        })
-        .catch(() => {
+        } catch {
           setStats({
             contracts: DEMO_CONTRACTS.length,
             totalAmount: DEMO_CONTRACTS.reduce((s, c) => s + c.amount_usdc, 0),
             penalized: DEMO_CONTRACTS.filter((c) => c.status === 'penalized').length,
-            citizens: 0,
+            citizens: citizenList.length,
           })
-        })
-      return
-    }
+        }
+        return
+      }
 
-    // Mock/DB mode: fetch from API (cached via lib/api)
-    Promise.all([
-      import('@/lib/api').then(m => m.fetchContracts()).catch(() => []),
-      fetch('/api/citizens').then(r => r.json()).catch(() => []),
-      fetch('/api/goszakup?limit=50').then(r => r.json()).catch(() => ({ contracts: [] })),
-    ]).then(([contracts, citizens, goszakup]) => {
-      const contractList = Array.isArray(contracts) ? contracts : []
-      const citizenList = Array.isArray(citizens) ? citizens : []
-      const gzContracts = Array.isArray(goszakup?.contracts) ? goszakup.contracts : []
-      const allContracts = [...contractList, ...gzContracts]
       setStats({
-        contracts: allContracts.length,
-        totalAmount: allContracts.reduce((s: number, c: any) => s + Number(c.totalAmount || c.amount_usdc || 0), 0),
-        penalized: contractList.filter((c: any) => c.status === 'PENALIZED').length,
+        contracts: DEMO_CONTRACTS.length,
+        totalAmount: DEMO_CONTRACTS.reduce((s, c) => s + c.amount_usdc, 0),
+        penalized: DEMO_CONTRACTS.filter((c) => c.status === 'penalized').length,
         citizens: citizenList.length,
       })
     })
