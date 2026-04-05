@@ -4,6 +4,9 @@ declare_id!("3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY");
 
 /// Minimum SOL the creator must lock for automated `refund_all` execution (pays relayer after refunds).
 pub const MIN_REFUND_EXEC_DEPOSIT_LAMPORTS: u64 = 1_000_000; // 0.001 SOL
+/// Fixed fee paid to the transaction caller for executing `refund_one`.
+/// Must keep `refund_exec_vault` rent-exempt.
+pub const REFUND_ONE_FEE_LAMPORTS: u64 = 10_000; // 0.00001 SOL
 
 #[program]
 pub mod crowdfunding {
@@ -191,6 +194,114 @@ pub mod crowdfunding {
             campaign: campaign.key(),
             state_amount: campaign.state_match,
             total_funds: escrow.total_deposited,
+        });
+
+        Ok(())
+    }
+
+    /// After deadline (and if target not reached): return a single donor's `lamports` from escrow PDA.
+    /// This is permissionless — anyone can execute it — and it pays a small fee from `refund_exec_vault`
+    /// to incentivize automation (keepers).
+    pub fn refund_one(ctx: Context<RefundOne>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        require!(now > ctx.accounts.campaign.deadline, CrowdfundingError::DeadlineNotPassed);
+        require!(
+            ctx.accounts.campaign.status == CampaignStatus::Active,
+            CrowdfundingError::CampaignNotActive
+        );
+        require!(
+            ctx.accounts.campaign.citizen_raised < ctx.accounts.campaign.citizen_target,
+            CrowdfundingError::TargetAlreadyReached
+        );
+
+        require!(
+            ctx.accounts.donor_record.campaign == ctx.accounts.campaign.key(),
+            CrowdfundingError::InvalidRefundAccounts
+        );
+        require!(
+            ctx.accounts.donor_record.donor == ctx.accounts.donor_wallet.key(),
+            CrowdfundingError::InvalidRefundAccounts
+        );
+
+        let lamports = ctx.accounts.donor_record.lamports;
+        require!(lamports > 0, CrowdfundingError::AlreadyRefunded);
+
+        let rent = Rent::get()?;
+        let min_escrow_rent = rent.minimum_balance(CampaignEscrow::SPACE);
+
+        let campaign_key = ctx.accounts.campaign.key();
+        let escrow_bump = ctx.accounts.escrow.bump;
+        let escrow_seeds: &[&[u8]] = &[b"cf_escrow", campaign_key.as_ref(), &[escrow_bump]];
+
+        // Ensure escrow remains rent-exempt after refund transfer.
+        let escrow_ai = ctx.accounts.escrow.to_account_info();
+        let escrow_after = escrow_ai
+            .lamports()
+            .checked_sub(lamports)
+            .ok_or(CrowdfundingError::Overflow)?;
+        require!(
+            escrow_after >= min_escrow_rent,
+            CrowdfundingError::InsufficientEscrowForRefund
+        );
+
+        // Transfer donor lamports from escrow PDA.
+        anchor_lang::system_program::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: escrow_ai,
+                    to: ctx.accounts.donor_wallet.to_account_info(),
+                },
+                &[escrow_seeds],
+            ),
+            lamports,
+        )?;
+
+        // Update ledgers / idempotency guards.
+        ctx.accounts.escrow.total_deposited = ctx
+            .accounts
+            .escrow
+            .total_deposited
+            .checked_sub(lamports)
+            .ok_or(CrowdfundingError::Overflow)?;
+        ctx.accounts.donor_record.amount = 0;
+        ctx.accounts.donor_record.lamports = 0;
+
+        // Pay the caller fee from refund_exec_vault PDA (keeps automation permissionless).
+        let min_vault_rent = rent.minimum_balance(RefundExecVault::SPACE);
+        let vault_ai = ctx.accounts.refund_exec_vault.to_account_info();
+        let vault_bump = ctx.accounts.refund_exec_vault.bump;
+        let vault_seeds: &[&[u8]] = &[b"cf_refund_exec", campaign_key.as_ref(), &[vault_bump]];
+
+        let vault_after = vault_ai
+            .lamports()
+            .checked_sub(REFUND_ONE_FEE_LAMPORTS)
+            .ok_or(CrowdfundingError::Overflow)?;
+        require!(vault_after >= min_vault_rent, CrowdfundingError::FeeVaultTooLow);
+
+        anchor_lang::system_program::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: vault_ai,
+                    to: ctx.accounts.caller.to_account_info(),
+                },
+                &[vault_seeds],
+            ),
+            REFUND_ONE_FEE_LAMPORTS,
+        )?;
+
+        // If all escrow is refunded, expire the campaign.
+        if ctx.accounts.escrow.total_deposited == 0 {
+            ctx.accounts.campaign.status = CampaignStatus::Expired;
+        }
+
+        emit!(RefundOneExecuted {
+            campaign: ctx.accounts.campaign.key(),
+            donor: ctx.accounts.donor_wallet.key(),
+            refunded_lamports: lamports,
+            fee_lamports: REFUND_ONE_FEE_LAMPORTS,
+            caller: ctx.accounts.caller.key(),
         });
 
         Ok(())
@@ -438,6 +549,35 @@ pub struct RefundAll<'info> {
 }
 
 #[derive(Accounts)]
+pub struct RefundOne<'info> {
+    #[account(mut)]
+    pub campaign: Account<'info, CrowdfundingCampaignAccount>,
+    #[account(
+        mut,
+        seeds = [b"cf_escrow", campaign.key().as_ref()],
+        bump = escrow.bump
+    )]
+    pub escrow: Account<'info, CampaignEscrow>,
+    #[account(
+        mut,
+        seeds = [b"donor", campaign.key().as_ref(), donor_wallet.key().as_ref()],
+        bump = donor_record.bump
+    )]
+    pub donor_record: Account<'info, DonorRecord>,
+    #[account(mut)]
+    pub donor_wallet: SystemAccount<'info>,
+    #[account(
+        mut,
+        seeds = [b"cf_refund_exec", campaign.key().as_ref()],
+        bump = refund_exec_vault.bump
+    )]
+    pub refund_exec_vault: Account<'info, RefundExecVault>,
+    #[account(mut)]
+    pub caller: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct FinalizeCampaign<'info> {
     #[account(mut)]
     pub campaign: Account<'info, CrowdfundingCampaignAccount>,
@@ -594,6 +734,15 @@ pub struct RefundExecuted {
     pub donor_count: u32,
 }
 
+#[event]
+pub struct RefundOneExecuted {
+    pub campaign: Pubkey,
+    pub donor: Pubkey,
+    pub refunded_lamports: u64,
+    pub fee_lamports: u64,
+    pub caller: Pubkey,
+}
+
 #[error_code]
 pub enum CrowdfundingError {
     #[msg("Arithmetic overflow")]
@@ -626,4 +775,8 @@ pub enum CrowdfundingError {
     InsufficientEscrowForRefund,
     #[msg("Refund executor deposit below minimum (creator must fund relayer reimbursement)")]
     RefundExecDepositTooLow,
+    #[msg("Donor already refunded")]
+    AlreadyRefunded,
+    #[msg("Refund executor vault too low to pay caller fee")]
+    FeeVaultTooLow,
 }

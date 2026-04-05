@@ -151,10 +151,14 @@ const KZT_PER_SOL = 80_000
 const KZT_PER_USDT = 510
 
 export function formatTenge(amount: number): string {
-  const tenge = new Intl.NumberFormat('ru-KZ').format(amount)
+  return `${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`
+}
+
+/** Get crypto equivalents for tooltip display */
+export function getCryptoEquivalent(amount: number): string {
   const sol = (amount / KZT_PER_SOL).toFixed(1)
   const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
-  return `${tenge} ₸ (${sol} SOL / ${usdt} USDT)`
+  return `≈ ${sol} SOL / ${usdt} USDT`
 }
 
 // Demo data — realistic Almaty campaigns

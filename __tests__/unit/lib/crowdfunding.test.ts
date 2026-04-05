@@ -35,11 +35,10 @@ describe('getCampaignProgress', () => {
 })
 
 describe('formatTenge', () => {
-  it('shows tenge with SOL and USDT equivalents', () => {
-    const result = formatTenge(8_000_000) // 8M tenge = 100 SOL = ~15686 USDT
+  it('shows tenge only (crypto in tooltip)', () => {
+    const result = formatTenge(8_000_000)
     expect(result).toContain('₸')
-    expect(result).toContain('SOL')
-    expect(result).toContain('USDT')
+    expect(result).not.toContain('SOL')
   })
 })
 

@@ -513,8 +513,8 @@ export default function AdminPage() {
                   />
                   {form.amount_usdc && (
                     <div className="text-xs text-emerald-500 dark:text-emerald-400 mt-1 space-y-0.5">
-                      <div>{t('escrow20')}: {Math.round(Number(form.amount_usdc) * 0.2).toLocaleString()} ₸</div>
-                      <div>On-chain: {(tengeToLamports(Number(form.amount_usdc)) / LAMPORTS_PER_SOL).toFixed(4)} SOL (escrow 20%: {(tengeToLamports(Number(form.amount_usdc)) * 0.2 / LAMPORTS_PER_SOL).toFixed(4)} SOL)</div>
+                      <div>{t('escrow20')}: {formatTengeWithCrypto(Math.round(Number(form.amount_usdc) * 0.2))}</div>
+                      <div className="text-gray-400 dark:text-gray-500">On-chain: {(tengeToLamports(Number(form.amount_usdc)) / LAMPORTS_PER_SOL).toFixed(4)} SOL</div>
                     </div>
                   )}
                 </div>

@@ -1,10 +1,16 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { Link, useRouter } from '@/i18n/routing'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { WalletReadyState } from '@solana/wallet-adapter-base'
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import { useAuth } from '@/components/AuthContext'
 import { formatTengeWithCrypto, getContractDetailHref } from '@/lib/contracts'
+import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+import { tengeToLamports } from '@/lib/web3/constants'
 
 type Overview = {
   totalContracts: number
@@ -52,6 +58,13 @@ export default function AkimatCabinetPage() {
     id: string
     title: string
     district: string
+    totalAmount: string
+    deadline: string
+    lat: number
+    lng: number
+    onChainPubkey: string | null
+    description: string | null
+    milestones: { description: string; deadlineDays: number; tranchePct: number; sortOrder: number }[]
     contractor: { id: string; name: string }
     crowdfunding: {
       id: string
@@ -64,11 +77,40 @@ export default function AkimatCabinetPage() {
     } | null
   }
   const [cfQueue, setCfQueue] = useState<CfQueueRow[]>([])
-  const [cfContractors, setCfContractors] = useState<{ id: string; name: string }[]>([])
+  const [cfContractors, setCfContractors] = useState<{ id: string; name: string; walletAddress: string | null }[]>([])
   const [cfLoading, setCfLoading] = useState(true)
   const [cfPick, setCfPick] = useState<Record<string, string>>({})
   const [cfBusyId, setCfBusyId] = useState<string | null>(null)
   const [cfMsg, setCfMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  const wallet = useWallet()
+  const { connection } = useConnection()
+  const { registerContract: registerContractOnChain } = useContractRegistry()
+  const pendingConnectRef = useRef(false)
+
+  useEffect(() => {
+    if (pendingConnectRef.current && wallet.wallet && !wallet.connected && !wallet.connecting) {
+      pendingConnectRef.current = false
+      wallet.connect().catch(() => {})
+    }
+  }, [wallet.wallet?.adapter.name, wallet.connected, wallet.connecting, wallet.connect])
+
+  const handleConnectWallet = useCallback(() => {
+    const isUsable = (s: WalletReadyState) => s === WalletReadyState.Installed || s === WalletReadyState.Loadable
+    const phantom = wallet.wallets.find((w) => w.adapter.name === 'Phantom' && isUsable(w.readyState))
+    const anyUsable = wallet.wallets.find((w) => isUsable(w.readyState))
+    const target = phantom || anyUsable
+    if (!target) {
+      window.open('https://phantom.app/', '_blank')
+      return
+    }
+    if (wallet.wallet?.adapter.name === target.adapter.name) {
+      wallet.connect().catch(() => {})
+      return
+    }
+    pendingConnectRef.current = true
+    wallet.select(target.adapter.name)
+  }, [wallet])
 
   const districtOptions = useMemo(() => {
     if (!data?.treasuries?.length) return ['Ауэзовский', 'Медеуский', 'Бостандыкский']
@@ -125,11 +167,38 @@ export default function AkimatCabinetPage() {
     fetch('/api/akimat/crowdfunding-queue', { headers: { ...authHeader() } })
       .then(async (r) => {
         if (!r.ok) throw new Error('fail')
-        return (await r.json()) as { queue: CfQueueRow[]; contractors: { id: string; name: string }[] }
+        return (await r.json()) as {
+          queue: unknown[]
+          contractors: { id: string; name: string; walletAddress?: string | null }[]
+        }
       })
       .then((json) => {
-        setCfQueue(Array.isArray(json.queue) ? json.queue : [])
-        setCfContractors(Array.isArray(json.contractors) ? json.contractors : [])
+        const q = (Array.isArray(json.queue) ? json.queue : []) as Record<string, unknown>[]
+        setCfQueue(
+          q.map((c) => ({
+            id: String(c.id),
+            title: String(c.title ?? ''),
+            district: String(c.district ?? ''),
+            totalAmount: String(c.totalAmount ?? '0'),
+            deadline: c.deadline ? new Date(c.deadline as string).toISOString() : '',
+            lat: Number(c.lat ?? 0),
+            lng: Number(c.lng ?? 0),
+            onChainPubkey: (c.onChainPubkey as string | null) ?? null,
+            description: (c.description as string | null) ?? null,
+            milestones: Array.isArray(c.milestones) ? c.milestones : [],
+            contractor: c.contractor as CfQueueRow['contractor'],
+            crowdfunding: (c.crowdfunding as CfQueueRow['crowdfunding']) ?? null,
+          }))
+        )
+        setCfContractors(
+          Array.isArray(json.contractors)
+            ? json.contractors.map((c) => ({
+                id: c.id,
+                name: c.name,
+                walletAddress: c.walletAddress ?? null,
+              }))
+            : []
+        )
       })
       .catch(() => {
         setCfQueue([])
@@ -240,7 +309,7 @@ export default function AkimatCabinetPage() {
               {t('actionCrowdfunding')}
             </Link>
             <Link
-              href="/blockchain"
+              href="/contracts"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium hover:border-emerald-500/40 transition-colors"
             >
               {t('actionBlockchain')}
@@ -252,6 +321,16 @@ export default function AkimatCabinetPage() {
         <section>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('crowdfundingQueueTitle')}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-2xl">{t('crowdfundingQueueHint')}</p>
+          <p className="text-xs text-amber-700/90 dark:text-amber-400/90 mb-3 max-w-2xl">{t('cfWalletHint')}</p>
+          {!wallet.connected && (
+            <button
+              type="button"
+              onClick={handleConnectWallet}
+              className="mb-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+            >
+              {t('cfConnectWalletLink')}
+            </button>
+          )}
           {cfMsg && (
             <div
               className={`mb-3 text-sm rounded-lg px-3 py-2 ${
@@ -310,45 +389,135 @@ export default function AkimatCabinetPage() {
                         {cfContractors.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
+                            {!c.walletAddress ? ` (${t('cfNoWalletSuffix')})` : ''}
                           </option>
                         ))}
                       </select>
                     </label>
                     <button
                       type="button"
-                      disabled={!cfPick[row.id] || cfBusyId === row.id}
+                      disabled={
+                        !cfPick[row.id] ||
+                        cfBusyId === row.id ||
+                        (!row.onChainPubkey &&
+                          (!wallet.connected ||
+                            !cfContractors.find((x) => x.id === cfPick[row.id])?.walletAddress))
+                      }
                       onClick={async () => {
                         const cid = cfPick[row.id]
                         if (!cid) return
+                        const picked = cfContractors.find((x) => x.id === cid)
+                        if (!picked?.walletAddress && !row.onChainPubkey) {
+                          setCfMsg({ type: 'err', text: t('cfNoContractorWallet') })
+                          return
+                        }
+
                         setCfBusyId(row.id)
                         setCfMsg(null)
+                        let pda = row.onChainPubkey
+
                         try {
+                          if (!pda) {
+                            if (!wallet.publicKey) {
+                              setCfMsg({ type: 'err', text: t('cfConnectWallet') })
+                              return
+                            }
+                            if (!picked?.walletAddress) {
+                              setCfMsg({ type: 'err', text: t('cfNoContractorWallet') })
+                              return
+                            }
+
+                            try {
+                              const minRent = 0.01 * LAMPORTS_PER_SOL
+                              const bal0 = await connection.getBalance(wallet.publicKey)
+                              if (bal0 < minRent && connection.rpcEndpoint.includes('devnet')) {
+                                const sig = await connection.requestAirdrop(
+                                  wallet.publicKey,
+                                  Math.floor(0.05 * LAMPORTS_PER_SOL)
+                                )
+                                await connection.confirmTransaction(sig, 'confirmed')
+                              }
+                            } catch {
+                              /* ignore airdrop */
+                            }
+
+                            const fullLamports = tengeToLamports(Number(row.totalAmount))
+                            const escrowLamports = Math.floor(fullLamports * 0.2)
+                            const minBalance = escrowLamports + 10_000_000
+                            const bal2 = await connection.getBalance(wallet.publicKey)
+                            if (bal2 < minBalance) {
+                              setCfMsg({
+                                type: 'err',
+                                text: t('cfInsufficientSol', {
+                                  sol: (minBalance / LAMPORTS_PER_SOL).toFixed(4),
+                                }),
+                              })
+                              return
+                            }
+
+                            if (!row.milestones?.length) {
+                              setCfMsg({ type: 'err', text: t('cfNoMilestones') })
+                              return
+                            }
+
+                            const deadlineSec = Math.floor(new Date(row.deadline).getTime() / 1000)
+                            const contractorPk = new PublicKey(picked.walletAddress)
+                            const reg = await registerContractOnChain(
+                              row.title,
+                              row.district,
+                              fullLamports,
+                              deadlineSec,
+                              row.milestones.map((m) => ({
+                                description: m.description,
+                                deadlineDays: m.deadlineDays,
+                                tranchePct: m.tranchePct,
+                              })),
+                              row.lat,
+                              row.lng,
+                              contractorPk
+                            )
+                            if (!reg?.pda) {
+                              setCfMsg({ type: 'err', text: t('cfNoPda') })
+                              return
+                            }
+                            pda = reg.pda
+                          }
+
                           const res = await fetch(`/api/contracts/${row.id}`, {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json', ...authHeader() },
-                            body: JSON.stringify({ contractorId: cid }),
+                            body: JSON.stringify({
+                              contractorId: cid,
+                              ...(pda ? { onChainPubkey: pda } : {}),
+                            }),
                           })
                           const data = await res.json().catch(() => ({}))
                           if (!res.ok) {
                             setCfMsg({ type: 'err', text: (data as { error?: string }).error || t('assignError') })
                             return
                           }
-                          setCfMsg({ type: 'ok', text: t('assignSuccess') })
+                          setCfMsg({
+                            type: 'ok',
+                            text: row.onChainPubkey ? t('assignSuccess') : t('cfAssignAndChainSuccess'),
+                          })
                           setCfQueue((q) => q.filter((x) => x.id !== row.id))
                           setCfPick((p) => {
                             const next = { ...p }
                             delete next[row.id]
                             return next
                           })
-                        } catch {
-                          setCfMsg({ type: 'err', text: t('assignError') })
+                        } catch (e) {
+                          setCfMsg({
+                            type: 'err',
+                            text: e instanceof Error ? e.message : t('assignError'),
+                          })
                         } finally {
                           setCfBusyId(null)
                         }
                       }}
                       className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {cfBusyId === row.id ? '…' : t('assignContractor')}
+                      {cfBusyId === row.id ? '…' : t('assignAndRegister')}
                     </button>
                     <Link
                       href={getContractDetailHref(row.id)}

@@ -10,7 +10,9 @@ import {
   CATEGORY_CONFIG,
   CAMPAIGN_STATUS_CONFIG,
   getEffectiveCrowdfundingStatus,
+  getCryptoEquivalent,
 } from '../lib/crowdfunding'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -57,10 +59,12 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Собрано гражданами</div>
-            <div className="text-gray-900 dark:text-white font-semibold">
-              {formatTenge(campaign.citizen_raised)}
-              <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
-            </div>
+            <CryptoTooltip amount={campaign.citizen_raised}>
+              <span className="text-gray-900 dark:text-white font-semibold">
+                {formatTenge(campaign.citizen_raised)}
+              </span>
+            </CryptoTooltip>
+            <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
           </div>
           <div className="text-right min-w-0 max-w-[11rem]">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">

@@ -134,29 +134,33 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
         { memcmp: { offset: 40, bytes: campaignPk.toBase58() } },
       ])
 
-      const remainingAccounts: AccountMeta[] = (donorRows as { publicKey: PublicKey; account: { donor: PublicKey } }[]).flatMap(
-        (d) => [
-          { pubkey: d.publicKey, isSigner: false, isWritable: true },
-          { pubkey: d.account.donor, isSigner: false, isWritable: true },
-        ]
-      )
-
       const [escrowPda] = PublicKey.findProgramAddressSync(
         [SEEDS.cfEscrow, campaignPk.toBuffer()],
         PROGRAM_IDS.crowdfunding
       )
 
-      await (program.methods as any)
-        .refundAll()
-        .accounts({
-          campaign: campaignPk,
-          escrow: escrowPda,
-          refundExecVault: vault,
-          caller: keeper.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .remainingAccounts(remainingAccounts)
-        .rpc()
+      // Execute per-donor refunds. This avoids remaining_accounts size limits of refund_all and
+      // allows idempotent progress even with many donors.
+      let refundedAny = false
+      for (const d of donorRows as { publicKey: PublicKey; account: { donor: PublicKey; lamports?: any } }[]) {
+        const donorWallet = d.account.donor
+        const donorLamports = Number(d.account.lamports ?? 0)
+        if (!donorWallet || donorLamports <= 0) continue
+
+        await (program.methods as any)
+          .refundOne()
+          .accounts({
+            campaign: campaignPk,
+            escrow: escrowPda,
+            donorRecord: d.publicKey,
+            donorWallet,
+            refundExecVault: vault,
+            caller: keeper.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+        refundedAny = true
+      }
 
       await prisma.crowdfundingCampaign.update({
         where: { id: row.id },
@@ -164,7 +168,7 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
       })
 
       processed++
-      details.push({ campaignId: row.id, outcome: 'refunded' })
+      details.push({ campaignId: row.id, outcome: refundedAny ? 'refunded' : 'refunded_noop' })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       skipped++
@@ -173,4 +177,106 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
   }
 
   return { keeperConfigured: true, processed, skipped, details }
+}
+
+export type CrowdfundingRefundKeeperDiagnostics = {
+  cronSecretConfigured: boolean
+  keeperSecretConfigured: boolean
+  keeperKeypairValid: boolean
+  keeperPublicKey: string | null
+  keeperBalanceLamports: number | null
+  rpcUrl: string
+  rpcReachable: boolean
+  parseError: string | null
+  /** DB rows that match auto-refund candidate filter (may still be skipped on-chain). */
+  dbExpiredActiveWithPubkeyCount: number
+}
+
+/**
+ * Read-only checks for ops: env shape, keeper pubkey, RPC, balance (tx fees), queue size.
+ * Does not run refund_all or expose secrets.
+ */
+export async function diagnoseCrowdfundingRefundKeeper(): Promise<CrowdfundingRefundKeeperDiagnostics> {
+  const cronSecretConfigured = !!process.env.CRON_SECRET?.trim()
+  const raw = process.env.CROWDFUNDING_REFUND_KEEPER_SECRET
+  const keeperSecretConfigured = !!raw?.trim()
+  const rpcUrl = SOLANA_RPC_URL
+
+  let dbExpiredActiveWithPubkeyCount = 0
+  try {
+    dbExpiredActiveWithPubkeyCount = await prisma.crowdfundingCampaign.count({
+      where: {
+        onChainPubkey: { not: null },
+        status: 'ACTIVE',
+        deadline: { lt: new Date() },
+      },
+    })
+  } catch {
+    dbExpiredActiveWithPubkeyCount = -1
+  }
+
+  if (!keeperSecretConfigured) {
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: false,
+      keeperKeypairValid: false,
+      keeperPublicKey: null,
+      keeperBalanceLamports: null,
+      rpcUrl,
+      rpcReachable: false,
+      parseError: null,
+      dbExpiredActiveWithPubkeyCount,
+    }
+  }
+
+  try {
+    const arr = JSON.parse(raw!) as number[]
+    if (!Array.isArray(arr) || arr.length < 32) {
+      return {
+        cronSecretConfigured,
+        keeperSecretConfigured: true,
+        keeperKeypairValid: false,
+        keeperPublicKey: null,
+        keeperBalanceLamports: null,
+        rpcUrl,
+        rpcReachable: false,
+        parseError: 'Expected JSON array of at least 32 byte values (secret key)',
+        dbExpiredActiveWithPubkeyCount,
+      }
+    }
+    const kp = Keypair.fromSecretKey(Uint8Array.from(arr))
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed')
+    let rpcReachable = false
+    let keeperBalanceLamports: number | null = null
+    try {
+      await connection.getSlot()
+      rpcReachable = true
+      keeperBalanceLamports = await connection.getBalance(kp.publicKey)
+    } catch {
+      rpcReachable = false
+    }
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: true,
+      keeperKeypairValid: true,
+      keeperPublicKey: kp.publicKey.toBase58(),
+      keeperBalanceLamports,
+      rpcUrl,
+      rpcReachable,
+      parseError: null,
+      dbExpiredActiveWithPubkeyCount,
+    }
+  } catch (e) {
+    return {
+      cronSecretConfigured,
+      keeperSecretConfigured: true,
+      keeperKeypairValid: false,
+      keeperPublicKey: null,
+      keeperBalanceLamports: null,
+      rpcUrl,
+      rpcReachable: false,
+      parseError: e instanceof Error ? e.message : String(e),
+      dbExpiredActiveWithPubkeyCount,
+    }
+  }
 }

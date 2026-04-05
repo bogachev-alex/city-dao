@@ -5,6 +5,7 @@ import { useRouter } from '@/i18n/routing'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import {
   type UserRole,
@@ -153,7 +154,7 @@ export default function LoginPage() {
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Вход в систему</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Подключите Phantom кошелёк для входа
+              Подключите Solana кошелёк для входа
             </p>
           </div>
 
@@ -194,44 +195,13 @@ export default function LoginPage() {
           )}
 
           {!connected ? (
-            <div className="space-y-2">
-              <button
-                onClick={handleWalletConnect}
-                disabled={connecting}
-                className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-              >
-                {connecting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Подключение...
-                  </>
-                ) : (
-                  <>
-                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                    Подключить Phantom
-                  </>
-                )}
-              </button>
-              {connecting && (
-                <div className="space-y-1.5 text-center">
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Ожидаем подтверждения в Phantom...{' '}
-                    <button
-                      onClick={() => { pendingConnectRef.current = false; disconnect().catch(() => {}); setWalletError('Подключение отменено') }}
-                      className="underline hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      Отмена
-                    </button>
-                  </p>
-                  {connectingTooLong && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
-                      Проверьте иконку Phantom в панели браузера — возможно там ждёт подтверждение подключения
-                    </p>
-                  )}
-                </div>
-              )}
+            <div className="space-y-3">
+              <div className="wallet-adapter-btn">
+                <WalletMultiButton />
+              </div>
+              <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+                Phantom, Solflare, Backpack, Coinbase и другие
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

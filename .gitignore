@@ -30,3 +30,5 @@ Dockerfile
 AGENTS.md
 CHANGELOG.md
 opencode.json
+
+.kilo/

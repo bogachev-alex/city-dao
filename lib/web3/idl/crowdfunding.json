@@ -461,6 +461,126 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "refund_one",
+      "docs": [
+        "After deadline (and if target not reached): return a single donor's `lamports` from escrow PDA.",
+        "Permissionless — anyone can execute it — and it pays a small fee from `refund_exec_vault`."
+      ],
+      "discriminator": [
+        51,
+        162,
+        110,
+        71,
+        71,
+        81,
+        71,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "donor_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  110,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "donor_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "donor_wallet",
+          "writable": true
+        },
+        {
+          "name": "refund_exec_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  102,
+                  95,
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  101,
+                  120,
+                  101,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [

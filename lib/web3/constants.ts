@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 
-// Solana cluster
+// Solana cluster (widen type so Explorer helpers can branch on mainnet vs. others)
 export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
 export const SOLANA_NETWORK: SolanaCluster = 'devnet'
 // Force devnet for all wallet and RPC operations in this app.

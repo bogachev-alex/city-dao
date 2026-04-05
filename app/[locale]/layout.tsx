@@ -1,3 +1,4 @@
+import '@solana/wallet-adapter-react-ui/styles.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { notFound } from 'next/navigation'
@@ -10,6 +11,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/components/AuthContext'
 import { AccessibilityProvider } from '@/components/AccessibilityProvider'
 import TokenNotification from '@/components/TokenNotification'
+import AdlOnChainBridge from '@/components/AdlOnChainBridge'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
@@ -44,6 +46,7 @@ export default async function LocaleLayout({
                 <SolanaProviderWrapper>
                   <Navbar />
                   <TokenNotification />
+                  <AdlOnChainBridge />
                   {children}
                 </SolanaProviderWrapper>
               </AccessibilityProvider>

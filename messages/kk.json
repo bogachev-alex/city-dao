@@ -359,14 +359,24 @@
     "blockersEmpty": "Таңдалған аудан бойынша кедергі жазбалары жоқ.",
     "blockersDistrict": "Аудан",
     "crowdfundingQueueTitle": "Краудфандинг: мердігер тағайындау",
-    "crowdfundingQueueHint": "Азаматтар жинаған сомадан кейін жоба келісімшарты жасалды. Орындау үшін мердігерді таңдаңыз.",
+    "crowdfundingQueueHint": "Азаматтар жинаған сомадан кейін жоба келісімшарты жасалды. Solana әмияны көрсетілген мердігерді таңдаңыз: келісімшарт on-chain тіркеледі («Әкімші» сияқты), содан кейін ДҚ-да мердігер мен PDA мекенжайы бекітіледі.",
     "crowdfundingQueueEmpty": "Мердігерді күткен келісімшарттар жоқ.",
     "crowdfundingQueueCampaign": "Науқан",
     "crowdfundingQueueStatus": "Мәртебе",
     "selectContractor": "Мердігер",
     "assignContractor": "Тағайындау",
     "assignSuccess": "Мердігер тағайындалды",
-    "assignError": "Тағайындау сәтсіз"
+    "assignError": "Тағайындау сәтсіз",
+    "assignAndRegister": "Тағайындау және блокчейнге жазу",
+    "cfWalletHint": "Әкімдік өкілінің әмияны (authority) мен келісімшарт сомасының ~20%-ы escrow үшін SOL қажет. Мердігерде ДҚ-да walletAddress болуы керек.",
+    "cfConnectWalletLink": "Әмиянды қосу",
+    "cfConnectWallet": "register_contract транзакциясын қол қою үшін әкімдік әмиянын қосыңыз.",
+    "cfNoContractorWallet": "Таңдалған мердігерде Solana әмияны жоқ. ДҚ-да walletAddress көрсетіңіз.",
+    "cfInsufficientSol": "Әмиянда SOL жеткіліксіз. Шамамен {sol} SOL қажет (шамамен 20% escrow + комиссия).",
+    "cfNoMilestones": "Кезеңдер жоқ — әзірлеушіге хабарласыңыз.",
+    "cfAssignAndChainSuccess": "Мердігер тағайындалды, келісімшарт Solana-да тіркелді және ДҚ-мен байланыстырылды.",
+    "cfNoPda": "On-chain келісімшарт мекенжайы (PDA) алынбады.",
+    "cfNoWalletSuffix": "әмиян жоқ"
   },
   "jury": {
     "citizensOnlyTitle": "Тек азамат-алқабилер үшін",
@@ -551,7 +561,10 @@
       "title": "Транзакциялар",
       "empty": "Solana қолтаңбасы бар жазбалар жоқ",
       "viewAll": "Барлық on-chain операциялар →",
-      "demoNote": "Нақты қолтаңбалар пайда болғанша демо-жазбалар қосылды"
+      "demoNote": "Нақты қолтаңбалар пайда болғанша демо-жазбалар қосылды",
+      "offChainRowHint": "Тек қолданбадағы жазба; Explorer-де ашатын нәрсе жоқ (транзакция қолтаңбасы немесе белгілі on-chain мекенжай жоқ)",
+      "explorerTxHint": "Solana Explorer-де транзакцияны ашу",
+      "explorerAddressHint": "Solana Explorer-де on-chain шотты ашу"
     },
     "proposalResearch": {
       "aiAnalysis": "AI Талдау",
