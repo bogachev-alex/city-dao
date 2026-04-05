@@ -64,7 +64,9 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
                 {formatTenge(campaign.citizen_raised)}
               </span>
             </CryptoTooltip>
-            <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
+            <CryptoTooltip amount={campaign.citizen_target}>
+              <span className="text-gray-400 dark:text-gray-500 font-normal text-xs">/ {formatTenge(campaign.citizen_target)}</span>
+            </CryptoTooltip>
           </div>
           <div className="text-right min-w-0 max-w-[11rem]">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
@@ -105,9 +107,11 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             <svg width="14" height="14" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-              Гос. субсидия {statePercent}% — {formatTenge(campaign.state_match)}
-            </span>
+            <CryptoTooltip amount={campaign.state_match}>
+              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                Гос. субсидия {statePercent}% — {formatTenge(campaign.state_match)}
+              </span>
+            </CryptoTooltip>
           </div>
         )}
 

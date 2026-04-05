@@ -12,6 +12,7 @@ import {
 } from '@/lib/crowdfunding'
 import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
+import CryptoTooltip from '@/components/CryptoTooltip'
 import { DISTRICTS } from '@/lib/contracts'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 import { MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS } from '@/lib/web3/constants'
@@ -323,11 +324,11 @@ export default function NewCampaignPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Доля граждан ({100 - categoryConfig.statePercent}%)</div>
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(citizenTarget)}</div>
+                    <CryptoTooltip amount={citizenTarget}><span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(citizenTarget)}</span></CryptoTooltip>
                   </div>
                   <div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Гос. субсидия ({categoryConfig.statePercent}%)</div>
-                    <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatTenge(stateMatch)}</div>
+                    <CryptoTooltip amount={stateMatch}><span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatTenge(stateMatch)}</span></CryptoTooltip>
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">

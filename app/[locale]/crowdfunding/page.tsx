@@ -13,6 +13,7 @@ import {
   normalizeCampaign,
   getEffectiveCrowdfundingStatus,
 } from '@/lib/crowdfunding'
+import CryptoTooltip from '@/components/CryptoTooltip'
 import { fetchCampaigns } from '@/lib/api'
 import { DISTRICTS } from '@/lib/contracts'
 import CampaignCard from '@/components/CampaignCard'
@@ -97,7 +98,7 @@ export default function CrowdfundingPage() {
             <div className="flex gap-3">
               {[
                 { label: 'Активных', value: activeCampaigns.length, color: 'text-blue-600' },
-                { label: 'Собрано', value: formatTenge(totalRaised), color: 'text-emerald-600' },
+                { label: 'Собрано', value: <CryptoTooltip amount={totalRaised}><span className="text-emerald-600">{formatTenge(totalRaised)}</span></CryptoTooltip>, color: '' },
                 { label: 'Доноров', value: totalDonors, color: 'text-gray-900' },
                 { label: 'Профинансировано', value: fundedCount, color: 'text-emerald-600' },
               ].map((stat) => (

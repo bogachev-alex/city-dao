@@ -25,7 +25,7 @@ export default function TreasuryPage() {
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <div className="bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <div className="text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">{t('districtTreasury')}</div>
@@ -52,7 +52,7 @@ export default function TreasuryPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <TreasuryDashboard district={district} />
       </div>
     </div>

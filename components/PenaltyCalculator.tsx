@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Contract, formatAmount, formatTengeWithCrypto } from '@/lib/contracts'
+import { Contract, formatTengeWithCrypto } from '@/lib/contracts'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 interface PenaltyCalculatorProps {
   contract: Contract
@@ -52,7 +53,7 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
           <span className="text-red-500 dark:text-red-400">{t('penaltyVar')}</span>
         </div>
         <div className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-          {contract.days_overdue ?? 0} {t('days')} × 1% × {formatAmount(contract.amount_usdc)} ₸ = {formatTengeWithCrypto(Math.round((contract.days_overdue ?? 0) * 0.01 * contract.amount_usdc))}
+          {contract.days_overdue ?? 0} {t('days')} × 1% × {formatTengeWithCrypto(contract.amount_usdc)} = {formatTengeWithCrypto(Math.round((contract.days_overdue ?? 0) * 0.01 * contract.amount_usdc))}
         </div>
       </div>
 
@@ -60,13 +61,15 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-3 border border-gray-200 dark:border-gray-800">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('escrow20')}</div>
-          <div className="text-gray-900 dark:text-white font-semibold">{formatAmount(contract.escrow_amount)}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">{t('usdcFrozen')}</div>
+          <CryptoTooltip amount={contract.escrow_amount}>
+            <span className="text-gray-900 dark:text-white font-semibold">{formatTengeWithCrypto(contract.escrow_amount)}</span>
+          </CryptoTooltip>
         </div>
         <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-3 border border-gray-200 dark:border-gray-800">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dailyPenalty')}</div>
-          <div className="text-yellow-600 dark:text-yellow-400 font-semibold">{formatAmount(dailyPenalty)}</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">{t('usdcPerDay')}</div>
+          <CryptoTooltip amount={dailyPenalty}>
+            <span className="text-yellow-600 dark:text-yellow-400 font-semibold">{formatTengeWithCrypto(dailyPenalty)}</span>
+          </CryptoTooltip>
         </div>
       </div>
 
@@ -75,9 +78,11 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
         <>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">{t('currentPenalty')}</span>
-            <span className={`font-bold text-lg ${isOverdue ? 'text-red-500 dark:text-red-400 animate-pulse' : 'text-red-500 dark:text-red-400'}`}>
-              {formatTengeWithCrypto(Math.round(currentPenalty))}
-            </span>
+            <CryptoTooltip amount={Math.round(currentPenalty)}>
+              <span className={`font-bold text-lg ${isOverdue ? 'text-red-500 dark:text-red-400 animate-pulse' : 'text-red-500 dark:text-red-400'}`}>
+                {formatTengeWithCrypto(Math.round(currentPenalty))}
+              </span>
+            </CryptoTooltip>
           </div>
 
           {/* Escrow drain bar */}
@@ -93,8 +98,12 @@ export default function PenaltyCalculator({ contract }: PenaltyCalculatorProps) 
               />
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-400 dark:text-gray-500">{t('remaining')} {formatTengeWithCrypto(Math.max(0, Math.round(contract.escrow_amount - currentPenalty)))}</span>
-              <span className="text-red-500 dark:text-red-400">-{formatTengeWithCrypto(Math.round(currentPenalty))}</span>
+              <CryptoTooltip amount={Math.max(0, Math.round(contract.escrow_amount - currentPenalty))}>
+                <span className="text-gray-400 dark:text-gray-500">{t('remaining')} {formatTengeWithCrypto(Math.max(0, Math.round(contract.escrow_amount - currentPenalty)))}</span>
+              </CryptoTooltip>
+              <CryptoTooltip amount={Math.round(currentPenalty)}>
+                <span className="text-red-500 dark:text-red-400">-{formatTengeWithCrypto(Math.round(currentPenalty))}</span>
+              </CryptoTooltip>
             </div>
           </div>
         </>
