@@ -586,7 +586,99 @@ async function main() {
     },
   })
 
-  console.log('Created 13 spending proposals (8 with votes + 5 fresh for testing)')
+  // Proposals for remaining 4 districts (based on real Almaty urban issues)
+  const alatauTreasury = treasuries.find(t => t.district === 'Алатауский')!
+  const zhetysuTreasury = treasuries.find(t => t.district === 'Жетысуский')!
+  const nauryzbayTreasury = treasuries.find(t => t.district === 'Наурызбайский')!
+  const turksibTreasury = treasuries.find(t => t.district === 'Турксибский')!
+
+  const proposal9 = await prisma.spendingProposal.create({
+    data: {
+      treasuryId: alatauTreasury.id, title: 'Ремонт арыков в мкр. Шанырак',
+      description: 'Восстановление ирригационной системы арыков протяжённостью 3.5 км. Бетонирование русла, установка решёток, очистка от мусора. Арыки не ремонтировались с 2008 года.',
+      amount: 8_400_000, category: 'ЖКХ', status: 'VOTING',
+      votingEnds: new Date(now + 11 * day), votesFor: 18, votesAgainst: 3,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: alatauTreasury.id, title: 'Строительство тротуара по ул. Рыскулова (от Саина до Ташкентской)',
+      description: 'Участок 1.2 км без тротуара — пешеходы ходят по проезжей части. Установка бордюров, укладка плитки, 12 фонарей.',
+      amount: 11_200_000, category: 'Инфраструктура', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  const proposal10 = await prisma.spendingProposal.create({
+    data: {
+      treasuryId: zhetysuTreasury.id, title: 'Капитальный ремонт подземного перехода на Райымбека — Розыбакиева',
+      description: 'Переход в аварийном состоянии: протечки, разрушение ступеней, не работает освещение. Полная реконструкция с доступностью для МГН.',
+      amount: 14_500_000, category: 'Инфраструктура', status: 'VOTING',
+      votingEnds: new Date(now + 9 * day), votesFor: 27, votesAgainst: 5,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: zhetysuTreasury.id, title: 'Мини-футбольное поле у школы №146',
+      description: 'Установка поля с искусственным покрытием 40×20 м, ограждение, 4 прожектора. По вечерам доступно жителям.',
+      amount: 5_900_000, category: 'Спорт', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+  const proposal11 = await prisma.spendingProposal.create({
+    data: {
+      treasuryId: nauryzbayTreasury.id, title: 'Автобусные остановки с подогревом на Наурызбай батыра',
+      description: 'Замена 6 остановочных павильонов на утеплённые с USB-зарядками и электронным табло прибытия автобусов.',
+      amount: 9_600_000, category: 'Инфраструктура', status: 'VOTING',
+      votingEnds: new Date(now + 7 * day), votesFor: 14, votesAgainst: 6,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: nauryzbayTreasury.id, title: 'Озеленение вдоль канала Большой Алматинский',
+      description: 'Высадка 200 деревьев (ясень, клён, карагач), обустройство прогулочной дорожки 2 км вдоль канала.',
+      amount: 6_300_000, category: 'Экология', status: 'APPROVED',
+      votingEnds: new Date(now - 3 * day), votesFor: 22, votesAgainst: 2, quorumMet: true,
+    },
+  })
+  const proposal12 = await prisma.spendingProposal.create({
+    data: {
+      treasuryId: turksibTreasury.id, title: 'Установка камер видеонаблюдения на ж/д переездах',
+      description: '8 IP-камер с AI-аналитикой на переездах Турксиб — Сейфуллина. Мониторинг нарушений, передача в полицию.',
+      amount: 4_200_000, category: 'Безопасность', status: 'VOTING',
+      votingEnds: new Date(now + 13 * day), votesFor: 33, votesAgainst: 7,
+    },
+  })
+  await prisma.spendingProposal.create({
+    data: {
+      treasuryId: turksibTreasury.id, title: 'Ремонт кровли многоквартирных домов по ул. Шолохова',
+      description: '4 дома 1965 года постройки, протекающие крыши. Замена мягкой кровли на профнастил с утеплением.',
+      amount: 13_800_000, category: 'ЖКХ', status: 'VOTING',
+      votingEnds: new Date(now + 14 * day), votesFor: 0, votesAgainst: 0,
+    },
+  })
+
+  console.log('Created 21 spending proposals')
+
+  // Penalties for other districts (real scenarios)
+  const medeuskiyTreasuryForPenalty = treasuries.find(t => t.district === 'Медеуский')!
+  const bostTreasuryForPenalty = treasuries.find(t => t.district === 'Бостандыкский')!
+  const turksibTreasuryForPenalty = treasuries.find(t => t.district === 'Турксибский')!
+
+  await prisma.penalty.create({
+    data: { contractId: contract5.id, type: 'TIME_OVERDUE', amountTenge: 3_200_000, daysOverdue: 4, districtTreasuryId: medeuskiyTreasuryForPenalty.id },
+  })
+  await prisma.penalty.create({
+    data: { contractId: contract8.id, type: 'QUALITY_REJECTED', amountTenge: 7_100_000, triggeredBy: citizens[2].id, districtTreasuryId: bostTreasuryForPenalty.id },
+  })
+  await prisma.penalty.create({
+    data: { contractId: contract9.id, type: 'TIME_OVERDUE', amountTenge: 2_400_000, daysOverdue: 3, districtTreasuryId: turksibTreasuryForPenalty.id },
+  })
+
+  await prisma.districtTreasury.update({ where: { id: medeuskiyTreasuryForPenalty.id }, data: { balance: { increment: 3_200_000 } } })
+  await prisma.districtTreasury.update({ where: { id: bostTreasuryForPenalty.id }, data: { balance: { increment: 7_100_000 } } })
+  await prisma.districtTreasury.update({ where: { id: turksibTreasuryForPenalty.id }, data: { balance: { increment: 2_400_000 } } })
+
+  console.log('Created 7 total penalties across 4 districts')
 
   // ─── AI Research Reports (4) ───
   await prisma.aiResearchReport.create({
@@ -638,9 +730,35 @@ async function main() {
     },
   })
 
-  console.log('Created 4 AI research reports')
+  // AI reports for new district proposals
+  await prisma.aiResearchReport.create({
+    data: {
+      proposalId: proposal10.id,
+      swot: { strengths: ['Критическая необходимость — аварийное состояние', 'Повышение безопасности пешеходов'], weaknesses: ['Высокая стоимость из-за масштаба', 'Ограничение движения на время ремонта'], opportunities: ['Совмещение с ремонтом коллектора'], threats: ['Подземные коммуникации могут удорожить проект'] },
+      costAnalysis: { proposed: 14_500_000, market_average: 13_800_000, deviation_pct: 5.1, verdict: 'reasonable' },
+      similarProjects: [{ city: 'Астана', country: 'Казахстан', year: 2023, budget_usd: 35000, outcome: 'success', lessons: 'Обязательно привлекать МГН-эксперта на этапе проектирования' }],
+      riskScore: 35, riskLevel: 'LOW_RISK',
+      keyConcerns: ['Обнаружение скрытых дефектов увеличит бюджет'],
+      keyPositives: ['Аварийное состояние — высокий приоритет', 'Цена в пределах рынка'],
+      sourcesUsed: ['stat.gov.kz', 'kapital.kz'],
+    },
+  })
+  await prisma.aiResearchReport.create({
+    data: {
+      proposalId: proposal12.id,
+      swot: { strengths: ['Снижение аварийности', 'Обратная связь с полицией'], weaknesses: ['Обслуживание камер дорого', 'Конфиденциальность'], opportunities: ['Интеграция с «Сергек»'], threats: ['Вандализм', 'Протесты из-за слежки'] },
+      costAnalysis: { proposed: 4_200_000, market_average: 4_500_000, deviation_pct: -6.7, verdict: 'below_market' },
+      similarProjects: [{ city: 'Караганда', country: 'Казахстан', year: 2024, budget_usd: 11000, outcome: 'success', lessons: 'AI-аналитика снизила количество нарушений на 40%' }],
+      riskScore: 30, riskLevel: 'LOW_RISK',
+      keyConcerns: ['Ежемесячное обслуживание ~120 000 ₸'],
+      keyPositives: ['Ниже рынка на 6.7%', 'Снижение аварийности доказано'],
+      sourcesUsed: ['polisia.kz', 'digital.gov.kz'],
+    },
+  })
 
-  // ─── Proposal Votes (20) ───
+  console.log('Created 6 AI research reports')
+
+  // ─── Proposal Votes (32) ───
   await prisma.proposalVote.createMany({
     data: [
       { proposalId: proposal1.id, citizenId: citizens[1].id, inFavor: true },
@@ -663,10 +781,23 @@ async function main() {
       { proposalId: proposal8.id, citizenId: citizens[3].id, inFavor: false },
       { proposalId: proposal8.id, citizenId: citizens[5].id, inFavor: false },
       { proposalId: proposal8.id, citizenId: citizens[0].id, inFavor: true },
+      // New district proposals
+      { proposalId: proposal9.id, citizenId: citizens[5].id, inFavor: true },
+      { proposalId: proposal9.id, citizenId: citizens[7].id, inFavor: true },
+      { proposalId: proposal9.id, citizenId: citizens[9].id, inFavor: false },
+      { proposalId: proposal10.id, citizenId: citizens[6].id, inFavor: true },
+      { proposalId: proposal10.id, citizenId: citizens[0].id, inFavor: true },
+      { proposalId: proposal10.id, citizenId: citizens[8].id, inFavor: true },
+      { proposalId: proposal10.id, citizenId: citizens[4].id, inFavor: false },
+      { proposalId: proposal11.id, citizenId: citizens[4].id, inFavor: true },
+      { proposalId: proposal11.id, citizenId: citizens[1].id, inFavor: false },
+      { proposalId: proposal11.id, citizenId: citizens[8].id, inFavor: true },
+      { proposalId: proposal12.id, citizenId: citizens[7].id, inFavor: true },
+      { proposalId: proposal12.id, citizenId: citizens[2].id, inFavor: true },
     ],
   })
 
-  console.log('Created 20 proposal votes')
+  console.log('Created 32 proposal votes')
 
   // ═══════════════════════════════════════════════
   // CITIZEN SUGGESTIONS (6)
