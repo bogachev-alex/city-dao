@@ -97,6 +97,7 @@ function mapOnChainContract(account: any, pubkey: PublicKey): Contract {
     id: pubkey.toBase58(),
     title: account.title,
     contractor: account.contractor.toBase58(),
+    contractorWalletAddress: account.contractor.toBase58(),
     amount_usdc: account.totalAmount.toNumber(),
     deadline: new Date(deadlineMs).toISOString(),
     district: account.district,
