@@ -446,7 +446,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       )}
 
       {/* COMMIT PHASE */}
-      {phase === 'commit' && (
+      {phase === 'commit' && session && (
         <div className="space-y-5">
           <div>
             <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('contractorPhotos')}</h3>
