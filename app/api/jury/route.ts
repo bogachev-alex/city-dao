@@ -1,22 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
+import type { Prisma } from '@/lib/generated/prisma'
 import { prisma } from '@/lib/prisma'
+import { getAuthPayload, requireRole } from '@/lib/auth-server'
+import { isSolanaAddress } from '@/lib/blockchainDashboardModel'
+import { getIpfsUrl } from '@/lib/pinata'
 
 export const dynamic = 'force-dynamic'
 
-async function resolveSession(sessionId: string) {
-  const include = {
-    contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
-    milestone: { select: { id: true, description: true } },
-    votes: {
-      include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
-    },
-  } as const
+const sessionInclude = {
+  contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
+  milestone: { select: { id: true, description: true } },
+  votes: {
+    include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
+  },
+} satisfies Prisma.JurySessionInclude
 
+type SessionRow = Prisma.JurySessionGetPayload<{ include: typeof sessionInclude }>
+
+function parsePhotoHashes(json: unknown): string[] {
+  if (!Array.isArray(json)) return []
+  return json.filter((x): x is string => typeof x === 'string' && x.length > 0)
+}
+
+async function enrichJurySessionForClient(session: SessionRow) {
+  const milestones = await prisma.milestone.findMany({
+    where: { contractId: session.contractId },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true },
+  })
+  const milestoneIndexOnChain = Math.max(0, milestones.findIndex((m) => m.id === session.milestoneId))
+
+  const evidenceLog = await prisma.workLog.findFirst({
+    where: {
+      contractId: session.contractId,
+      milestoneId: session.milestoneId,
+      type: 'MILESTONE_CLAIM',
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { photoHashes: true },
+  })
+  const cids = parsePhotoHashes(evidenceLog?.photoHashes)
+  const evidencePhotoUrls = cids.slice(0, 8).map(getIpfsUrl)
+
+  return {
+    ...session,
+    milestoneIndexOnChain,
+    evidencePhotoUrls,
+  }
+}
+
+async function resolveSession(sessionId: string): Promise<SessionRow | null> {
   // Primary lookup by real JurySession.id
   const direct = await prisma.jurySession.findUnique({
     where: { id: sessionId },
-    include,
+    include: sessionInclude,
   })
   if (direct) return direct
 
@@ -29,7 +67,7 @@ async function resolveSession(sessionId: string) {
 
   let candidates = await prisma.jurySession.findMany({
     where: { contractId, milestoneId: milestoneToken },
-    include,
+    include: sessionInclude,
     orderBy: { createdAt: 'asc' },
   })
 
@@ -44,7 +82,7 @@ async function resolveSession(sessionId: string) {
             sortOrder: milestoneSortOrder,
           },
         },
-        include,
+        include: sessionInclude,
         orderBy: { createdAt: 'asc' },
       })
     }
@@ -62,7 +100,7 @@ async function resolveSession(sessionId: string) {
   return candidates[candidates.length - 1]
 }
 
-async function createSessionFromLegacyAlias(sessionId: string) {
+async function createSessionFromLegacyAlias(sessionId: string): Promise<SessionRow | null> {
   const parts = sessionId.split('-').filter(Boolean)
   if (parts.length < 2) return null
 
@@ -101,13 +139,7 @@ async function createSessionFromLegacyAlias(sessionId: string) {
   // Re-check after lookup to avoid duplicates in concurrent requests.
   const existing = await prisma.jurySession.findFirst({
     where: { contractId: contract.id, milestoneId: milestone.id },
-    include: {
-      contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
-      milestone: { select: { id: true, description: true } },
-      votes: {
-        include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
-      },
-    },
+    include: sessionInclude,
     orderBy: { createdAt: 'desc' },
   })
   if (existing) return existing
@@ -133,16 +165,46 @@ async function createSessionFromLegacyAlias(sessionId: string) {
         })),
       },
     },
-    include: {
-      contract: { select: { id: true, title: true, district: true, onChainPubkey: true } },
-      milestone: { select: { id: true, description: true } },
-      votes: {
-        include: { citizen: { select: { id: true, walletAddress: true, tier: true } } },
-      },
-    },
+    include: sessionInclude,
   })
 
   return session
+}
+
+/** Resolve DB citizen id for jury actions (wallet auth only). */
+async function resolveJuryCitizenId(req: NextRequest): Promise<{ citizenId: string } | NextResponse> {
+  const roleDeny = requireRole(req, ['CITIZEN'])
+  if (roleDeny) return roleDeny
+
+  const auth = getAuthPayload(req)
+  if (!auth?.id || !isSolanaAddress(auth.id)) {
+    return NextResponse.json(
+      { error: 'Wallet login required: jury voting uses your registered citizen wallet address' },
+      { status: 403 },
+    )
+  }
+
+  const citizen = await prisma.citizen.findUnique({
+    where: { walletAddress: auth.id },
+    select: { id: true },
+  })
+  if (!citizen) {
+    return NextResponse.json({ error: 'No citizen registered for this wallet' }, { status: 403 })
+  }
+
+  return { citizenId: citizen.id }
+}
+
+function tallyRevealedVotes(
+  votes: { revealedVote: 'ACCEPT' | 'REJECT' | null; weight: number }[],
+): { weightedAccept: number; weightedReject: number } {
+  let weightedAccept = 0
+  let weightedReject = 0
+  for (const v of votes) {
+    if (v.revealedVote === 'ACCEPT') weightedAccept += v.weight
+    else if (v.revealedVote === 'REJECT') weightedReject += v.weight
+  }
+  return { weightedAccept, weightedReject }
 }
 
 // GET /api/jury?sessionId=... — get jury session details
@@ -157,7 +219,8 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
-    return NextResponse.json(session)
+    const payload = await enrichJurySessionForClient(session)
+    return NextResponse.json(payload)
   }
 
   // List active sessions
@@ -173,9 +236,16 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(sessions)
 }
 
-// POST /api/jury/commit — submit vote commitment
+// POST /api/jury — submit vote commitment (citizen derived from wallet auth)
 export async function POST(req: NextRequest) {
-  const { sessionId, citizenId, commitHash } = await req.json()
+  const resolved = await resolveJuryCitizenId(req)
+  if (resolved instanceof NextResponse) return resolved
+  const { citizenId } = resolved
+
+  const { sessionId, commitHash } = await req.json()
+  if (!sessionId || typeof commitHash !== 'string' || !commitHash) {
+    return NextResponse.json({ error: 'sessionId and commitHash required' }, { status: 400 })
+  }
 
   const vote = await prisma.juryVote.findFirst({
     where: { sessionId, citizenId },
@@ -197,7 +267,15 @@ export async function POST(req: NextRequest) {
 
 // PATCH /api/jury — reveal vote
 export async function PATCH(req: NextRequest) {
-  const { sessionId, citizenId, vote, salt } = await req.json()
+  const resolved = await resolveJuryCitizenId(req)
+  if (resolved instanceof NextResponse) return resolved
+  const { citizenId } = resolved
+
+  const { sessionId, vote, salt } = await req.json()
+  if (!sessionId) {
+    return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
+  }
+
   const normalizedVote = String(vote).toLowerCase()
   if (normalizedVote !== 'accept' && normalizedVote !== 'reject') {
     return NextResponse.json({ error: 'Invalid vote value' }, { status: 400 })
@@ -214,39 +292,69 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Must commit before reveal' }, { status: 400 })
   }
 
-  // Verify commit-reveal: normalize vote to lowercase to match client commit format.
   const computedHash = createHash('sha256').update(`${normalizedVote}:${salt}`).digest('hex')
   if (computedHash !== juryVote.commitHash) {
     return NextResponse.json({ error: 'Hash mismatch: vote/salt does not match commitment' }, { status: 400 })
   }
 
-  const updated = await prisma.juryVote.update({
+  await prisma.juryVote.update({
     where: { id: juryVote.id },
     data: { revealedVote: voteEnum, revealedSalt: salt },
   })
 
-  // Check if all votes revealed — if so, finalize
+  const updated = await prisma.juryVote.findUnique({ where: { id: juryVote.id } })
+
   const allVotes = await prisma.juryVote.findMany({
     where: { sessionId },
   })
+  const { weightedAccept, weightedReject } = tallyRevealedVotes(allVotes)
   const allRevealed = allVotes.every((v) => v.revealedVote !== null)
 
-  if (allRevealed) {
-    let weightedAccept = 0
-    let weightedReject = 0
-    for (const v of allVotes) {
-      if (v.revealedVote === 'ACCEPT') weightedAccept += v.weight
-      else weightedReject += v.weight
-    }
+  const earlyAccept = weightedAccept >= 1
+  if (!earlyAccept && !allRevealed) {
+    return NextResponse.json(updated)
+  }
 
-    const result = weightedAccept >= 3 ? 'ACCEPT' : 'REJECT'
-    const status = weightedAccept === 2 && weightedReject === 2 ? 'ESCALATED' : 'FINALIZED'
+  const sessionRow = await prisma.jurySession.findUnique({
+    where: { id: sessionId },
+    select: { status: true, milestoneId: true },
+  })
+  if (!sessionRow || (sessionRow.status !== 'COMMIT_PHASE' && sessionRow.status !== 'REVEAL_PHASE')) {
+    return NextResponse.json(updated)
+  }
 
-    await prisma.jurySession.update({
+  let result: 'ACCEPT' | 'REJECT' | null
+  let status: 'FINALIZED' | 'ESCALATED'
+
+  if (earlyAccept) {
+    result = 'ACCEPT'
+    status = 'FINALIZED'
+  } else if (weightedAccept === 2 && weightedReject === 2) {
+    status = 'ESCALATED'
+    result = null
+  } else {
+    result = 'REJECT'
+    status = 'FINALIZED'
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.jurySession.update({
       where: { id: sessionId },
       data: { status, result, weightedAccept, weightedReject },
     })
-  }
+
+    if (status === 'FINALIZED' && result === 'ACCEPT') {
+      await tx.milestone.update({
+        where: { id: sessionRow.milestoneId },
+        data: { status: 'ACCEPTED' },
+      })
+    } else if (status === 'FINALIZED' && result === 'REJECT') {
+      await tx.milestone.update({
+        where: { id: sessionRow.milestoneId },
+        data: { status: 'REJECTED' },
+      })
+    }
+  })
 
   return NextResponse.json(updated)
 }

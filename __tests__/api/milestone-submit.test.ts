@@ -67,6 +67,11 @@ describe('POST .../milestones/[milestoneId]/submit', () => {
       where: { id: { in: ['orphan-sess'] } },
     })
     expect(prismaMock.jurySession.create).toHaveBeenCalled()
+    expect(prismaMock.workLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ milestoneId: 'm1' }),
+      }),
+    )
   })
 
   it('removes all stale active JurySessions when multiple orphans exist', async () => {

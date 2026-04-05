@@ -639,7 +639,12 @@
       "unknownError": "Unknown error",
       "loadError": "Failed to load session",
       "voteError": "Error submitting vote",
-      "revealError": "Error revealing vote"
+      "revealError": "Error revealing vote",
+      "notJurorWalletTitle": "Wallet required",
+      "notJurorWalletLead": "Connect the same Solana wallet you used to register as a citizen. Jury votes are tied to your on-chain citizen account.",
+      "openLogin": "Open login",
+      "notJurorAssignedTitle": "You are not on this jury",
+      "notJurorAssignedLead": "Your wallet is not among the jurors selected for this session."
     },
     "treasuryDashboard": {
       "treasuryBalance": "District treasury balance",

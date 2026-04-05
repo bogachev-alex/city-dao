@@ -74,6 +74,7 @@ model Milestone {
   sortOrder    Int             @default(0)
 
   jurySessions JurySession[]
+  workLogs     WorkLog[]
 
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -336,6 +337,8 @@ model WorkLog {
   gpsLat         Float?
   gpsLng         Float?
   gpsValid       Boolean     @default(false) // within 500m of contract
+  milestoneId    String?
+  milestone      Milestone?  @relation(fields: [milestoneId], references: [id])
 
   createdAt      DateTime    @default(now())
 }

@@ -126,6 +126,7 @@ export async function POST(
       data: {
         contractId,
         contractorId: workLogContractorId,
+        milestoneId,
         type: 'MILESTONE_CLAIM',
         title: `Сдача этапа: ${milestone.description.slice(0, 80)}`,
         description: body.evidenceNote?.trim() || 'Материалы переданы на проверку жюри.',
