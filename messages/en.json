@@ -35,7 +35,19 @@
     "allContracts": "All contracts",
     "becomeJuror": "Become a juror",
     "clickMarker": "Click on a marker",
-    "markerDescription": "Each marker is an active government contract. Click to view details."
+    "markerDescription": "Each marker is an active government contract. Click to view details.",
+    "heroTitle": "Amanat Protocol",
+    "heroSubtitle": "Transparent monitoring of Almaty government contracts on blockchain",
+    "heroDescription": "Track budget spending, participate in voting, and influence the development of your city",
+    "forCitizens": "For Citizens",
+    "forCitizensDesc": "Track contracts, vote as a juror, participate in district crowdfunding",
+    "forContractors": "For Contractors",
+    "forContractorsDesc": "Contractor dashboard: contracts, milestones, work logs, and reputation",
+    "forAkimat": "For Akimat",
+    "forAkimatDesc": "Contract registry, district treasuries, performance monitoring",
+    "howItWorks": "How does it work?",
+    "blockchainStrip": "All transactions are recorded on the Solana blockchain",
+    "checkExplorer": "Check in Explorer"
   },
   "contracts": {
     "title": "Contract Registry",
