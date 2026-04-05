@@ -144,10 +144,12 @@ export default function Navbar() {
   const navItems = user ? NAV_BY_ROLE[user.role] : DEFAULT_NAV
   const navLinks = navItems.map((item) => ({ href: item.href, label: t(item.labelKey as any), tour: item.labelKey }))
 
-  const switchLocale = () => {
-    const nextLocale = locale === 'ru' ? 'kk' : 'ru'
+  const [langOpen, setLangOpen] = useState(false)
+  const LOCALE_LABELS: Record<string, string> = { ru: 'RU', kk: 'KK', en: 'EN' }
+  const switchToLocale = (next: string) => {
+    setLangOpen(false)
     startTransition(() => {
-      router.replace(pathname, { locale: nextLocale })
+      router.replace(pathname, { locale: next as any })
     })
   }
 
@@ -205,13 +207,32 @@ export default function Navbar() {
             )}
 
             {/* Locale switcher */}
-            <button
-              onClick={switchLocale}
-              disabled={isPending}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
-            >
-              {locale === 'ru' ? 'KK' : 'RU'}
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setLangOpen((v) => !v)}
+                disabled={isPending}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-emerald-500/50 hover:text-emerald-400 transition-all"
+              >
+                {LOCALE_LABELS[locale] ?? locale.toUpperCase()}
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full mt-1 w-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                  {(['ru', 'kk', 'en'] as const).map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => switchToLocale(loc)}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-bold transition-colors ${
+                        locale === loc
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {LOCALE_LABELS[loc]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Accessibility toggle */}
             {mounted && (
