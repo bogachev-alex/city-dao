@@ -147,19 +147,7 @@ export function getEffectiveCrowdfundingStatus(c: Campaign, nowMs: number = Date
   return 'active'
 }
 
-const KZT_PER_SOL = 80_000
-const KZT_PER_USDT = 510
-
-export function formatTenge(amount: number): string {
-  return `${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`
-}
-
-/** Get crypto equivalents for tooltip display */
-export function getCryptoEquivalent(amount: number): string {
-  const sol = (amount / KZT_PER_SOL).toFixed(1)
-  const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
-  return `≈ ${sol} SOL / ${usdt} USDT`
-}
+export { formatTengeWithCrypto as formatTenge, getCryptoEquivalent } from '@/lib/contracts'
 
 // Demo data — realistic Almaty campaigns
 export const DEMO_CAMPAIGNS: Campaign[] = [

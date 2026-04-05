@@ -29,6 +29,7 @@ import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
 import ExternalLink from '@/components/ExternalLink'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 function milestoneStatusForApi(m: Milestone): string {
   const map: Record<Milestone['status'], string> = {
@@ -411,7 +412,9 @@ export default function ContractDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('amount')}</div>
-                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatTengeWithCrypto(contract.amount_usdc)}</div>
+                  <CryptoTooltip amount={contract.amount_usdc}>
+                    <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatTengeWithCrypto(contract.amount_usdc)}</span>
+                  </CryptoTooltip>
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('deadline')}</div>
@@ -481,7 +484,9 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainAmount')}</div>
-                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</div>
+                          <CryptoTooltip amount={onChainSnapshot.amount_usdc}>
+                            <span className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</span>
+                          </CryptoTooltip>
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainDeadline')}</div>
@@ -501,7 +506,9 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainEscrow')}</div>
-                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</div>
+                          <CryptoTooltip amount={onChainSnapshot.escrow_amount}>
+                            <span className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</span>
+                          </CryptoTooltip>
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainMilestones')}</div>
@@ -726,14 +733,14 @@ export default function ContractDetailPage() {
               <h3 className="text-gray-900 dark:text-white font-semibold mb-4">{t('metadata')}</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { label: t('contractId'), value: `#${contract.id.slice(0, 8)}` },
-                  { label: t('coordinates'), value: `${contract.lat}, ${contract.lng}` },
-                  { label: t('escrow20'), value: formatTengeWithCrypto(contract.escrow_amount) },
-                  { label: t('status'), value: statusConfig[contract.status].label },
+                  { label: t('contractId'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">#{contract.id.slice(0, 8)}</span> },
+                  { label: t('coordinates'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{contract.lat}, {contract.lng}</span> },
+                  { label: t('escrow20'), value: <CryptoTooltip amount={contract.escrow_amount}><span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{formatTengeWithCrypto(contract.escrow_amount)}</span></CryptoTooltip> },
+                  { label: t('status'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{statusConfig[contract.status].label}</span> },
                 ].map((item) => (
-                  <div key={item.label} className="flex justify-between">
+                  <div key={item.label} className="flex justify-between items-center">
                     <span className="text-gray-400 dark:text-gray-500">{item.label}</span>
-                    <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{item.value}</span>
+                    {item.value}
                   </div>
                 ))}
               </div>

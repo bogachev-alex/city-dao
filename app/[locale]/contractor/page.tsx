@@ -11,6 +11,7 @@ import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
 import { formatTengeWithCrypto, resolveContractOnChainPubkey, getContractDetailHref } from '@/lib/contracts'
 import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 type Milestone = {
   id: string
@@ -558,9 +559,11 @@ export default function ContractorCabinetPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
-                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                        {formatTengeWithCrypto(Number(c.totalAmount))}
-                      </span>
+                      <CryptoTooltip amount={Number(c.totalAmount)}>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                          {formatTengeWithCrypto(Number(c.totalAmount))}
+                        </span>
+                      </CryptoTooltip>
                       <span className="text-gray-500 dark:text-gray-400">
                         {dLeft < 0 ? t('deadlineOverdue', { days: Math.abs(dLeft) }) : t('deadlineLeft', { days: dLeft })}
                       </span>

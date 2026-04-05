@@ -11,6 +11,7 @@ import { useAuth } from '@/components/AuthContext'
 import { formatTengeWithCrypto, getContractDetailHref } from '@/lib/contracts'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
 import { tengeToLamports } from '@/lib/web3/constants'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 type Overview = {
   totalContracts: number
@@ -273,7 +274,9 @@ export default function AkimatCabinetPage() {
           <div className="mt-4 grid sm:grid-cols-2 gap-4">
             <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3">
               <div className="text-xs text-gray-500 mb-1">{t('totalTreasury')}</div>
-              <div className="text-lg font-semibold text-white">{formatTengeWithCrypto(Number(data.totalTreasuryBalance))}</div>
+              <CryptoTooltip amount={Number(data.totalTreasuryBalance)}>
+                <span className="text-lg font-semibold text-white">{formatTengeWithCrypto(Number(data.totalTreasuryBalance))}</span>
+              </CryptoTooltip>
             </div>
             <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3">
               <div className="text-xs text-gray-500 mb-1">{t('votingProposals')}</div>
@@ -603,9 +606,9 @@ export default function AkimatCabinetPage() {
                   className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 hover:border-emerald-500/40 transition-colors block"
                 >
                   <div className="font-semibold text-gray-900 dark:text-white mb-1">{row.district}</div>
-                  <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">
-                    {formatTengeWithCrypto(Number(row.balance))}
-                  </div>
+                  <CryptoTooltip amount={Number(row.balance)}>
+                    <span className="text-sm text-emerald-600 dark:text-emerald-400">{formatTengeWithCrypto(Number(row.balance))}</span>
+                  </CryptoTooltip>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {t('districtVoting', { count: row.votingCount })}
                   </div>
@@ -646,9 +649,11 @@ export default function AkimatCabinetPage() {
                     >
                       {c.status}
                     </span>
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      {formatTengeWithCrypto(Number(c.totalAmount))}
-                    </span>
+                    <CryptoTooltip amount={Number(c.totalAmount)}>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        {formatTengeWithCrypto(Number(c.totalAmount))}
+                      </span>
+                    </CryptoTooltip>
                     <span className="text-xs text-gray-400">
                       {new Date(c.createdAt).toLocaleString(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
                         dateStyle: 'short',

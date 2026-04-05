@@ -7,6 +7,7 @@ import ProposalResearch from './ProposalResearch'
 import TransactionFeed from './TransactionFeed'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
 import { formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
+import CryptoTooltip from '@/components/CryptoTooltip'
 import { awardTokens } from '@/lib/tokens'
 
 interface Vote {
@@ -225,7 +226,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/20 dark:to-emerald-600/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6">
           <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('treasuryBalance')}</div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
+          <CryptoTooltip amount={Number(balance)}>
+            <span className="text-3xl font-bold text-gray-900 dark:text-white">{formatTenge(balance)}</span>
+          </CryptoTooltip>
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
           {treasury?.walletAddress && (
             <div className="mt-2 flex items-center gap-1.5">
@@ -271,7 +274,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Штрафы подрядчиков</div>
           <div className="text-2xl font-bold text-orange-500 dark:text-orange-400">
-            {treasury?.totalPenaltyIncome ? formatTenge(treasury.totalPenaltyIncome) : '0 ₸'}
+            <CryptoTooltip amount={Number(treasury?.totalPenaltyIncome || 0)}>
+              <span>{treasury?.totalPenaltyIncome ? formatTenge(treasury.totalPenaltyIncome) : '0 ₸'}</span>
+            </CryptoTooltip>
           </div>
           <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{treasury?.penalties?.length || 0} штрафов</div>
         </div>
@@ -311,9 +316,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.contract.title}</div>
                   )}
                 </div>
-                <div className="text-sm font-semibold text-orange-600 dark:text-orange-400">
-                  +{formatTenge(p.amountTenge)}
-                </div>
+                <CryptoTooltip amount={Number(p.amountTenge)}>
+                  <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">+{formatTenge(p.amountTenge)}</span>
+                </CryptoTooltip>
               </div>
             ))}
           </div>
@@ -367,7 +372,9 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                         </span>
                       </div>
                       <h4 className="text-gray-900 dark:text-white font-medium">{proposal.title}</h4>
-                      <div className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{formatTenge(proposal.amount)}</div>
+                      <CryptoTooltip amount={Number(proposal.amount)}>
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400">{formatTenge(proposal.amount)}</span>
+                      </CryptoTooltip>
                       {proposal.description && (
                         <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{proposal.description}</div>
                       )}
