@@ -27,7 +27,7 @@ export default function Navbar() {
   const [isPending, startTransition] = useTransition()
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
-  const { connected: walletAdapterConnected, publicKey: walletPublicKey } = useWallet()
+  const { connected: walletAdapterConnected, publicKey: walletPublicKey, disconnect: walletDisconnect } = useWallet()
 
   // Auto-login when any wallet connects and user has no session (or is demo)
   const { login: authLogin } = useAuth()
@@ -155,6 +155,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout()
+    walletDisconnect().catch(() => {})
     router.replace('/login' as any)
   }
 
