@@ -78,10 +78,16 @@ export default function HomePage() {
   }, [dataSource])
 
   const STATS = [
-    { label: t('contractsMonitored'), value: String(stats.contracts), icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
-    { label: t('totalAmount'), value: formatBigAmount(stats.totalAmount), icon: '💰', color: 'text-emerald-600 dark:text-emerald-400' },
-    { label: t('violationsFound'), value: String(stats.penalized), icon: '⚠️', color: 'text-red-500 dark:text-red-400' },
-    { label: t('jurorCitizens'), value: String(stats.citizens), icon: '👥', color: 'text-purple-600 dark:text-purple-400' },
+    { label: t('contractsMonitored'), value: String(stats.contracts), icon: '📋', color: 'text-blue-600 dark:text-blue-400', href: '/contracts' as const },
+    { label: t('totalAmount'), value: formatBigAmount(stats.totalAmount), icon: '💰', color: 'text-emerald-600 dark:text-emerald-400', href: '/treasury/Ауэзовский' as const },
+    { label: t('violationsFound'), value: String(stats.penalized), icon: '⚠️', color: 'text-red-500 dark:text-red-400', href: '/contracts' as const },
+    { label: t('jurorCitizens'), value: String(stats.citizens), icon: '👥', color: 'text-purple-600 dark:text-purple-400', href: '/register' as const },
+  ]
+
+  const ROLE_CARDS = [
+    { icon: '\u{1F464}', title: t('forCitizens'), desc: t('forCitizensDesc'), href: '/register' as const },
+    { icon: '\u{1F3D7}\uFE0F', title: t('forContractors'), desc: t('forContractorsDesc'), href: '/register-contractor' as const },
+    { icon: '\u{1F3DB}\uFE0F', title: t('forAkimat'), desc: t('forAkimatDesc'), href: '/register-akimat' as const },
   ]
 
   const LEGEND = [
@@ -92,21 +98,95 @@ export default function HomePage() {
   ]
 
   return (
-    <main className="h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
+    <main className="min-h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
       <Onboarding />
+
+      {/* Hero section — only for unauthenticated users */}
+      {!user && (
+        <section className="bg-gray-950 border-b border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+            {/* Title block */}
+            <div className="text-center mb-10">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3">
+                {t('heroTitle')}
+              </h1>
+              <p className="text-lg sm:text-xl text-emerald-400 font-medium mb-4">
+                {t('heroSubtitle')}
+              </p>
+              <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">
+                {t('heroDescription')}
+              </p>
+            </div>
+
+            {/* Role cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto mb-8">
+              {ROLE_CARDS.map((card) => (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className="group block bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 hover:bg-gray-900/80 transition-all duration-200"
+                >
+                  <div className="text-3xl mb-3">{card.icon}</div>
+                  <h3 className="text-white font-semibold text-base mb-2 group-hover:text-emerald-400 transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    {card.desc}
+                  </p>
+                </Link>
+              ))}
+            </div>
+
+            {/* How it works link */}
+            <div className="text-center">
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('start-onboarding'))}
+                className="text-emerald-400 hover:text-emerald-300 text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" />
+                </svg>
+                {t('howItWorks')}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Social proof strip — only for unauthenticated users */}
+      {!user && (
+        <div className="bg-gray-900/50 border-b border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-center gap-3 text-sm">
+            <div className="flex items-center gap-2 text-gray-400">
+              <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              {t('blockchainStrip')}
+            </div>
+            <Link
+              href="/blockchain"
+              className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+            >
+              {t('checkExplorer')} &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Stats banner */}
       <div className="bg-white dark:bg-gray-950/95 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-6">
               {STATS.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-2">
+                <Link key={stat.label} href={stat.href} className="flex items-center gap-2 group">
                   <span className="text-lg">{stat.icon}</span>
                   <div>
-                    <div className={`font-bold text-lg leading-none ${stat.color}`}>{stat.value}</div>
+                    <div className={`font-bold text-lg leading-none group-hover:underline ${stat.color}`}>{stat.value}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             <div className="flex gap-2">
@@ -130,7 +210,7 @@ export default function HomePage() {
       </div>
 
       {/* Map container */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-[400px]">
         <AlmatyMap />
 
         <TransactionFeed variant="floating" maxItems={6} includeDemo={false} />
