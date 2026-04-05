@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   getCitizenTarget, getStateMatch, getCampaignProgress,
   getDonorTier, formatTenge, normalizeCampaign, Campaign,
+  getDeadlineComponents, formatCrowdfundingCountdown,
+  isCrowdfundingDeadlinePassed, getEffectiveCrowdfundingStatus,
 } from '@/lib/crowdfunding'
 
 describe('getCitizenTarget / getStateMatch', () => {
@@ -33,11 +35,10 @@ describe('getCampaignProgress', () => {
 })
 
 describe('formatTenge', () => {
-  it('shows tenge with SOL and USDT equivalents', () => {
-    const result = formatTenge(8_000_000) // 8M tenge = 100 SOL = ~15686 USDT
+  it('shows tenge only (crypto in tooltip)', () => {
+    const result = formatTenge(8_000_000)
     expect(result).toContain('₸')
-    expect(result).toContain('SOL')
-    expect(result).toContain('USDT')
+    expect(result).not.toContain('SOL')
   })
 })
 
@@ -45,6 +46,142 @@ describe('getDonorTier', () => {
   it('< 5000 → participant', () => expect(getDonorTier(4999)).toBe('participant'))
   it('5000 → patron', () => expect(getDonorTier(5000)).toBe('patron'))
   it('50000 → founder', () => expect(getDonorTier(50000)).toBe('founder'))
+})
+
+describe('getDeadlineComponents', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  it('splits 5d 3h 12m remaining', () => {
+    const deadline = new Date('2026-01-15T15:12:00.000Z').toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: false,
+      days: 5,
+      hours: 3,
+      minutes: 12,
+    })
+  })
+
+  it('splits 45 minutes remaining', () => {
+    const deadline = new Date(now + 45 * 60_000).toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: false,
+      days: 0,
+      hours: 0,
+      minutes: 45,
+    })
+  })
+
+  it('elapsed after deadline', () => {
+    const deadline = new Date('2026-01-08T12:00:00.000Z').toISOString()
+    expect(getDeadlineComponents(deadline, now)).toEqual({
+      isPast: true,
+      days: 2,
+      hours: 0,
+      minutes: 0,
+    })
+  })
+
+  it('treats exact moment as past', () => {
+    const deadline = new Date(now).toISOString()
+    expect(getDeadlineComponents(deadline, now).isPast).toBe(true)
+  })
+})
+
+describe('formatCrowdfundingCountdown', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  it('formats future multi-day with hours and minutes', () => {
+    const deadline = new Date('2026-01-15T15:12:00.000Z').toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('5 дн. 3 ч. 12 мин')
+  })
+
+  it('formats hours and minutes without days', () => {
+    const deadline = new Date(now + (2 * 3600_000 + 5 * 60_000)).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('2 ч. 5 мин')
+  })
+
+  it('formats minutes only', () => {
+    const deadline = new Date(now + 45 * 60_000).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('45 мин')
+  })
+
+  it('formats under one minute', () => {
+    const deadline = new Date(now + 30_000).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('меньше минуты')
+  })
+
+  it('formats past as days ago', () => {
+    const deadline = new Date('2026-01-08T12:00:00.000Z').toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('2 дн. назад')
+  })
+
+  it('formats just expired as только что', () => {
+    const deadline = new Date(now).toISOString()
+    expect(formatCrowdfundingCountdown(deadline, now)).toBe('только что')
+  })
+})
+
+describe('isCrowdfundingDeadlinePassed / getEffectiveCrowdfundingStatus', () => {
+  const now = new Date('2026-01-10T12:00:00.000Z').getTime()
+
+  const base = (over: Partial<Campaign> = {}): Campaign => ({
+    id: '1',
+    title: 'X',
+    description: '',
+    district: 'A',
+    category: 'playground',
+    status: 'active',
+    target_amount: 10_000_000,
+    citizen_target: 1_000_000,
+    state_match: 9_000_000,
+    citizen_raised: 100_000,
+    state_deposited: false,
+    donor_count: 1,
+    deadline: new Date('2026-01-15T12:00:00.000Z').toISOString(),
+    created_at: '',
+    creator: '',
+    creator_wallet: '',
+    creator_tier: '',
+    lat: 0,
+    lng: 0,
+    donors: [],
+    ...over,
+  })
+
+  it('isCrowdfundingDeadlinePassed is false before deadline', () => {
+    expect(isCrowdfundingDeadlinePassed(base().deadline, now)).toBe(false)
+  })
+
+  it('isCrowdfundingDeadlinePassed is true after deadline', () => {
+    expect(isCrowdfundingDeadlinePassed(new Date('2026-01-08T12:00:00.000Z').toISOString(), now)).toBe(true)
+  })
+
+  it('getEffectiveCrowdfundingStatus: active + past deadline + under goal → expired', () => {
+    expect(
+      getEffectiveCrowdfundingStatus(
+        base({
+          deadline: new Date('2026-01-08T12:00:00.000Z').toISOString(),
+        }),
+        now
+      )
+    ).toBe('expired')
+  })
+
+  it('getEffectiveCrowdfundingStatus: active + past deadline but goal met → funded', () => {
+    expect(
+      getEffectiveCrowdfundingStatus(
+        base({
+          deadline: new Date('2026-01-08T12:00:00.000Z').toISOString(),
+          citizen_raised: 1_000_000,
+        }),
+        now
+      )
+    ).toBe('funded')
+  })
+
+  it('getEffectiveCrowdfundingStatus: keeps funded from API', () => {
+    expect(getEffectiveCrowdfundingStatus(base({ status: 'funded' }), now)).toBe('funded')
+  })
 })
 
 describe('normalizeCampaign TIER_MAP', () => {

@@ -37,12 +37,26 @@ export const prismaMock = {
   }),
 }
 
+const DEFAULT_RETURN: Record<string, unknown> = {
+  findMany: [],
+  findUnique: null,
+  findFirst: null,
+  create: {},
+  update: {},
+  delete: {},
+  deleteMany: { count: 0 },
+  count: 0,
+}
+
 export function resetPrismaMock() {
   for (const model of Object.values(prismaMock)) {
     if (typeof model === 'object' && model !== null) {
-      for (const method of Object.values(model)) {
+      for (const [key, method] of Object.entries(model)) {
         if (typeof method === 'function' && 'mockReset' in method) {
           ;(method as any).mockReset()
+          if (key in DEFAULT_RETURN) {
+            ;(method as any).mockResolvedValue(DEFAULT_RETURN[key])
+          }
         }
       }
     }

@@ -8,5 +8,27 @@ npm-debug.log*
 
 /lib/generated/prisma
 /target
+tsconfig.tsbuildinfo
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+# Local DB / IDE / agentic task loop (when using wip branch workflow locally)
+*.db
+.cursor/
+.claude/
+tasks/
+
+.treasury-keys.json
+refund-keeper.json
+
+# Local-only (do not commit)
+.dockerignore
+Dockerfile
+AGENTS.md
+CHANGELOG.md
+opencode.json
 
 .kilo/

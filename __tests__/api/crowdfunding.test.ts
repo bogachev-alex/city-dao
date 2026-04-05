@@ -21,6 +21,7 @@ describe('POST /api/crowdfunding — create campaign', () => {
         title: 'Test', description: 'Desc', district: 'A',
         category: 'PLAYGROUND', targetAmount: 10000000,
         deadline: '2026-06-01', creatorId: 'c1',
+        onChainPubkey: '11111111111111111111111111111111',
       }),
     }))
     expect(res.status).toBe(201)
@@ -74,9 +75,20 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
   })
 
   it('accepts valid contribution', async () => {
-    prismaMock.crowdfundingCampaign.findUnique.mockResolvedValue(activeCampaign)
+    prismaMock.crowdfundingCampaign.findUnique
+      .mockResolvedValueOnce(activeCampaign)
+      .mockResolvedValueOnce({
+        ...activeCampaign,
+        citizenRaised: BigInt(505000),
+        donorCount: 6,
+      })
+    prismaMock.citizen.findUnique.mockResolvedValue({ id: 'c1' })
     prismaMock.campaignContribution.create.mockResolvedValue({ id: 'cont1' })
-    prismaMock.crowdfundingCampaign.update.mockResolvedValue({ ...activeCampaign })
+    prismaMock.crowdfundingCampaign.update.mockResolvedValue({
+      ...activeCampaign,
+      citizenRaised: BigInt(505000),
+      donorCount: 6,
+    })
 
     const res = await detailRoute.POST(
       new NextRequest('http://localhost/api/crowdfunding/cf1', {
@@ -101,5 +113,66 @@ describe('POST /api/crowdfunding/[id] — contribute', () => {
       { params: makeParams('cf1') }
     )
     expect(res.status).toBe(400)
+  })
+
+  it('creates linked contract when contribution reaches citizen target (FUNDED)', async () => {
+    const campaign = {
+      id: 'cf1',
+      status: 'ACTIVE' as const,
+      title: 'Crowd project',
+      description: 'Description',
+      district: 'Ауэзовский',
+      lat: 43.2,
+      lng: 76.9,
+      targetAmount: BigInt(5_000_000),
+      citizenTarget: BigInt(5_000_000),
+      citizenRaised: BigInt(4_995_000),
+      stateMatch: BigInt(0),
+      deadline: new Date(Date.now() + 30 * 86400000),
+      donorCount: 10,
+      contractId: null,
+      category: 'COMMERCIAL' as const,
+    }
+    let updateCall = 0
+    prismaMock.crowdfundingCampaign.findUnique
+      .mockResolvedValueOnce(campaign)
+      .mockResolvedValueOnce({
+        ...campaign,
+        citizenRaised: BigInt(5_000_000),
+        donorCount: 11,
+        status: 'MATCHED',
+        stateDeposited: true,
+        contractId: 'ct-new',
+      })
+    prismaMock.citizen.findUnique.mockResolvedValue({ id: 'c1' })
+    prismaMock.campaignContribution.create.mockResolvedValue({ id: 'cont1' })
+    prismaMock.crowdfundingCampaign.update.mockImplementation(async (args: { data: Record<string, unknown> }) => {
+      updateCall += 1
+      if (updateCall === 1) {
+        return {
+          ...campaign,
+          citizenRaised: BigInt(5_000_000),
+          donorCount: 11,
+          status: 'FUNDED',
+          contractId: null,
+        }
+      }
+      return { ...campaign, ...args.data } as typeof campaign
+    })
+    prismaMock.contractor.findFirst.mockResolvedValue({
+      id: 'ph-id',
+      name: 'Подрядчик не назначен',
+    })
+    prismaMock.contract.create.mockResolvedValue({ id: 'ct-new' })
+
+    const res = await detailRoute.POST(
+      new NextRequest('http://localhost/api/crowdfunding/cf1', {
+        method: 'POST',
+        body: JSON.stringify({ citizenId: 'c1', amount: 5000, anonymous: false }),
+      }),
+      { params: makeParams('cf1') }
+    )
+    expect(res.status).toBe(201)
+    expect(prismaMock.contract.create).toHaveBeenCalled()
   })
 })

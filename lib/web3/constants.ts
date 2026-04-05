@@ -1,18 +1,27 @@
 import { PublicKey } from '@solana/web3.js'
 
 // Solana cluster (widen type so Explorer helpers can branch on mainnet vs. others)
-export type SolanaCluster = 'devnet' | 'mainnet-beta' | 'testnet'
+export type SolanaCluster = 'devnet' | 'testnet' | 'mainnet-beta'
 export const SOLANA_NETWORK: SolanaCluster = 'devnet'
-export const SOLANA_RPC_URL = 'https://api.devnet.solana.com'
+// Force devnet for all wallet and RPC operations in this app.
+// Override with NEXT_PUBLIC_SOLANA_RPC_URL for a paid endpoint (avoids public rate limits).
+export const SOLANA_RPC_URL =
+  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SOLANA_RPC_URL) ||
+  'https://api.devnet.solana.com'
+/** Settlement token mint for contract economy (USDC on Solana). */
+export const USDC_MINT = new PublicKey(
+  // Devnet USDC mint (SPL test token).
+  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
+)
 
 // Program IDs — generated keypairs, will be active after `anchor deploy`
 export const PROGRAM_IDS = {
-  contractRegistry: new PublicKey('GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU'),
-  citizenRegistry: new PublicKey('Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6'),
-  juryMechanism: new PublicKey('F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w'),
-  penaltyEngine: new PublicKey('DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z'),
-  districtTreasury: new PublicKey('44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy'),
-  crowdfunding: new PublicKey('CRWDaH7ByG5BKmoCRestxNP7k4gSWgrWQVKLhf5VQ8mZ'),
+  contractRegistry: new PublicKey('6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4'),
+  citizenRegistry: new PublicKey('2Gjs7gsyaBayR38AACScCPz3ZgRf3JZvAoW63A5jKCd3'),
+  juryMechanism: new PublicKey('HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd'),
+  penaltyEngine: new PublicKey('9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT'),
+  districtTreasury: new PublicKey('HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ'),
+  crowdfunding: new PublicKey('3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY'),
 } as const
 
 // PDA seeds
@@ -29,7 +38,12 @@ export const SEEDS = {
   campaign: Buffer.from('campaign'),
   cfEscrow: Buffer.from('cf_escrow'),
   donor: Buffer.from('donor'),
+  /** PDA holding creator deposit that reimburses the relayer for `refund_all` tx fees. */
+  cfRefundExec: Buffer.from('cf_refund_exec'),
 } as const
+
+/** Minimum lamports the creator locks at `init_campaign` for automated refunds (matches on-chain constant). */
+export const MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS = 1_000_000
 
 // Almaty districts
 export const DISTRICTS = [
@@ -42,3 +56,15 @@ export const DISTRICTS = [
   'Наурызбайский',
   'Турксибский',
 ] as const
+
+// Tenge to lamports conversion (1 SOL = ~80 000 KZT)
+const KZT_PER_SOL = 80_000
+const LAMPORTS_PER_SOL = 1_000_000_000
+
+export function tengeToLamports(tenge: number): number {
+  return Math.round((tenge / KZT_PER_SOL) * LAMPORTS_PER_SOL)
+}
+
+export function lamportsToTenge(lamports: number): number {
+  return Math.round((lamports / LAMPORTS_PER_SOL) * KZT_PER_SOL)
+}

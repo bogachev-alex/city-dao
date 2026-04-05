@@ -4,6 +4,11 @@ import { prismaMock, resetPrismaMock } from '../mocks/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
+vi.mock('@/lib/web3/fetchDistrictTreasuryBalance', () => ({
+  fetchDistrictTreasuryBalanceOnChain: vi.fn().mockResolvedValue(null),
+  getReadOnlySolanaConnection: vi.fn(),
+}))
+
 const { GET, POST, PATCH } = await import('@/app/api/treasury/[district]/route')
 
 beforeEach(() => resetPrismaMock())
@@ -13,7 +18,13 @@ const makeParams = (district: string) => Promise.resolve({ district })
 describe('GET /api/treasury/[district]', () => {
   it('returns treasury with proposals', async () => {
     prismaMock.districtTreasury.findUnique.mockResolvedValue({
-      id: 't1', district: 'Ауэзовский', proposals: [],
+      id: 't1',
+      district: 'Ауэзовский',
+      balance: BigInt(1_000_000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      proposals: [],
+      penalties: [],
     })
     const res = await GET(
       new NextRequest('http://localhost/api/treasury/test'),
@@ -40,7 +51,7 @@ describe('PATCH /api/treasury/[district] — voting', () => {
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
-        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true, txSignature: 'demo-signature' }),
       }),
       { params: makeParams('Ауэзовский') }
     )
@@ -53,10 +64,21 @@ describe('PATCH /api/treasury/[district] — voting', () => {
     const res = await PATCH(
       new NextRequest('http://localhost/api/treasury/test', {
         method: 'PATCH',
-        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true, txSignature: 'demo-signature' }),
       }),
       { params: makeParams('Ауэзовский') }
     )
     expect(res.status).toBe(409)
+  })
+
+  it('400 without on-chain confirmation', async () => {
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/treasury/test', {
+        method: 'PATCH',
+        body: JSON.stringify({ proposalId: 'p1', citizenId: 'c1', inFavor: true }),
+      }),
+      { params: makeParams('Ауэзовский') }
+    )
+    expect(res.status).toBe(400)
   })
 })

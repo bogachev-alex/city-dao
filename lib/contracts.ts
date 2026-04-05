@@ -1,3 +1,5 @@
+import { SOLANA_NETWORK } from './web3/constants'
+
 export type MilestoneStatus = 'pending' | 'submitted' | 'under_review' | 'accepted' | 'rejected' | 'overdue'
 export type ContractStatus = 'active' | 'penalized' | 'completed' | 'disputed'
 
@@ -7,12 +9,33 @@ export interface Milestone {
   deadline_days: number
   tranche_pct: number
   status: MilestoneStatus
+  sortOrder?: number
+}
+
+export interface JurySessionSummary {
+  id: string
+  status: string
+  result: string | null
+  milestoneId: string
+  milestoneDescription?: string
+}
+
+export interface PenaltySummary {
+  id: string
+  type: string
+  amountTenge: number
+  daysOverdue?: number | null
+  createdAt?: string
 }
 
 export interface Contract {
   id: string
   title: string
   contractor: string
+  /** Prisma contractor id — for matching logged-in contractor */
+  contractorId?: string
+  contractorWalletAddress?: string | null
+  onChainPubkey?: string | null
   amount_usdc: number
   deadline: string
   district: string
@@ -23,12 +46,96 @@ export interface Contract {
   penalty_amount: number
   days_overdue?: number
   milestones: Milestone[]
+  jurySessions?: JurySessionSummary[]
+  penalties?: PenaltySummary[]
+  /** Goszakup.gov.kz registry number (ЕГЗ) */
+  registryNumber?: string
+  /** Customer / заказчик (as on the national portal) */
+  customerName?: string
+  /** Subject: Работа, Товар, Услуга (ref_subject_type on goszakup) */
+  subjectType?: string
+  /** Contract signing date (startDate in DB) */
+  signedAt?: string
+  /** Record creation timestamp (createdAt in DB) */
+  createdAt?: string
+}
+
+/** Same filters as goszakup.gov.kz: Алматы + «Работа» (type 2) + amount from 10M ₸ */
+export const GOSZAKUP_ALMATY_WORKS_MIN10M_URL =
+  'https://goszakup.gov.kz/ru/registry/contract?filter%5Bcustomer%5D=%D0%90%D0%BB%D0%BC%D0%B0%D1%82%D1%8B&filter%5Bref_subject_type%5D=2&filter%5Bamount_from%5D=10000000'
+
+export function getSolanaExplorerAddressUrl(address: string): string {
+  return `https://explorer.solana.com/address/${address}?cluster=${SOLANA_NETWORK}`
+}
+
+export function getSolanaExplorerTxUrl(signature: string): string {
+  return `https://explorer.solana.com/tx/${signature}?cluster=${SOLANA_NETWORK}`
+}
+
+let contractOnChainMapCache: Record<string, string> | null = null
+
+function parseContractOnChainMap(): Record<string, string> {
+  if (contractOnChainMapCache) return contractOnChainMapCache
+
+  const raw = process.env.NEXT_PUBLIC_CONTRACT_ONCHAIN_MAP || ''
+  const parsed: Record<string, string> = {}
+  for (const chunk of raw.split(',').map((s) => s.trim()).filter(Boolean)) {
+    const [id, pubkey] = chunk.split(':').map((s) => s.trim())
+    if (!id || !pubkey) continue
+    parsed[id] = pubkey
+  }
+  contractOnChainMapCache = parsed
+  return parsed
+}
+
+export function resolveContractOnChainPubkey(contractId: string, dbPubkey?: string | null): string | null {
+  if (dbPubkey) return dbPubkey
+  const mapped = parseContractOnChainMap()[contractId]
+  return mapped || null
+}
+
+/** Base58-encoded Solana public key (typical length 32–44). */
+function isLikelySolanaAddress(s: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s)
+}
+
+/**
+ * Solana Explorer address for this contract: DB `onChainPubkey`, env map, or `id` when it is already a pubkey.
+ */
+export function getContractExplorerAddress(contract: Contract): string | null {
+  const resolved = resolveContractOnChainPubkey(contract.id, contract.onChainPubkey)
+  if (resolved) return resolved
+  if (isLikelySolanaAddress(contract.id)) return contract.id
+  return null
+}
+
+export function getContractDetailHref(contractId: string, dbPubkey?: string | null): string {
+  const base = `/contracts/${contractId}`
+  const onChainPubkey = resolveContractOnChainPubkey(contractId, dbPubkey)
+  if (!onChainPubkey) return base
+  return `${base}?onchain=${encodeURIComponent(onChainPubkey)}`
+}
+
+/**
+ * On-chain contract `title` is the PDA seed string: for long names it is truncated to 32 bytes
+ * and a stable hash suffix (`-abc12def`) is appended. Prefer the DB title when available;
+ * use this only for display when only the seed exists.
+ */
+export function formatContractTitleForDisplay(title: string): string {
+  const m = title.match(/^(.+)-([0-9a-f]{8})$/)
+  if (!m) return title
+  const prefix = m[1].trim()
+  return prefix.length > 0 ? `${prefix}…` : title
 }
 
 export const DEMO_CONTRACTS: Contract[] = [
   {
     id: '1',
     title: 'Ремонт тротуара, набережная Весновки',
+    registryNumber: 'demo-10001',
+    customerName: 'Акимат города Алматы',
+    subjectType: 'Работа',
+    signedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     contractor: 'ТОО СтройАлматы',
     amount_usdc: 45000,
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -136,12 +243,27 @@ const MILESTONE_STATUS_MAP: Record<string, MilestoneStatus> = {
 
 /** Normalize API response (Prisma format) to frontend Contract shape */
 export function normalizeContract(c: any): Contract {
+  const deadline =
+    typeof c.deadline === 'string'
+      ? c.deadline
+      : c.deadline
+        ? new Date(c.deadline).toISOString()
+        : ''
+  const signed =
+    c.signedAt ||
+    (c.startDate ? (typeof c.startDate === 'string' ? c.startDate : new Date(c.startDate).toISOString()) : undefined)
+  const penaltiesRaw = c.penalties || []
+  const juryRaw = c.jurySessions || []
+
   return {
     id: c.id,
     title: c.title,
     contractor: c.contractor?.name || c.contractor || '',
+    contractorId: c.contractor?.id,
+    contractorWalletAddress: c.contractor?.walletAddress ?? null,
+    onChainPubkey: c.onChainPubkey ?? null,
     amount_usdc: Number(c.totalAmount || c.amount_usdc || 0),
-    deadline: c.deadline,
+    deadline,
     district: c.district,
     status: CONTRACT_STATUS_MAP[c.status] || 'active',
     lat: c.lat,
@@ -149,12 +271,32 @@ export function normalizeContract(c: any): Contract {
     escrow_amount: Number(c.escrowAmount || c.escrow_amount || 0),
     penalty_amount: Number(c.penaltyAmount || c.penalty_amount || 0),
     days_overdue: c.days_overdue,
+    registryNumber: c.registryNumber ?? undefined,
+    customerName: c.customerName ?? undefined,
+    subjectType: c.subjectType ?? undefined,
+    signedAt: signed,
+    createdAt: c.createdAt ? (typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt).toISOString()) : undefined,
     milestones: (c.milestones || []).map((m: any) => ({
       id: m.id,
       desc: m.description || m.desc,
       deadline_days: m.deadlineDays || m.deadline_days,
       tranche_pct: m.tranchePct || m.tranche_pct,
       status: MILESTONE_STATUS_MAP[m.status] || 'pending',
+      sortOrder: m.sortOrder ?? 0,
+    })),
+    jurySessions: juryRaw.map((s: any) => ({
+      id: s.id,
+      status: s.status,
+      result: s.result ?? null,
+      milestoneId: s.milestoneId,
+      milestoneDescription: s.milestone?.description,
+    })),
+    penalties: penaltiesRaw.map((p: any) => ({
+      id: p.id,
+      type: p.type,
+      amountTenge: typeof p.amountTenge === 'bigint' ? Number(p.amountTenge) : Number(p.amountTenge || 0),
+      daysOverdue: p.daysOverdue ?? null,
+      createdAt: p.createdAt ? (typeof p.createdAt === 'string' ? p.createdAt : new Date(p.createdAt).toISOString()) : undefined,
     })),
   }
 }
@@ -181,12 +323,16 @@ export function formatAmount(amount: number): string {
 const KZT_PER_SOL = 80_000
 const KZT_PER_USDT = 510
 
-/** Format tenge amount with SOL/USDT equivalents in parentheses */
+/** Format tenge amount — display only tenge */
 export function formatTengeWithCrypto(amount: number): string {
-  const tenge = new Intl.NumberFormat('ru-KZ').format(amount)
+  return `${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`
+}
+
+/** Get crypto equivalents for tooltip display */
+export function getCryptoEquivalent(amount: number): string {
   const sol = (amount / KZT_PER_SOL).toFixed(1)
   const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
-  return `${tenge} ₸ (${sol} SOL / ${usdt} USDT)`
+  return `≈ ${sol} SOL / ${usdt} USDT`
 }
 
 export function getMilestoneCompletedCount(contract: Contract): number {

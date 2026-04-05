@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { DEMO_CAMPAIGNS } from '@/lib/crowdfunding'
+import { promoteCrowdfundingToContract } from '@/lib/crowdfundingPromoteToContract'
 
 export const dynamic = 'force-dynamic'
+
+function findDemoCampaign(id: string) {
+  return DEMO_CAMPAIGNS.find((c) => c.id === id) || null
+}
 
 // GET /api/crowdfunding/[id] — campaign detail with contributions
 export async function GET(
@@ -24,11 +30,16 @@ export async function GET(
     },
   })
 
-  if (!campaign) {
-    return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+  if (campaign) {
+    return NextResponse.json(campaign)
   }
 
-  return NextResponse.json(campaign)
+  const demo = findDemoCampaign(id)
+  if (demo) {
+    return NextResponse.json(demo)
+  }
+
+  return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 }
 
 // POST /api/crowdfunding/[id] — contribute to a campaign
@@ -63,6 +74,17 @@ export async function POST(
     return NextResponse.json({ error: 'Campaign deadline has passed' }, { status: 400 })
   }
 
+  // Resolve citizenId: validate it exists, fall back to first available citizen for demo sessions
+  let resolvedCitizenId = citizenId
+  const citizenExists = await prisma.citizen.findUnique({ where: { id: citizenId }, select: { id: true } })
+  if (!citizenExists) {
+    const fallback = await prisma.citizen.findFirst({ select: { id: true } })
+    if (!fallback) {
+      return NextResponse.json({ error: 'No citizens registered in the system' }, { status: 400 })
+    }
+    resolvedCitizenId = fallback.id
+  }
+
   // Determine NFT tier
   let nftType: string | null = null
   if (amountBig >= BigInt(50_000)) nftType = 'DONOR_FOUNDER'
@@ -73,25 +95,33 @@ export async function POST(
   const newRaised = campaign.citizenRaised + amountBig
   const isFunded = newRaised >= campaign.citizenTarget
 
-  const [contribution, updatedCampaign] = await prisma.$transaction([
-    prisma.campaignContribution.create({
+  const { contribution, updatedCampaign } = await prisma.$transaction(async (tx) => {
+    const contributionRow = await tx.campaignContribution.create({
       data: {
         campaignId: id,
-        citizenId,
+        citizenId: resolvedCitizenId,
         amount: amountBig,
         anonymous: anonymous || false,
         txSignature: txSignature || null,
       },
-    }),
-    prisma.crowdfundingCampaign.update({
+    })
+    const updated = await tx.crowdfundingCampaign.update({
       where: { id },
       data: {
         citizenRaised: { increment: amountBig },
         donorCount: { increment: 1 },
         ...(isFunded && campaign.status === 'ACTIVE' ? { status: 'FUNDED' } : {}),
       },
-    }),
-  ])
+    })
+    if (updated.status === 'FUNDED' && !updated.contractId) {
+      await promoteCrowdfundingToContract(tx, updated)
+    }
+    const campaignAfter = await tx.crowdfundingCampaign.findUnique({ where: { id } })
+    return {
+      contribution: contributionRow,
+      updatedCampaign: campaignAfter ?? updated,
+    }
+  })
 
   return NextResponse.json({ contribution, campaign: updatedCampaign, nftType }, { status: 201 })
 }
@@ -103,7 +133,7 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await req.json()
-  const { action, contractId, txSignature } = body
+  const { action, contractId, txSignature, onChainPubkey } = body
 
   const campaign = await prisma.crowdfundingCampaign.findUnique({ where: { id } })
   if (!campaign) {
@@ -123,9 +153,25 @@ export async function PATCH(
   }
 
   if (action === 'link_contract') {
-    // Link to a government contract and start work
+    // Link to a government contract and start work (or confirm auto-created contract after on-chain registry)
     if (campaign.status !== 'MATCHED') {
       return NextResponse.json({ error: 'Campaign must be MATCHED before linking' }, { status: 400 })
+    }
+    if (campaign.contractId) {
+      if (contractId && contractId !== campaign.contractId) {
+        return NextResponse.json(
+          { error: 'contractId does not match the campaign-linked contract' },
+          { status: 400 }
+        )
+      }
+      const updated = await prisma.crowdfundingCampaign.update({
+        where: { id },
+        data: { status: 'IN_PROGRESS' },
+      })
+      return NextResponse.json(updated)
+    }
+    if (!contractId) {
+      return NextResponse.json({ error: 'contractId required when campaign has no linked contract' }, { status: 400 })
     }
     const updated = await prisma.crowdfundingCampaign.update({
       where: { id },
@@ -150,6 +196,17 @@ export async function PATCH(
     const updated = await prisma.crowdfundingCampaign.update({
       where: { id },
       data: { status: 'COMPLETED' },
+    })
+    return NextResponse.json(updated)
+  }
+
+  if (action === 'set_onchain') {
+    if (!onChainPubkey) {
+      return NextResponse.json({ error: 'Missing onChainPubkey' }, { status: 400 })
+    }
+    const updated = await prisma.crowdfundingCampaign.update({
+      where: { id },
+      data: { onChainPubkey },
     })
     return NextResponse.json(updated)
   }

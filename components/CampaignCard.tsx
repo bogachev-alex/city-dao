@@ -5,10 +5,14 @@ import {
   Campaign,
   getCampaignProgress,
   getDaysLeft,
+  formatCrowdfundingCountdown,
   formatTenge,
   CATEGORY_CONFIG,
   CAMPAIGN_STATUS_CONFIG,
+  getEffectiveCrowdfundingStatus,
+  getCryptoEquivalent,
 } from '../lib/crowdfunding'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -16,9 +20,11 @@ interface CampaignCardProps {
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   const progress = getCampaignProgress(campaign)
+  const effectiveStatus = getEffectiveCrowdfundingStatus(campaign)
   const daysLeft = getDaysLeft(campaign.deadline)
+  const countdownLabel = formatCrowdfundingCountdown(campaign.deadline)
   const category = CATEGORY_CONFIG[campaign.category]
-  const status = CAMPAIGN_STATUS_CONFIG[campaign.status]
+  const status = CAMPAIGN_STATUS_CONFIG[effectiveStatus]
   const statePercent = category.statePercent
 
   return (
@@ -53,18 +59,27 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Собрано гражданами</div>
-            <div className="text-gray-900 dark:text-white font-semibold">
-              {formatTenge(campaign.citizen_raised)}
-              <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
-            </div>
+            <CryptoTooltip amount={campaign.citizen_raised}>
+              <span className="text-gray-900 dark:text-white font-semibold">
+                {formatTenge(campaign.citizen_raised)}
+              </span>
+            </CryptoTooltip>
+            <span className="text-gray-400 dark:text-gray-500 font-normal text-xs"> / {formatTenge(campaign.citizen_target)}</span>
           </div>
-          <div className="text-right">
+          <div className="text-right min-w-0 max-w-[11rem]">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
               {daysLeft < 0 ? 'Истёк' : 'Осталось'}
             </div>
-            <div className={`font-medium text-sm ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500'}`}>
-              {daysLeft < 0 ? `${Math.abs(daysLeft)} дн. назад` : `${daysLeft} дн.`}
+            <div
+              className={`font-medium text-sm leading-snug ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              {countdownLabel}
             </div>
+            {effectiveStatus === 'active' && progress < 100 && (
+              <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight">
+                Без цели к дедлайну — возврат взносов
+              </div>
+            )}
           </div>
         </div>
 
@@ -97,7 +112,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         )}
 
         {/* Expired refund badge */}
-        {campaign.status === 'expired' && (
+        {effectiveStatus === 'expired' && (
           <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-2 mt-2">
             <svg width="14" height="14" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />

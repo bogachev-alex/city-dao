@@ -5,12 +5,18 @@ import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import JuryVoting from '@/components/JuryVoting'
+import { useAuth } from '@/components/AuthContext'
+import { getContractDetailHref } from '@/lib/contracts'
 
 export default function JuryPage() {
   const params = useParams<{ session_id: string }>()
   const t = useTranslations('jury')
+  const { user, loading: authLoading } = useAuth()
   const sessionId = params.session_id
   const [sessionInfo, setSessionInfo] = useState<any>(null)
+
+  const juryBlocked =
+    !authLoading && user && user.role !== 'CITIZEN'
 
   useEffect(() => {
     fetch(`/api/jury?sessionId=${sessionId}`)
@@ -27,7 +33,7 @@ export default function JuryPage() {
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
           <Link
-            href={sessionInfo?.contract ? `/contracts/${sessionInfo.contract.id}` : '/contracts'}
+            href={sessionInfo?.contract ? getContractDetailHref(sessionInfo.contract.id, sessionInfo.contract.onChainPubkey) : '/contracts'}
             className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -86,8 +92,21 @@ export default function JuryPage() {
           </div>
         </div>
 
-        {/* Voting component */}
-        <JuryVoting sessionId={sessionId} />
+        {/* Voting: only citizens (jurors); contractors / akimat observe on contract page */}
+        {juryBlocked ? (
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-center">
+            <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('citizensOnlyTitle')}</h2>
+            <p className="text-sm text-amber-800 dark:text-amber-300/90 mb-4">{t('citizensOnlyLead')}</p>
+            <Link
+              href={sessionInfo?.contract ? getContractDetailHref(sessionInfo.contract.id, sessionInfo.contract.onChainPubkey) : '/contracts'}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+            >
+              {t('openContract')}
+            </Link>
+          </div>
+        ) : (
+          <JuryVoting sessionId={sessionId} />
+        )}
 
         {/* How it works */}
         <div className="mt-8 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">

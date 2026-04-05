@@ -1,14 +1,44 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTranslations } from 'next-intl'
 import { useLocale } from 'next-intl'
-import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS } from '@/lib/contracts'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { Contract, getContractPinColor, getDaysUntilDeadline, normalizeContract, DEMO_CONTRACTS, getContractDetailHref } from '@/lib/contracts'
+import { mergeContractsWithOnChain } from '@/lib/mergeContractsOnChain'
 import { fetchContracts } from '@/lib/api'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import { useTheme } from './ThemeProvider'
+
+/** Spread markers that share the same rounded lat/lng so every contract stays visible. */
+function mapPinsWithSpread(contracts: Contract[]): { contract: Contract; position: [number, number] }[] {
+  const bucketKey = (c: Contract) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`
+  const counts = new Map<string, number>()
+  for (const c of contracts) {
+    const k = bucketKey(c)
+    counts.set(k, (counts.get(k) ?? 0) + 1)
+  }
+  const indexInBucket = new Map<string, number>()
+  return contracts.map((contract) => {
+    const k = bucketKey(contract)
+    const total = counts.get(k) ?? 1
+    const idx = indexInBucket.get(k) ?? 0
+    indexInBucket.set(k, idx + 1)
+    if (total <= 1 || idx === 0) {
+      return { contract, position: [contract.lat, contract.lng] as [number, number] }
+    }
+    const angle = (2 * Math.PI * idx) / total
+    const r = 0.00028 * idx
+    return {
+      contract,
+      position: [contract.lat + Math.cos(angle) * r, contract.lng + Math.sin(angle) * r] as [number, number],
+    }
+  })
+}
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -58,6 +88,10 @@ function MapController() {
 export default function AlmatyMap() {
   const t = useTranslations('components.almatyMap')
   const locale = useLocale()
+  const dataSource = useDataSource()
+  const { connection } = useConnection()
+  const connectionRef = useRef(connection)
+  connectionRef.current = connection
   const [contracts, setContracts] = useState<Contract[]>([])
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -69,19 +103,49 @@ export default function AlmatyMap() {
     checkmark: t('completed'),
   }
 
+  const markers = useMemo(
+    () => mapPinsWithSpread(contracts.filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng))),
+    [contracts]
+  )
+
   useEffect(() => {
-    fetchContracts()
-      .then((data: any[]) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setContracts(data.map(normalizeContract))
-        } else {
-          setContracts(DEMO_CONTRACTS)
+    let cancelled = false
+    const conn = connectionRef.current
+
+    async function load() {
+      if (dataSource === 'onchain') {
+        try {
+          const onChain = await fetchAllContractsOnChain(conn)
+          if (!cancelled) {
+            setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+          }
+        } catch {
+          if (!cancelled) setContracts(DEMO_CONTRACTS)
         }
-      })
-      .catch(() => {
-        setContracts(DEMO_CONTRACTS)
-      })
-  }, [])
+        return
+      }
+
+      try {
+        const data: unknown = await fetchContracts()
+        if (cancelled) return
+        if (Array.isArray(data) && data.length > 0) {
+          const normalized = data.map(normalizeContract)
+          setContracts(await mergeContractsWithOnChain(normalized, conn))
+        } else {
+          setContracts(await mergeContractsWithOnChain(DEMO_CONTRACTS, conn))
+        }
+      } catch {
+        if (!cancelled) {
+          setContracts(await mergeContractsWithOnChain(DEMO_CONTRACTS, conn))
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [dataSource])
 
   const tileUrl = isDark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -103,7 +167,7 @@ export default function AlmatyMap() {
         maxZoom={20}
       />
 
-      {contracts.map((contract) => {
+      {markers.map(({ contract, position }) => {
         const pinType = getContractPinColor(contract)
         const color = PIN_COLORS[pinType]
         const isOverdue = contract.status === 'penalized'
@@ -113,7 +177,7 @@ export default function AlmatyMap() {
         return (
           <Marker
             key={contract.id}
-            position={[contract.lat, contract.lng]}
+            position={position}
             icon={icon}
           >
             <Popup className="amanat-popup" maxWidth={280}>
@@ -142,9 +206,19 @@ export default function AlmatyMap() {
                 <div style={{ color: isDark ? '#fff' : '#111827', fontWeight: 600, fontSize: '14px', marginBottom: '6px', lineHeight: 1.4 }}>
                   {contract.title}
                 </div>
+                {contract.registryNumber && (
+                  <div style={{ color: isDark ? '#6ee7b7' : '#059669', fontSize: '11px', fontFamily: 'ui-monospace, monospace', marginBottom: '4px' }}>
+                    ЕГЗ №{contract.registryNumber}
+                  </div>
+                )}
                 <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
                   {contract.contractor}
                 </div>
+                {contract.customerName && (
+                  <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '11px', marginBottom: '4px', lineHeight: 1.35 }}>
+                    {contract.customerName.length > 80 ? `${contract.customerName.slice(0, 80)}…` : contract.customerName}
+                  </div>
+                )}
                 <div style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '12px', marginBottom: '12px' }}>
                   {daysLeft < 0
                     ? <span style={{ color: isDark ? '#f87171' : '#ef4444' }}>{t('overdueBy', { days: Math.abs(daysLeft) })}</span>
@@ -152,7 +226,7 @@ export default function AlmatyMap() {
                   }
                 </div>
                 <a
-                  href={`/${locale}/contracts/${contract.id}`}
+                  href={`/${locale}${getContractDetailHref(contract.id, contract.onChainPubkey)}`}
                   style={{
                     display: 'block',
                     textAlign: 'center',

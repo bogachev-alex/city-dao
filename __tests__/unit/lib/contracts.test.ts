@@ -5,7 +5,9 @@ import {
   getContractPinColor,
   formatAmount,
   formatTengeWithCrypto,
+  getCryptoEquivalent,
   getMilestoneCompletedCount,
+  getContractExplorerAddress,
   Contract,
 } from '@/lib/contracts'
 
@@ -50,6 +52,23 @@ describe('normalizeContract', () => {
     expect(result.milestones[0].status).toBe('accepted')
     expect(result.milestones[1].status).toBe('under_review')
   })
+
+  it('maps goszakup-style registry fields and startDate to signedAt', () => {
+    const result = normalizeContract({
+      id: '1',
+      title: 'X',
+      status: 'ACTIVE',
+      registryNumber: '24953097',
+      customerName: 'Управление строительства города Алматы',
+      subjectType: 'Работа',
+      startDate: '2026-03-27T12:00:00.000Z',
+      milestones: [],
+    })
+    expect(result.registryNumber).toBe('24953097')
+    expect(result.customerName).toContain('Алматы')
+    expect(result.subjectType).toBe('Работа')
+    expect(result.signedAt).toBe('2026-03-27T12:00:00.000Z')
+  })
 })
 
 describe('getDaysUntilDeadline', () => {
@@ -75,12 +94,51 @@ describe('getContractPinColor', () => {
 })
 
 describe('formatTengeWithCrypto', () => {
-  it('shows tenge with SOL and USDT equivalents', () => {
+  it('shows tenge only (crypto in tooltip)', () => {
     const result = formatTengeWithCrypto(80_000_000) // 80M tenge
     expect(result).toContain('₸')
+    expect(result).not.toContain('SOL')
+  })
+})
+
+describe('getCryptoEquivalent', () => {
+  it('shows SOL and USDT equivalents', () => {
+    const result = getCryptoEquivalent(80_000_000)
     expect(result).toContain('SOL')
     expect(result).toContain('USDT')
-    expect(result).toContain('1000.0') // 80M / 80k = 1000 SOL
+    expect(result).toContain('1000.0')
+  })
+})
+
+describe('getContractExplorerAddress', () => {
+  const minimal = (over: Partial<Contract>): Contract => ({
+    id: 'clxid',
+    title: 'T',
+    contractor: 'C',
+    amount_usdc: 1,
+    deadline: '',
+    district: 'D',
+    status: 'active',
+    lat: 0,
+    lng: 0,
+    escrow_amount: 0,
+    penalty_amount: 0,
+    milestones: [],
+    ...over,
+  })
+
+  it('uses onChainPubkey when set', () => {
+    const pk = 'FPyLxTSo9huzRov1GU8HxwUxNSxXX3ATwHT7MTSi6Khu'
+    expect(getContractExplorerAddress(minimal({ onChainPubkey: pk }))).toBe(pk)
+  })
+
+  it('uses id when it is a Solana address', () => {
+    const pk = 'Dd1hMrmDjKjwxetPb62UmBKLqxWDetGLLxeFJgrn2x3Q'
+    expect(getContractExplorerAddress(minimal({ id: pk }))).toBe(pk)
+  })
+
+  it('returns null for opaque DB id without pubkey', () => {
+    expect(getContractExplorerAddress(minimal({ id: 'cm123abc', onChainPubkey: null }))).toBeNull()
   })
 })
 

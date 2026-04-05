@@ -6,11 +6,12 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-contract_registry = "GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU"
-citizen_registry = "Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6"
-jury_mechanism = "F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w"
-penalty_engine = "DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z"
-district_treasury = "44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy"
+citizen_registry = "2Gjs7gsyaBayR38AACScCPz3ZgRf3JZvAoW63A5jKCd3"
+contract_registry = "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4"
+crowdfunding = "3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY"
+district_treasury = "HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ"
+jury_mechanism = "HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd"
+penalty_engine = "9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT"
 
 [registry]
 url = "https://api.apr.dev"

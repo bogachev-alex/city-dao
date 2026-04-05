@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@/i18n/routing'
 import { useWallet } from '@solana/wallet-adapter-react'
 import {
@@ -13,6 +13,14 @@ import {
 import { createCampaign, fetchCitizen } from '@/lib/api'
 import { useCrowdfunding } from '@/lib/web3/useCrowdfunding'
 import { DISTRICTS } from '@/lib/contracts'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
+import { MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS } from '@/lib/web3/constants'
+import {
+  CampaignDeadlinePicker,
+  combineLocalDateTime,
+  defaultDeadlineParts,
+  toDateInputValue,
+} from '@/components/CampaignDeadlinePicker'
 
 // Category key to Prisma enum
 const CATEGORY_ENUM: Record<CampaignCategory, string> = {
@@ -29,19 +37,48 @@ export default function NewCampaignPage() {
   const [category, setCategory] = useState<CampaignCategory>('landscaping')
   const [district, setDistrict] = useState(DISTRICTS[0])
   const [targetAmount, setTargetAmount] = useState<string>('')
-  const [deadline, setDeadline] = useState<number>(30)
+  const [deadline, setDeadline] = useState(() => defaultDeadlineParts(30))
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
   const { publicKey, connected: walletConnected } = useWallet()
   const { createCampaign: createOnChain } = useCrowdfunding()
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
 
   const totalAmount = parseInt(targetAmount) || 0
   const citizenTarget = getCitizenTarget(totalAmount, category)
   const stateMatch = getStateMatch(totalAmount, category)
   const categoryConfig = CATEGORY_CONFIG[category]
 
-  const canSubmit = title.length >= 10 && description.length >= 50 && totalAmount >= 100000
+  const deadlineEndsAt = useMemo(
+    () => combineLocalDateTime(deadline.date, deadline.time),
+    [deadline.date, deadline.time]
+  )
+
+  const deadlineOffsetMs =
+    deadlineEndsAt !== null ? deadlineEndsAt.getTime() - Date.now() : Number.NaN
+
+  const canSubmit =
+    title.length >= 10 &&
+    description.length >= 50 &&
+    totalAmount >= 100_000 &&
+    Number.isFinite(deadlineOffsetMs) &&
+    deadlineOffsetMs >= 60_000
+
+  const fillTestData = () => {
+    const now = Date.now()
+    const suffix = String(now).slice(-4)
+    setTitle(`Тестовая кампания #${suffix}: освещение дворов`)
+    setDescription(
+      'Жители района регулярно жалуются на недостаточное освещение во дворах. ' +
+      'Проект предусматривает установку LED-фонарей, подключение к сети и базовое благоустройство территории.'
+    )
+    setCategory('landscaping')
+    setDistrict(DISTRICTS[2] || DISTRICTS[0])
+    setTargetAmount('3500000')
+    setDeadline(defaultDeadlineParts(45))
+    setError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,22 +100,33 @@ export default function NewCampaignPage() {
       return
     }
 
-    let onChainPubkey: string | undefined
+    if (!walletConnected || !publicKey) {
+      setError('Подключите кошелёк: создание краудфандинг-кампании теперь обязательно выполняется on-chain (devnet).')
+      return
+    }
 
-    // Try on-chain creation if wallet connected
-    if (walletConnected) {
-      try {
-        const deadlineTimestamp = Math.floor((Date.now() + deadline * 24 * 60 * 60 * 1000) / 1000)
-        const result = await createOnChain(
-          title, description, district, category,
-          totalAmount, deadlineTimestamp,
-          43.25, 76.91, // default Almaty coordinates
-        )
-        setTxInfo(result.tx)
-        onChainPubkey = result.pda
-      } catch (err: any) {
-        console.warn('On-chain creation failed (continuing with DB):', err.message)
-      }
+    if (!deadlineEndsAt) {
+      setError('Укажите корректную дату и время дедлайна')
+      return
+    }
+
+    let onChainPubkey: string
+    try {
+      const deadlineTimestamp = Math.floor(deadlineEndsAt.getTime() / 1000)
+      const result = await createOnChain(
+        title, description, district, category,
+        totalAmount, deadlineTimestamp,
+        43.25, 76.91, // default Almaty coordinates
+      )
+      setTxInfo(
+        result.reusedExisting
+          ? 'Кампания с таким названием уже есть on-chain — каталог обновлён тем же адресом.'
+          : result.tx
+      )
+      onChainPubkey = result.pda
+    } catch (err: any) {
+      setError(`On-chain создание кампании не выполнено: ${err?.message || 'неизвестная ошибка'}`)
+      return
     }
 
     // Save to database
@@ -89,7 +137,7 @@ export default function NewCampaignPage() {
         district,
         category: CATEGORY_ENUM[category],
         targetAmount: totalAmount,
-        deadline: new Date(Date.now() + deadline * 24 * 60 * 60 * 1000).toISOString(),
+        deadline: deadlineEndsAt.toISOString(),
         creatorId: citizenId,
         onChainPubkey,
       })
@@ -99,6 +147,14 @@ export default function NewCampaignPage() {
     }
 
     setSubmitted(true)
+  }
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   if (submitted) {
@@ -145,7 +201,16 @@ export default function NewCampaignPage() {
             <span>/</span>
             <span className="text-gray-600 dark:text-gray-300">Новая кампания</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Создать кампанию</h1>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Создать кампанию</h1>
+            <button
+              type="button"
+              onClick={fillTestData}
+              className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors"
+            >
+              Заполнить тестовыми данными
+            </button>
+          </div>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
             Опишите проект, укажите бюджет — система рассчитает долю граждан и государственную субсидию автоматически.
           </p>
@@ -158,6 +223,13 @@ export default function NewCampaignPage() {
             {error}
           </div>
         )}
+        <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50/80 dark:bg-blue-500/10 p-4 text-xs text-blue-900 dark:text-blue-200/90 leading-relaxed">
+          При публикации on-chain с кошелька создателя дополнительно резервируется{' '}
+          {(MIN_REFUND_EXECUTOR_DEPOSIT_LAMPORTS / 1_000_000_000).toFixed(3)} SOL: это залог для автоматического
+          возврата взносов донорам после дедлайна (оплата комиссии сети за транзакцию{' '}
+          <code className="text-[10px]">refund_all</code>). После исполнения возврата залог перечисляется релееру
+          платформы; взносы доноров возвращаются из escrow отдельно.
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
@@ -264,24 +336,51 @@ export default function NewCampaignPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Срок сбора (дней)</label>
-              <div className="flex gap-2">
-                {[30, 45, 60].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDeadline(d)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      deadline === d
-                        ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30'
-                        : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    {d} дней
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div>
+                <span className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  Дедлайн сбора — календарь и время
+                </span>
+                <CampaignDeadlinePicker
+                  date={deadline.date}
+                  time={deadline.time}
+                  onDateChange={(date) => setDeadline((d) => ({ ...d, date }))}
+                  onTimeChange={(time) => setDeadline((d) => ({ ...d, time }))}
+                  minDateStr={toDateInputValue(new Date())}
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  Время в часовом поясе браузера; в смарт-контракт и БД сохраняется та же метка (UTC).
+                </p>
               </div>
+              <div>
+                <span className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">Быстро: от сейчас</span>
+                <div className="flex flex-wrap gap-2">
+                  {[30, 45, 60].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDeadline(defaultDeadlineParts(d))}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-500/40"
+                    >
+                      +{d} дн.
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {deadlineEndsAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Выбрано окончание:{' '}
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">
+                    {deadlineEndsAt.toLocaleString('ru-KZ', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                  {Number.isFinite(deadlineOffsetMs) && deadlineOffsetMs < 60_000 && (
+                    <span className="text-red-500 block mt-1">Укажите момент не раньше чем через 1 минуту от текущего времени.</span>
+                  )}
+                  {Number.isFinite(deadlineOffsetMs) && deadlineOffsetMs < 0 && (
+                    <span className="text-red-500 block mt-1">Дедлайн в прошлом — выберите будущую дату и время.</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 

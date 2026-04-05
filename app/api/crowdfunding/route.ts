@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   const { title, description, district, category, targetAmount, deadline, creatorId, lat, lng, onChainPubkey } = body
 
   // Validate
-  if (!title || !description || !district || !category || !targetAmount || !deadline || !creatorId) {
+  if (!title || !description || !district || !category || !targetAmount || !deadline || !creatorId || !onChainPubkey) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       stateMatch,
       deadline: new Date(deadline),
       creatorId,
-      onChainPubkey: onChainPubkey || null,
+      onChainPubkey,
     },
     include: {
       creator: { select: { id: true, walletAddress: true, tier: true } },

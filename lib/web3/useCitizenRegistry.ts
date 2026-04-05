@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program } from '@coral-xyz/anchor'
-import { PROGRAM_IDS, SEEDS } from './constants'
+import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
 import idl from './idl/citizen_registry.json'
 
 export function useCitizenRegistry() {
@@ -12,6 +12,14 @@ export function useCitizenRegistry() {
   const wallet = useWallet()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const toReadableError = useCallback((err: unknown): string => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    if (raw.includes('Attempt to debit an account but found no record of a prior credit')) {
+      return `Wallet has no SOL on ${SOLANA_NETWORK}. Fund your wallet and retry.`
+    }
+    return raw || 'Registration failed'
+  }, [])
 
   const getProgram = useCallback(() => {
     if (!wallet.publicKey || !wallet.signTransaction) return null
@@ -69,13 +77,13 @@ export function useCitizenRegistry() {
       console.log('Citizen registered on-chain:', tx)
       return { tx, pda: citizenPDA.toBase58() }
     } catch (err: any) {
-      const msg = err?.message || 'Registration failed'
+      const msg = toReadableError(err)
       setError(msg)
-      throw err
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram, getCitizenPDA])
+  }, [wallet.publicKey, getProgram, getCitizenPDA, toReadableError])
 
   return {
     registerCitizen,

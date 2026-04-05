@@ -5,11 +5,21 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import TreasuryDashboard from '@/components/TreasuryDashboard'
 import { DISTRICTS } from '@/lib/contracts'
+import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
 export default function TreasuryPage() {
   const params = useParams<{ district: string }>()
   const t = useTranslations('treasury')
   const district = decodeURIComponent(params.district)
+  const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
+
+  if (holdUi) {
+    return (
+      <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
@@ -23,8 +33,8 @@ export default function TreasuryPage() {
               <p className="text-gray-500 dark:text-gray-400">{t('transparentManagement')}</p>
             </div>
             {/* District switcher */}
-            <div className="flex flex-wrap gap-2">
-              {DISTRICTS.slice(0, 4).map((d) => (
+            <div className="flex flex-wrap gap-2 max-w-md">
+              {DISTRICTS.map((d) => (
                 <Link
                   key={d}
                   href={`/treasury/${encodeURIComponent(d)}`}

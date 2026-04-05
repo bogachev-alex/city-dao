@@ -4,9 +4,38 @@ import { useCallback, useState } from 'react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { PROGRAM_IDS } from './constants'
 import { getContractPDA, getEscrowPDA } from './pda'
+import { SOLANA_NETWORK } from './constants'
 import idl from './idl/contract_registry.json'
+
+const MAX_SEED_BYTES = 32
+
+function shortStableHash(input: string): string {
+  let h = 5381
+  for (let i = 0; i < input.length; i++) {
+    h = ((h << 5) + h) ^ input.charCodeAt(i)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
+function normalizeSeedString(input: string): string {
+  // Solana seed max length is 32 bytes, not 32 chars.
+  const raw = String(input || '').trim()
+  const hashSuffix = `-${shortStableHash(raw)}`
+  let out = raw
+  while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
+    out = out.slice(0, -1)
+  }
+  if (out === raw) return out
+
+  // Keep deterministic uniqueness for long titles that would otherwise collide after truncation.
+  let pref = raw
+  const budget = MAX_SEED_BYTES - Buffer.byteLength(hashSuffix, 'utf8')
+  while (Buffer.byteLength(pref, 'utf8') > Math.max(1, budget)) {
+    pref = pref.slice(0, -1)
+  }
+  return `${pref}${hashSuffix}`
+}
 
 interface MilestoneInput {
   description: string
@@ -20,6 +49,19 @@ export function useContractRegistry() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isAlreadyInUseError = useCallback((err: unknown): boolean => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    return raw.includes('already in use') || raw.includes('Allocate: account')
+  }, [])
+
+  const toReadableError = useCallback((err: unknown): string => {
+    const raw = err instanceof Error ? err.message : String(err || '')
+    if (raw.includes('Attempt to debit an account but found no record of a prior credit')) {
+      return `Wallet has no SOL on ${SOLANA_NETWORK}. Fund your wallet and retry.`
+    }
+    return raw || 'Contract registration failed'
+  }, [])
+
   const getProgram = useCallback(() => {
     if (!wallet.publicKey || !wallet.signTransaction) return null
     const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
@@ -30,7 +72,8 @@ export function useContractRegistry() {
     const program = getProgram()
     if (!program) return null
 
-    const [pda] = getContractPDA(authority, title)
+    const onChainTitle = normalizeSeedString(title)
+    const [pda] = getContractPDA(authority, onChainTitle)
     try {
       const account = await (program.account as any).governmentContract.fetch(pda)
       return account
@@ -57,7 +100,8 @@ export function useContractRegistry() {
     setError(null)
 
     try {
-      const [contractPDA] = getContractPDA(wallet.publicKey, title)
+      const onChainTitle = normalizeSeedString(title)
+      const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(contractPDA)
 
       const milestoneInputs = milestones.map((m) => ({
@@ -68,7 +112,7 @@ export function useContractRegistry() {
 
       const tx = await (program.methods as any)
         .registerContract(
-          title,
+          onChainTitle,
           district,
           new BN(totalAmount),
           new BN(deadline),
@@ -88,17 +132,202 @@ export function useContractRegistry() {
       console.log('Contract registered on-chain:', tx)
       return { tx, pda: contractPDA.toBase58() }
     } catch (err: any) {
-      const msg = err?.message || 'Contract registration failed'
+      // If PDA was created earlier (e.g., repeated submit), treat as success.
+      if (isAlreadyInUseError(err)) {
+        const onChainTitle = normalizeSeedString(title)
+        const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
+        return { tx: null, pda: contractPDA.toBase58() }
+      }
+      const msg = toReadableError(err)
       setError(msg)
-      throw err
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [wallet.publicKey, getProgram])
+  }, [wallet.publicKey, getProgram, isAlreadyInUseError, toReadableError])
+
+  /**
+   * Contractor submits milestone on-chain with IPFS evidence hash (see IDL submit_milestone).
+   */
+  const submitMilestone = useCallback(
+    async (contractPubkey: PublicKey, milestoneIndex: number, evidenceHash: string) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .submitMilestone(milestoneIndex, evidenceHash)
+          .accounts({
+            governmentContract: contractPubkey,
+            contractor: wallet.publicKey,
+          })
+          .rpc()
+
+        return tx
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Authority (akimat) accepts a submitted milestone — releases tranche from escrow to contractor.
+   */
+  const acceptMilestone = useCallback(
+    async (contractPubkey: PublicKey, contractorPubkey: PublicKey, milestoneIndex: number) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [escrowPDA] = getEscrowPDA(contractPubkey)
+
+        const tx = await (program.methods as any)
+          .acceptMilestone(milestoneIndex)
+          .accounts({
+            governmentContract: contractPubkey,
+            escrow: escrowPDA,
+            contractor: contractorPubkey,
+            authority: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+
+        console.log('Milestone accepted on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Authority rejects a submitted milestone — milestone goes back to pending, no payment.
+   */
+  const rejectMilestone = useCallback(
+    async (contractPubkey: PublicKey, milestoneIndex: number) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .rejectMilestone(milestoneIndex)
+          .accounts({
+            governmentContract: contractPubkey,
+            authority: wallet.publicKey,
+          })
+          .rpc()
+
+        console.log('Milestone rejected on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Anyone can call checkDeadline to mark overdue milestones.
+   * Should be called periodically or before viewing contract status.
+   */
+  const checkDeadline = useCallback(
+    async (contractPubkey: PublicKey) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .checkDeadline()
+          .accounts({
+            governmentContract: contractPubkey,
+            caller: wallet.publicKey,
+          })
+          .rpc()
+
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  /**
+   * Authority terminates a contract — marks it terminated, no further milestones accepted.
+   */
+  const terminateContract = useCallback(
+    async (contractPubkey: PublicKey) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const tx = await (program.methods as any)
+          .terminateContract()
+          .accounts({
+            governmentContract: contractPubkey,
+            authority: wallet.publicKey,
+          })
+          .rpc()
+
+        console.log('Contract terminated on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
 
   return {
     registerContract,
     fetchContract,
+    submitMilestone,
+    acceptMilestone,
+    rejectMilestone,
+    checkDeadline,
+    terminateContract,
     loading,
     error,
     connected: !!wallet.publicKey,

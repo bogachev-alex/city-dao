@@ -1,5 +1,6 @@
 import { PrismaClient } from '../lib/generated/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { PLACEHOLDER_CONTRACTOR_NAME } from '../lib/crowdfundingContractConstants'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
@@ -58,9 +59,21 @@ async function main() {
     prisma.contractor.create({
       data: { name: 'ТОО GreenBuild', rating: 'AA', reputationScore: 80, onTimeRate: 0.83, acceptanceRate: 0.87, updateFrequency: 0.85, gpsAccuracy: 0.92, blockerSpeed: 0.78 },
     }),
+    prisma.contractor.create({
+      data: {
+        name: PLACEHOLDER_CONTRACTOR_NAME,
+        rating: 'C',
+        reputationScore: 0,
+        onTimeRate: 0,
+        acceptanceRate: 0,
+        updateFrequency: 0,
+        gpsAccuracy: 0,
+        blockerSpeed: 0,
+      },
+    }),
   ])
 
-  console.log(`Created ${contractors.length} contractors`)
+  console.log(`Created ${contractors.length} contractors (incl. placeholder for crowdfunding)`)
 
   // ═══════════════════════════════════════════════
   // CONTRACTS (10)
@@ -239,19 +252,19 @@ async function main() {
   // DISTRICT TREASURIES (8) — with varied balances
   // ═══════════════════════════════════════════════
   const districtData = [
-    { district: 'Алатауский',     balance: 2_800_000 },
-    { district: 'Алмалинский',    balance: 12_500_000 },
-    { district: 'Ауэзовский',    balance: 15_500_000 },
-    { district: 'Бостандыкский',  balance: 8_200_000 },
-    { district: 'Жетысуский',    balance: 4_100_000 },
-    { district: 'Медеуский',     balance: 18_900_000 },
-    { district: 'Наурызбайский', balance: 3_600_000 },
-    { district: 'Турксибский',   balance: 5_400_000 },
+    { district: 'Алатауский',    walletAddress: '3zuYfqNAXFy8RYYSo6guiXXRPNc1hTvw7CFiLUnXoQWp', balance: 2_800_000 },
+    { district: 'Алмалинский',   walletAddress: 'A4vodzfg9iJho5brepy1nApxKQ1heDHwGE3ByDNesLSD', balance: 12_500_000 },
+    { district: 'Ауэзовский',    walletAddress: '3it6N2wRR12CaTc7un5ogw3mYQV8rjLyZPvN8mr3FTbg', balance: 15_500_000 },
+    { district: 'Бостандыкский', walletAddress: '6fqUBQXQZ8KTGQcY8FLbNEePq1gSjhnRvcwPaDzPkPHt', balance: 8_200_000 },
+    { district: 'Жетысуский',    walletAddress: 'CRnhVGDha3F1Y9tBP5XGG1kGhEREZfJ8GqDz5yEJVwtn', balance: 4_100_000 },
+    { district: 'Медеуский',     walletAddress: 'RZEyiFoF7Qi3T4FNmkZMxWjWYb9V9Aq1KX7deG4wzN9', balance: 18_900_000 },
+    { district: 'Наурызбайский', walletAddress: 'Hj6xtnYmDqJ4qtaVrBT15o4HcuGeJTPETik3z7x2FW5X', balance: 3_600_000 },
+    { district: 'Турксибский',   walletAddress: 'DfMP5oCHSQuapyAZT6maSgNjMBoghPam6zopTC5VpXVd', balance: 5_400_000 },
   ]
 
   const treasuries = await Promise.all(
     districtData.map((d) =>
-      prisma.districtTreasury.create({ data: { district: d.district, balance: d.balance } })
+      prisma.districtTreasury.create({ data: { district: d.district, walletAddress: d.walletAddress, balance: d.balance } })
     )
   )
 
@@ -401,18 +414,30 @@ async function main() {
   console.log('Created 4 jury sessions')
 
   // ═══════════════════════════════════════════════
-  // PENALTIES (4)
+  // PENALTIES (4) — routed to district treasuries
   // ═══════════════════════════════════════════════
-  await prisma.penalty.createMany({
-    data: [
-      { contractId: contract2.id, type: 'TIME_OVERDUE', amountTenge: 6_000_000, daysOverdue: 5 },
-      { contractId: contract7.id, type: 'TIME_OVERDUE', amountTenge: 5_700_000, daysOverdue: 6 },
-      { contractId: contract7.id, type: 'QUALITY_REJECTED', amountTenge: 9_500_000, triggeredBy: citizens[5].id },
-      { contractId: contract7.id, type: 'GHOST_SITE', amountTenge: 4_750_000, triggeredBy: citizens[1].id },
-    ],
+  const auezovTreasuryForPenalty = treasuries.find(t => t.district === 'Ауэзовский')!
+
+  const penalty1 = await prisma.penalty.create({
+    data: { contractId: contract2.id, type: 'TIME_OVERDUE', amountTenge: 6_000_000, daysOverdue: 5, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty2 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'TIME_OVERDUE', amountTenge: 5_700_000, daysOverdue: 6, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty3 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'QUALITY_REJECTED', amountTenge: 9_500_000, triggeredBy: citizens[5].id, districtTreasuryId: auezovTreasuryForPenalty.id },
+  })
+  const penalty4 = await prisma.penalty.create({
+    data: { contractId: contract7.id, type: 'GHOST_SITE', amountTenge: 4_750_000, triggeredBy: citizens[1].id, districtTreasuryId: auezovTreasuryForPenalty.id },
   })
 
-  console.log('Created 4 penalties')
+  const totalPenalties = BigInt(6_000_000) + BigInt(5_700_000) + BigInt(9_500_000) + BigInt(4_750_000)
+  await prisma.districtTreasury.update({
+    where: { id: auezovTreasuryForPenalty.id },
+    data: { balance: { increment: totalPenalties } },
+  })
+
+  console.log('Created 4 penalties routed to Ауэзовский treasury')
 
   // ═══════════════════════════════════════════════
   // WORK LOGS (15)
@@ -737,6 +762,7 @@ async function main() {
   // ═══════════════════════════════════════════════
   const campaign1 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-1',
       title: 'Детская площадка во дворе ЖК «Алтын Булак»',
       description: 'Установка современной детской площадки с безопасным покрытием, качелями, горками и спортивным уголком для детей 3–12 лет. Старая площадка демонтирована в 2024 году из-за аварийного состояния, двор обслуживает 4 многоэтажных дома (~800 семей).',
       district: 'Ауэзовский', lat: 43.2395, lng: 76.8742, category: 'PLAYGROUND',
@@ -747,6 +773,7 @@ async function main() {
   })
   const campaign2 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-2',
       title: 'Ремонт тротуара по ул. Жандосова (от Манаса до Тимирязева)',
       description: 'Замена разрушенной тротуарной плитки на участке 1.2 км. Основной пешеходный маршрут к школе №135 и поликлинике №7.',
       district: 'Бостандыкский', lat: 43.2156, lng: 76.8892, category: 'ROADS',
@@ -757,6 +784,7 @@ async function main() {
   })
   const campaign3 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-3',
       title: 'Озеленение сквера на пересечении Абая и Байтурсынова',
       description: 'Высадка 40 деревьев и 200 кустарников, установка системы капельного полива, укладка газона 2000 м².',
       district: 'Алмалинский', lat: 43.2401, lng: 76.9198, category: 'LANDSCAPING',
@@ -767,6 +795,7 @@ async function main() {
   })
   const campaign4 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-4',
       title: 'Ремонт спортзала школы №92 (мкр. Алгабас)',
       description: 'Капитальный ремонт спортивного зала: замена полового покрытия, обновление освещения (LED), установка вентиляции, покупка нового спортинвентаря.',
       district: 'Алатауский', lat: 43.1897, lng: 76.8456, category: 'SCHOOL',
@@ -777,6 +806,7 @@ async function main() {
   })
   const campaign5 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-5',
       title: 'Освещение пешеходной аллеи вдоль р. Есентай',
       description: 'Установка 35 LED-фонарей вдоль пешеходной аллеи протяжённостью 1.5 км. После 18:00 зимой полностью тёмный участок.',
       district: 'Медеуский', lat: 43.2311, lng: 76.9488, category: 'LANDSCAPING',
@@ -787,6 +817,7 @@ async function main() {
   })
   const campaign6 = await prisma.crowdfundingCampaign.create({
     data: {
+      id: 'cf-6',
       title: 'Установка камер видеонаблюдения (мкр. Орбита-2)',
       description: 'Монтаж 20 камер видеонаблюдения на ключевых точках микрорайона. Интеграция с системой «Сергек».',
       district: 'Бостандыкский', lat: 43.2256, lng: 76.8992, category: 'COMMERCIAL',
@@ -818,7 +849,7 @@ async function main() {
   console.log('Created 6 crowdfunding campaigns + 14 contributions')
 
   console.log('\n✓ Seed completed successfully!')
-  console.log('  8 contractors, 10 contracts, 8 treasuries, 10 citizens')
+  console.log('  9 contractors, 10 contracts, 8 treasuries, 10 citizens')
   console.log('  4 jury sessions, 4 penalties, 15 work logs, 12 NFTs')
   console.log('  13 proposals, 4 AI reports, 20 proposal votes')
   console.log('  6 suggestions, 15 suggestion votes')

@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import type { AuthUser } from '@/lib/auth'
+import { DEMO_AUTH_USER, type AuthUser } from '@/lib/auth'
 
 // ── mock localStorage via jsdom ───────────────────────────────────────────────
 beforeEach(() => {
@@ -93,13 +93,21 @@ describe('switchRole', () => {
     expect(result.current.user?.role).toBe('AKIMAT')
   })
 
-  it('preserves id and name', async () => {
+  it('preserves id and name for non-demo (e.g. wallet) users', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await act(async () => {})
     act(() => result.current.login(CITIZEN))
     act(() => result.current.switchRole('CONTRACTOR'))
     expect(result.current.user?.id).toBe(CITIZEN.id)
     expect(result.current.user?.name).toBe(CITIZEN.name)
+  })
+
+  it('replaces id and name for demo sessions when switching role', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await act(async () => {})
+    act(() => result.current.login(DEMO_AUTH_USER.CITIZEN))
+    act(() => result.current.switchRole('CONTRACTOR'))
+    expect(result.current.user).toEqual(DEMO_AUTH_USER.CONTRACTOR)
   })
 
   it('is a no-op when not logged in', async () => {

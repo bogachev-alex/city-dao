@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { useConnection } from '@solana/wallet-adapter-react'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { Link } from '@/i18n/routing'
 import { hashIIN } from '@/lib/crypto'
-import { DISTRICTS } from '@/lib/contracts'
+import { DISTRICTS, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import { useCitizenRegistry } from '@/lib/web3/useCitizenRegistry'
 import { useAuth } from '@/components/AuthContext'
 import type { AuthUser } from '@/lib/auth'
+import { awardTokens } from '@/lib/tokens'
 
 const PHONE_RE = /^\+7\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}$/
 
@@ -30,8 +33,18 @@ function formatPhone(raw: string): string {
 export default function CitizenRegistration() {
   const t = useTranslations('components.citizenRegistration')
   const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
-  const { registerCitizen, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
-  const { login } = useAuth()
+  const { connection } = useConnection()
+  const { registerCitizen, fetchCitizenProfile, loading: solanaLoading, error: solanaError } = useCitizenRegistry()
+  const { login, logout } = useAuth()
+
+  // After select() the adapter name changes — connect() in the next effect tick
+  const pendingConnectRef = useRef(false)
+  useEffect(() => {
+    if (pendingConnectRef.current && wallet && !connected && !connecting) {
+      pendingConnectRef.current = false
+      connect().catch(() => {})
+    }
+  }, [wallet?.adapter.name, connected, connecting, connect])
 
   const handleConnect = useCallback(() => {
     const phantom = wallets.find(
@@ -47,9 +60,9 @@ export default function CitizenRegistration() {
       connect().catch(() => {})
       return
     }
+    pendingConnectRef.current = true
     select(target.adapter.name)
-    setTimeout(() => connect().catch(() => {}), 100)
-  }, [wallets, wallet, select, connect])
+  }, [wallets, wallet, connected, connecting, select, connect])
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -60,7 +73,9 @@ export default function CitizenRegistration() {
   const [agreed, setAgreed] = useState(false)
   const [txSignature, setTxSignature] = useState<string | null>(null)
   const [regError, setRegError] = useState<string | null>(null)
+  const [regInfo, setRegInfo] = useState<string | null>(null)
   const [onChain, setOnChain] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const isValidIIN = iin.length === 12 && /^\d+$/.test(iin)
   const isValidPhone = PHONE_RE.test(phone)
@@ -79,23 +94,114 @@ export default function CitizenRegistration() {
     }
   }
 
+  const fillTestData = async () => {
+    const testIin = '000000000001'
+    setName('Test User')
+    setPhone('+7 (700) 111-11-11')
+    setDistrict(DISTRICTS[0])
+    setAgreed(true)
+    setIin(testIin)
+    const hash = await hashIIN(testIin)
+    setIinHash(hash)
+    setRegError(null)
+    setRegInfo(t('testDataFilled'))
+  }
+
+  const handleDeleteCitizen = async () => {
+    if (!publicKey) {
+      setRegError(t('deleteNeedWallet'))
+      return
+    }
+    setDeleteLoading(true)
+    setRegError(null)
+    setRegInfo(null)
+    try {
+      const walletAddress = publicKey.toBase58()
+      const res = await fetch('/api/citizens', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setRegError(data?.error || t('deleteFailed'))
+        return
+      }
+      localStorage.removeItem('citizen')
+      localStorage.removeItem('citizen_profile')
+      logout()
+      setStep('form')
+      setTxSignature(null)
+      setOnChain(false)
+      setRegInfo(t('deleteSuccess'))
+    } catch {
+      setRegError(t('deleteFailed'))
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!isValidIIN || !isValidName || !isValidPhone || !district || !connected || !agreed || !publicKey || !iinHash) return
     setStep('registering')
     setRegError(null)
+    setRegInfo(null)
 
     const walletAddress = publicKey.toBase58()
 
     try {
-      const hashBytes = new Uint8Array(32)
-      for (let i = 0; i < 32; i++) {
-        hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+      const minFeeReserveLamports = Math.floor(0.0002 * LAMPORTS_PER_SOL)
+      let balance = await connection.getBalance(publicKey)
+      if (balance < minFeeReserveLamports) {
+        try {
+          const airdropSig = await connection.requestAirdrop(publicKey, Math.floor(0.01 * LAMPORTS_PER_SOL))
+          await connection.confirmTransaction(airdropSig, 'confirmed')
+          balance = await connection.getBalance(publicKey)
+        } catch (airdropErr: any) {
+          const msg = String(airdropErr?.message || '')
+          const lowered = msg.toLowerCase()
+          if (msg.includes('429') || lowered.includes('airdrop limit') || lowered.includes('faucet')) {
+            setRegError(
+              `Лимит devnet airdrop исчерпан. Пополните кошелёк тестовым SOL через https://faucet.solana.com и повторите регистрацию. Адрес: ${publicKey.toBase58()}`
+            )
+          } else {
+            setRegError(`Не удалось получить devnet airdrop: ${msg || 'неизвестная ошибка'}`)
+          }
+          setStep('form')
+          return
+        }
       }
-      const result = await registerCitizen(district, hashBytes)
-      setTxSignature(result.tx)
-      setOnChain(true)
+      if (balance < minFeeReserveLamports) {
+        setRegError('Недостаточно SOL в devnet даже после airdrop. Повторите попытку через 10-20 секунд.')
+        setStep('form')
+        return
+      }
+
+      const existingOnChainProfile = await fetchCitizenProfile()
+      if (existingOnChainProfile) {
+        setOnChain(true)
+        setRegInfo('On-chain профиль для этого кошелька уже существует. Используем существующую регистрацию.')
+      } else {
+        const hashBytes = new Uint8Array(32)
+        for (let i = 0; i < 32; i++) {
+          hashBytes[i] = parseInt(iinHash.slice(i * 2, i * 2 + 2), 16)
+        }
+        const result = await registerCitizen(district, hashBytes)
+        setTxSignature(result.tx)
+        setOnChain(true)
+      }
     } catch (err: any) {
-      console.warn('On-chain registration failed (continuing with DB only):', err.message)
+      const msg = String(err?.message || '')
+      const lowered = msg.toLowerCase()
+      if (lowered.includes('already in use') || lowered.includes('allocate: account') || lowered.includes('custom program error: 0x0')) {
+        setOnChain(true)
+        setRegInfo('On-chain профиль уже создан ранее для этого кошелька. Продолжаем регистрацию в БД.')
+      } else {
+        setOnChain(false)
+        setRegError(`On-chain регистрация не выполнена: ${msg || 'неизвестная ошибка'}`)
+        setStep('form')
+        return
+      }
     }
 
     try {
@@ -129,6 +235,7 @@ export default function CitizenRegistration() {
       name: trimmedName || `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
     }
     login(authUser)
+    awardTokens('registration')
     setStep('done')
   }
 
@@ -172,7 +279,7 @@ export default function CitizenRegistration() {
                   <span className="text-emerald-600 dark:text-emerald-400 text-xs">On-chain</span>
                   {txSignature && (
                     <a
-                      href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                      href={getSolanaExplorerTxUrl(txSignature)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-500 dark:text-blue-400 text-xs underline"
@@ -210,6 +317,29 @@ export default function CitizenRegistration() {
           {regError || solanaError}
         </div>
       )}
+      {regInfo && (
+        <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-4 text-sm text-emerald-700 dark:text-emerald-400">
+          {regInfo}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void fillTestData()}
+          className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors"
+        >
+          {t('fillTestData')}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleDeleteCitizen()}
+          disabled={deleteLoading}
+          className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/30 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-60"
+        >
+          {deleteLoading ? t('deleting') : t('deleteUser')}
+        </button>
+      </div>
 
       {/* Step 1: Personal info */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">

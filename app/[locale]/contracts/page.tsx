@@ -1,12 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { DEMO_CONTRACTS, DISTRICTS, Contract, ContractStatus, normalizeContract } from '@/lib/contracts'
+import {
+  DEMO_CONTRACTS,
+  DISTRICTS,
+  Contract,
+  ContractStatus,
+  normalizeContract,
+} from '@/lib/contracts'
 import { fetchContracts } from '@/lib/api'
+import { mergeContractsWithOnChain } from '@/lib/mergeContractsOnChain'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
 import ContractCard from '@/components/ContractCard'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
+
+const STATUS_API: Record<ContractStatus, string> = {
+  active: 'ACTIVE',
+  penalized: 'PENALIZED',
+  completed: 'COMPLETED',
+  disputed: 'DISPUTED',
+}
 
 export default function ContractsPage() {
   const t = useTranslations('contracts')
@@ -15,7 +31,20 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
   const [districtFilter, setDistrictFilter] = useState<string>('all')
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [subjectTypeFilter, setSubjectTypeFilter] = useState<string>('all')
+  const [amountMinFilter, setAmountMinFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [contractorScope, setContractorScope] = useState<'mine' | 'all'>('mine')
+  const [sortBy, setSortBy] = useState<string>('createdAtDesc')
+
+  const dataSource = useDataSource()
+  const isContractor = user?.role === 'CONTRACTOR'
+  const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
+
+  useEffect(() => {
+    if (user?.role !== 'CONTRACTOR') setContractorScope('mine')
+  }, [user?.role])
 
   const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
     { value: 'all', label: t('all') },
@@ -25,31 +54,109 @@ export default function ContractsPage() {
     { value: 'disputed', label: t('disputedFilter') },
   ]
 
-  useEffect(() => {
-    fetchContracts()
-      .then((data: any[]) => {
+  const loadContracts = useCallback(() => {
+    setLoading(true)
+
+    // On-chain mode: read directly from Solana devnet
+    if (dataSource === 'onchain') {
+      fetchAllContractsOnChain()
+        .then((onChain) => {
+          setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+        })
+        .catch(() => setContracts(DEMO_CONTRACTS))
+        .finally(() => setLoading(false))
+      return
+    }
+
+    // Mock/DB mode: fetch from API with filters
+    const amountMin = amountMinFilter.trim() ? Number(amountMinFilter.replace(/\s/g, '')) : undefined
+    fetchContracts({
+      district: districtFilter !== 'all' ? districtFilter : undefined,
+      status: statusFilter !== 'all' ? STATUS_API[statusFilter] : undefined,
+      customer: customerFilter.trim() || undefined,
+      subjectType: subjectTypeFilter !== 'all' ? subjectTypeFilter : undefined,
+      amountMin: amountMin != null && !Number.isNaN(amountMin) ? amountMin : undefined,
+    })
+      .then(async (data: any[]) => {
         if (Array.isArray(data) && data.length > 0) {
-          setContracts(data.map(normalizeContract))
+          const normalized = data.map(normalizeContract)
+          const merged = await mergeContractsWithOnChain(normalized)
+          setContracts(merged)
         } else {
-          setContracts(DEMO_CONTRACTS)
+          const merged = await mergeContractsWithOnChain(DEMO_CONTRACTS)
+          setContracts(merged)
         }
       })
-      .catch(() => setContracts(DEMO_CONTRACTS))
+      .catch(async () => {
+        const merged = await mergeContractsWithOnChain(DEMO_CONTRACTS)
+        setContracts(merged)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [dataSource, districtFilter, statusFilter, customerFilter, subjectTypeFilter, amountMinFilter])
+
+  useEffect(() => {
+    loadContracts()
+  }, [loadContracts])
 
   const filtered = contracts.filter((c) => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false
-    if (districtFilter !== 'all' && c.district !== districtFilter) return false
-    if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase()) && !c.contractor.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      const inTitle = c.title.toLowerCase().includes(q)
+      const inContractor = c.contractor.toLowerCase().includes(q)
+      const inCustomer = (c.customerName || '').toLowerCase().includes(q)
+      const inRegistry = (c.registryNumber || '').toLowerCase().includes(q)
+      if (!inTitle && !inContractor && !inCustomer && !inRegistry) return false
+    }
     return true
   })
 
+  const filteredForDisplay = useMemo(() => {
+    if (!isContractor || contractorScope === 'all') return filtered
+    return filtered.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
+  }, [filtered, isContractor, contractorScope, contractorNameNorm])
+
+  const sorted = useMemo(() => {
+    const arr = [...filteredForDisplay]
+    switch (sortBy) {
+      case 'createdAtDesc':
+        return arr.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return tb - ta
+        })
+      case 'createdAtAsc':
+        return arr.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return ta - tb
+        })
+      case 'deadlineAsc':
+        return arr.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+      case 'deadlineDesc':
+        return arr.sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())
+      case 'amountDesc':
+        return arr.sort((a, b) => b.amount_usdc - a.amount_usdc)
+      case 'amountAsc':
+        return arr.sort((a, b) => a.amount_usdc - b.amount_usdc)
+      case 'status':
+        return arr.sort((a, b) => a.status.localeCompare(b.status))
+      default:
+        return arr
+    }
+  }, [filteredForDisplay, sortBy])
+
+  const contractsForStats = useMemo(() => {
+    if (isContractor && contractorScope === 'mine') {
+      return contracts.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
+    }
+    return contracts
+  }, [contracts, isContractor, contractorScope, contractorNameNorm])
+
   const counts = {
-    active: contracts.filter((c) => c.status === 'active').length,
-    penalized: contracts.filter((c) => c.status === 'penalized').length,
-    completed: contracts.filter((c) => c.status === 'completed').length,
-    disputed: contracts.filter((c) => c.status === 'disputed').length,
+    active: contractsForStats.filter((c) => c.status === 'active').length,
+    penalized: contractsForStats.filter((c) => c.status === 'penalized').length,
+    completed: contractsForStats.filter((c) => c.status === 'completed').length,
+    disputed: contractsForStats.filter((c) => c.status === 'disputed').length,
   }
 
   return (
@@ -62,9 +169,6 @@ export default function ContractsPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {t('title')}
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">
-                {t('subtitle')}
-              </p>
             </div>
             <div className="flex gap-3">
               {[
@@ -82,6 +186,41 @@ export default function ContractsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {isContractor && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-0.5">
+              <button
+                type="button"
+                onClick={() => setContractorScope('mine')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  contractorScope === 'mine'
+                    ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                {t('contractorScopeMine')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setContractorScope('all')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  contractorScope === 'all'
+                    ? 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                {t('contractorScopeAll')}
+              </button>
+            </div>
+            <Link
+              href="/contractor"
+              className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              {t('contractorDeskLink')} →
+            </Link>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6 space-y-4">
           {/* Search */}
@@ -96,6 +235,59 @@ export default function ContractsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
             />
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('customerFilter')}</label>
+              <input
+                type="text"
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                placeholder={t('customerPlaceholder')}
+                className="w-full min-w-[180px] sm:w-52 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('subjectTypeFilter')}</label>
+              <select
+                value={subjectTypeFilter}
+                onChange={(e) => setSubjectTypeFilter(e.target.value)}
+                className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              >
+                <option value="all">{t('allSubjectTypes')}</option>
+                <option value="Работа">{t('subjectWork')}</option>
+                <option value="Товар">{t('subjectGoods')}</option>
+                <option value="Услуга">{t('subjectServices')}</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('amountFromFilter')}</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountMinFilter}
+                onChange={(e) => setAmountMinFilter(e.target.value)}
+                placeholder="10000000"
+                className="w-full min-w-[140px] sm:w-36 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">{t('sortByLabel')}</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50"
+              >
+                <option value="createdAtDesc">{t('sortNewest')}</option>
+                <option value="createdAtAsc">{t('sortOldest')}</option>
+                <option value="deadlineAsc">{t('sortDeadlineAsc')}</option>
+                <option value="deadlineDesc">{t('sortDeadlineDesc')}</option>
+                <option value="amountDesc">{t('sortAmountDesc')}</option>
+                <option value="amountAsc">{t('sortAmountAsc')}</option>
+                <option value="status">{t('sortStatus')}</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -133,7 +325,9 @@ export default function ContractsPage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {t('found')} <span className="text-gray-900 dark:text-white font-medium">{filtered.length}</span> {t('contractsCount')}
+            {t('found')}{' '}
+            <span className="text-gray-900 dark:text-white font-medium">{sorted.length}</span>{' '}
+            {t('contractsCount')}
           </div>
           {user?.role === 'AKIMAT' && (
             <Link
@@ -149,9 +343,9 @@ export default function ContractsPage() {
         </div>
 
         {/* Contract grid */}
-        {filtered.length > 0 ? (
+        {sorted.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((contract) => (
+            {sorted.map((contract) => (
               <ContractCard key={contract.id} contract={contract} />
             ))}
           </div>
@@ -163,6 +357,8 @@ export default function ContractsPage() {
               </svg>
             </div>
             <div className="text-gray-600 dark:text-gray-400 font-medium mb-2">{t('notFound')}</div>
+            {isContractor && contractorScope === 'mine' && filtered.length > 0 ? (              <p className="text-gray-400 dark:text-gray-500 text-sm max-w-md mx-auto mb-3">{t('contractorMineEmpty')}</p>
+            ) : null}
             <div className="text-gray-400 dark:text-gray-500 text-sm">{t('tryChangeFilters')}</div>
           </div>
         )}

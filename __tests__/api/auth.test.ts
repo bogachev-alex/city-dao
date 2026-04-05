@@ -35,6 +35,7 @@ function postReq(headers: Record<string, string> = {}) {
       district: 'Медеуский',
       lat: 43.2,
       lng: 76.9,
+      onChainPubkey: '11111111111111111111111111111111',
       milestones: [{ description: 'M1', deadlineDays: 30, tranchePct: 100 }],
     }),
   })
@@ -139,12 +140,74 @@ describe('PATCH /api/contracts/[id] — role access control', () => {
   })
 
   it('200 with AKIMAT role', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'c1',
+      status: 'ACTIVE',
+      contractorId: 'ctr1',
+      crowdfunding: null,
+      contractor: { id: 'ctr1', name: 'ТОО Тест' },
+    } as any)
     prismaMock.contract.update.mockResolvedValue({ id: 'c1', status: 'COMPLETED' })
     const res = await patchContract(
       patchReq({ 'x-user-role': 'AKIMAT' }),
       { params: fakeParams }
     )
     expect(res.status).toBe(200)
+  })
+})
+
+describe('PATCH /api/contracts/[id] — crowdfunding contractor assignment', () => {
+  const params = Promise.resolve({ id: 'contract-1' })
+  const akimat = { 'x-user-role': 'AKIMAT' }
+
+  function patchBody(body: Record<string, unknown>) {
+    return new NextRequest('http://localhost/api/contracts/contract-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...akimat },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('400 when contractorId set but contract is not from crowdfunding', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'contract-1',
+      crowdfunding: null,
+      contractor: { id: 'ph', name: 'Подрядчик не назначен' },
+    } as any)
+    const res = await patchContract(patchBody({ contractorId: 'real-ctr' }), { params })
+    expect(res.status).toBe(400)
+  })
+
+  it('400 when contractor is already assigned (not placeholder)', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'contract-1',
+      crowdfunding: { id: 'cf1' },
+      contractor: { id: 'ctr', name: 'ТОО Старт' },
+    } as any)
+    const res = await patchContract(patchBody({ contractorId: 'other-ctr' }), { params })
+    expect(res.status).toBe(400)
+  })
+
+  it('200 when linked to crowdfunding, placeholder contractor, valid contractorId', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'contract-1',
+      crowdfunding: { id: 'cf1' },
+      contractor: { id: 'ph', name: 'Подрядчик не назначен' },
+    } as any)
+    prismaMock.contractor.findUnique.mockResolvedValue({
+      id: 'real-ctr',
+      name: 'ТОО Реальный',
+    } as any)
+    prismaMock.contract.update.mockResolvedValue({
+      id: 'contract-1',
+      contractorId: 'real-ctr',
+      contractor: { id: 'real-ctr', name: 'ТОО Реальный' },
+      crowdfunding: { id: 'cf1' },
+    } as any)
+    const res = await patchContract(patchBody({ contractorId: 'real-ctr' }), { params })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.contractor?.name).toBe('ТОО Реальный')
   })
 })
 

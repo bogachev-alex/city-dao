@@ -25,6 +25,30 @@ export function getEscrowPDA(contract: PublicKey): [PublicKey, number] {
   )
 }
 
+/** Derive escrow token vault PDA account (vault authority owned by program). */
+export function getEscrowTokenVaultPDA(contract: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('escrow_token_vault'), contract.toBuffer()],
+    PROGRAM_IDS.contractRegistry
+  )
+}
+
+/** Derive district treasury token vault PDA account. */
+export function getTreasuryTokenVaultPDA(district: string): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('treasury_token_vault'), Buffer.from(district)],
+    PROGRAM_IDS.districtTreasury
+  )
+}
+
+/** Derive expert stake vault PDA account. */
+export function getExpertStakeVaultPDA(expert: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('expert_stake_vault'), expert.toBuffer()],
+    PROGRAM_IDS.citizenRegistry
+  )
+}
+
 /** Derive jury session PDA from contract + milestone index */
 export function getJurySessionPDA(contract: PublicKey, milestoneIndex: number): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(

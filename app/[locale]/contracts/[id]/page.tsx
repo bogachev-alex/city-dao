@@ -1,19 +1,219 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
-import { Contract, getContractById, getDaysUntilDeadline, getMilestoneCompletedCount, formatAmount, formatTengeWithCrypto, normalizeContract } from '@/lib/contracts'
+import {
+  Contract,
+  Milestone,
+  getContractById,
+  getDaysUntilDeadline,
+  getMilestoneCompletedCount,
+  formatTengeWithCrypto,
+  normalizeContract,
+  GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
+  resolveContractOnChainPubkey,
+} from '@/lib/contracts'
 import { fetchContract } from '@/lib/api'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain, fetchContractOnChain } from '@/lib/web3/onchain'
+import { PublicKey } from '@solana/web3.js'
 import MilestoneTracker from '@/components/MilestoneTracker'
 import PenaltyCalculator from '@/components/PenaltyCalculator'
+import { useAuth } from '@/components/AuthContext'
+import { ownsContract } from '@/lib/ownsContract'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useContractRegistry } from '@/lib/web3/useContractRegistry'
+import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
+import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
+import OnChainLink from '@/components/OnChainLink'
+import ExternalLink from '@/components/ExternalLink'
+
+function milestoneStatusForApi(m: Milestone): string {
+  const map: Record<Milestone['status'], string> = {
+    pending: 'PENDING',
+    submitted: 'SUBMITTED',
+    under_review: 'UNDER_REVIEW',
+    accepted: 'ACCEPTED',
+    rejected: 'REJECTED',
+    overdue: 'OVERDUE',
+  }
+  return map[m.status] || 'PENDING'
+}
+
+function normalizeText(v: string): string {
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()"]/g, ' ')
+    .replace(/\s+/g, ' ')
+}
+
+function tokenSet(v: string): Set<string> {
+  return new Set(normalizeText(v).split(' ').filter((s) => s.length > 2))
+}
+
+function overlapScore(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let inter = 0
+  a.forEach((t) => {
+    if (b.has(t)) inter++
+  })
+  return inter / Math.max(a.size, b.size)
+}
+
+function shortAddress(value: string): string {
+  if (!value) return value
+  if (value.length <= 14) return value
+  return `${value.slice(0, 6)}...${value.slice(-6)}`
+}
 
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const t = useTranslations('contractDetail')
+  const locale = useLocale()
+  const { user, authHeader } = useAuth()
+  const wallet = useWallet()
+  const { registerContract: registerContractOnChain } = useContractRegistry()
+  const dataSource = useDataSource()
+  const showCitizenJuryVote = user?.role === 'CITIZEN'
   const [contract, setContract] = useState<Contract | null>(null)
+  const [onChainSnapshot, setOnChainSnapshot] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
+  const [workLogModalOpen, setWorkLogModalOpen] = useState(false)
+  const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+
+  const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
+    let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
+    if (!pubkeyStr) {
+      try {
+        // Fallback matching when DB record has no onChainPubkey yet.
+        const candidates = await fetchAllContractsOnChain()
+        const title = normalizeText(base.title)
+        const titleTokens = tokenSet(base.title)
+        const district = normalizeText(base.district)
+        const amount = Number(base.amount_usdc || 0)
+
+        let best: { id: string; score: number } | null = null
+        for (const c of candidates) {
+          const cDistrict = normalizeText(c.district)
+          const cAmount = Number(c.amount_usdc || 0)
+          const cTitle = normalizeText(c.title)
+          const cTokens = tokenSet(c.title)
+
+          const districtScore = cDistrict === district ? 1 : 0
+          const textScore =
+            cTitle === title
+              ? 1
+              : (cTitle.includes(title) || title.includes(cTitle) ? 0.85 : overlapScore(titleTokens, cTokens))
+
+          let amountScore = 0
+          if (amount > 0 && cAmount > 0) {
+            const rel = Math.abs(cAmount - amount) / Math.max(amount, cAmount)
+            if (rel <= 0.01) amountScore = 1
+            else if (rel <= 0.05) amountScore = 0.7
+            else if (rel <= 0.15) amountScore = 0.35
+          }
+
+          const score = districtScore * 0.35 + textScore * 0.5 + amountScore * 0.15
+          if (!best || score > best.score) best = { id: c.id, score }
+        }
+        const matched = best && best.score >= 0.72 ? candidates.find((c) => c.id === best.id) : undefined
+        if (matched) pubkeyStr = matched.id
+      } catch {
+        // keep DB-only view if chain lookup fails
+      }
+    }
+    if (!pubkeyStr) {
+      setOnChainSnapshot(null)
+      return base
+    }
+    try {
+      const onChain = await fetchContractOnChain(new PublicKey(pubkeyStr))
+      if (!onChain) {
+        setOnChainSnapshot(null)
+        return base
+      }
+      setOnChainSnapshot(onChain)
+      return {
+        ...base,
+        onChainPubkey: pubkeyStr,
+      }
+    } catch {
+      setOnChainSnapshot(null)
+      return base
+    }
+  }, [])
+
+  const loadContract = useCallback(async () => {
+    if (!params.id) return
+    const overrideOnChainPubkey = searchParams.get('onchain')?.trim() || null
+    setOnChainSnapshot(null)
+    try {
+      const data = await fetchContract(params.id)
+      if (data && !data.error) {
+        const normalized = normalizeContract(data)
+        const withOnChain = await applyOnChainOverlay(normalized, overrideOnChainPubkey)
+        setContract(withOnChain)
+      } else {
+        let pk: PublicKey | null = null
+        try {
+          pk = new PublicKey(params.id)
+        } catch {
+          pk = null
+        }
+        if (pk) {
+          try {
+            const onChain = await fetchContractOnChain(pk)
+            if (onChain) {
+              setOnChainSnapshot(onChain)
+              setContract(await applyOnChainOverlay(onChain, overrideOnChainPubkey || params.id))
+              return
+            }
+          } catch {
+            // fall through to demo / not found
+          }
+        }
+        const demo = getContractById(params.id)
+        if (!demo) {
+          setContract(null)
+          return
+        }
+        const withOnChain = await applyOnChainOverlay(demo, overrideOnChainPubkey)
+        setContract(withOnChain)
+      }
+    } catch {
+      let pk: PublicKey | null = null
+      try {
+        pk = new PublicKey(params.id!)
+      } catch {
+        pk = null
+      }
+      if (pk) {
+        try {
+          const onChain = await fetchContractOnChain(pk)
+          if (onChain) {
+            setOnChainSnapshot(onChain)
+            setContract(await applyOnChainOverlay(onChain, overrideOnChainPubkey || params.id))
+            return
+          }
+        } catch {
+          // fall through
+        }
+      }
+      const demo = getContractById(params.id!)
+      if (!demo) {
+        setContract(null)
+        return
+      }
+      const withOnChain = await applyOnChainOverlay(demo, overrideOnChainPubkey)
+      setContract(withOnChain)
+    }
+  }, [applyOnChainOverlay, params.id, searchParams])
 
   const statusConfig = {
     active: { label: t('statusActive'), color: 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
@@ -24,22 +224,51 @@ export default function ContractDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
+    setLoading(true)
 
-    fetchContract(params.id)
-      .then((data: any) => {
-        if (data && !data.error) {
-          setContract(normalizeContract(data))
-        } else {
-          const demo = getContractById(params.id)
-          setContract(demo || null)
+    // On-chain mode: try to fetch from Solana by PDA address
+    if (dataSource === 'onchain') {
+      (async () => {
+        try {
+          const overrideOnChainPubkey = searchParams.get('onchain')?.trim() || null
+          const mappedOnChainPubkey = resolveContractOnChainPubkey(params.id, null)
+          const candidatePubkey = overrideOnChainPubkey || mappedOnChainPubkey || params.id
+
+          let onChain: Contract | null = null
+          try {
+            onChain = await fetchContractOnChain(new PublicKey(candidatePubkey))
+          } catch {
+            onChain = null
+          }
+
+          if (onChain) {
+            setOnChainSnapshot(onChain)
+            setContract(onChain)
+          } else {
+            const fallback = getContractById(params.id) || null
+            if (!fallback) {
+              setContract(null)
+              return
+            }
+            const withOnChain = await applyOnChainOverlay(
+              fallback,
+              overrideOnChainPubkey || mappedOnChainPubkey
+            )
+            setContract(withOnChain)
+          }
+        } catch {
+          setOnChainSnapshot(null)
+          setContract(getContractById(params.id) || null)
+        } finally {
+          setLoading(false)
         }
-      })
-      .catch(() => {
-        const demo = getContractById(params.id)
-        setContract(demo || null)
-      })
-      .finally(() => setLoading(false))
-  }, [params.id])
+      })()
+      return
+    }
+
+    // Mock/DB mode: fetch from API
+    void loadContract().finally(() => setLoading(false))
+  }, [params.id, dataSource, loadContract, searchParams, applyOnChainOverlay])
 
   if (loading) {
     return (
@@ -66,6 +295,14 @@ export default function ContractDetailPage() {
   const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
   const status = statusConfig[contract.status]
 
+  const signedLabel = contract.signedAt
+    ? new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(contract.signedAt))
+    : null
+
   const PHOTO_EVIDENCE = [
     { label: t('photoStart'), date: '10.03.2026' },
     { label: t('photoMid'), date: '18.03.2026' },
@@ -73,6 +310,48 @@ export default function ContractDetailPage() {
   ]
 
   const activeReviewMilestone = contract.milestones.find((m) => m.status === 'under_review')
+  const onChainDaysLeft = onChainSnapshot ? getDaysUntilDeadline(onChainSnapshot.deadline) : null
+
+  const isContractorView =
+    user?.role === 'CONTRACTOR' && ownsContract(user.id, contract.contractorId, contract.contractor, contract.contractorWalletAddress)
+
+  const juryRejections =
+    contract.jurySessions?.filter((s) => s.result === 'REJECT' || s.result === 'reject') ?? []
+
+  const canPublishOnChain = !contract.onChainPubkey && !!wallet.publicKey
+
+  const handlePublishOnChain = async () => {
+    if (!contract || !wallet.publicKey) return
+    setPublishLoading(true)
+    setPublishError(null)
+    try {
+      const result = await registerContractOnChain(
+        contract.title,
+        contract.district,
+        Number(contract.amount_usdc || 0),
+        Math.floor(new Date(contract.deadline).getTime() / 1000),
+        contract.milestones.map((m) => ({
+          description: m.desc,
+          deadlineDays: m.deadline_days,
+          tranchePct: m.tranche_pct,
+        })),
+        Number(contract.lat),
+        Number(contract.lng),
+        wallet.publicKey
+      )
+
+      await fetch(`/api/contracts/${encodeURIComponent(contract.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ onChainPubkey: result.pda }),
+      })
+      await loadContract()
+    } catch (err: any) {
+      setPublishError(err?.message || t('onChainPublishError'))
+    } finally {
+      setPublishLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
@@ -130,6 +409,114 @@ export default function ContractDetailPage() {
                 </div>
               </div>
 
+              {(contract.registryNumber || contract.customerName || contract.subjectType || signedLabel) && (
+                <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{t('goszakupBlock')}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {contract.registryNumber && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('registryNumber')}</div>
+                        <div className="font-mono text-gray-900 dark:text-white">{contract.registryNumber}</div>
+                      </div>
+                    )}
+                    {contract.customerName && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('customer')}</div>
+                        <div className="text-gray-900 dark:text-white">{contract.customerName}</div>
+                      </div>
+                    )}
+                    {contract.subjectType && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('subjectType')}</div>
+                        <div className="text-gray-900 dark:text-white">{contract.subjectType}</div>
+                      </div>
+                    )}
+                    {signedLabel && (
+                      <div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('signedAt')}</div>
+                        <div className="text-gray-900 dark:text-white">{signedLabel}</div>
+                      </div>
+                    )}
+                  </div>
+                  <ExternalLink
+                    href={GOSZAKUP_ALMATY_WORKS_MIN10M_URL}
+                    label={t('goszakupOpen')}
+                    withIcon
+                    className="inline-flex items-center gap-1.5 mt-3 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                  />
+                </div>
+              )}
+
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('onChainStatusLabel')}</div>
+                {contract.onChainPubkey ? (
+                  <div className="space-y-3">
+                    <OnChainLink
+                      address={contract.onChainPubkey}
+                      label={t('openOnChain')}
+                      withIcon
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                    />
+                    {onChainSnapshot && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainContractor')}</div>
+                          <div className="font-mono text-gray-700 dark:text-gray-300">{shortAddress(onChainSnapshot.contractor)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainAmount')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainDeadline')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">
+                            {onChainDaysLeft != null
+                              ? (onChainDaysLeft < 0
+                                ? t('overdueDays', { days: Math.abs(onChainDaysLeft) })
+                                : t('daysLeft', { days: onChainDaysLeft }))
+                              : '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainStatus')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">
+                            {statusConfig[onChainSnapshot.status]?.label || onChainSnapshot.status}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainEscrow')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-400 dark:text-gray-500">{t('onChainMilestones')}</div>
+                          <div className="text-gray-700 dark:text-gray-300">{onChainSnapshot.milestones.length}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('onChainMissing')}</div>
+                    {canPublishOnChain && (
+                      <button
+                        type="button"
+                        onClick={() => void handlePublishOnChain()}
+                        disabled={publishLoading}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 disabled:opacity-60"
+                      >
+                        {publishLoading ? t('onChainPublishLoading') : t('onChainPublish')}
+                      </button>
+                    )}
+                    {!wallet.publicKey && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500">{t('onChainConnectWallet')}</div>
+                    )}
+                    {publishError && (
+                      <div className="text-xs text-red-500 dark:text-red-400">{publishError}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Progress */}
               <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex items-center justify-between text-sm mb-2">
@@ -145,6 +532,79 @@ export default function ContractDetailPage() {
               </div>
             </div>
 
+            {isContractorView && (
+              <div className="bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6 space-y-5">
+                <h2 className="text-gray-900 dark:text-white font-semibold">{t('contractorPanelTitle')}</h2>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('juryFeedbackTitle')}</h3>
+                  {juryRejections.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('noJuryFeedback')}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {juryRejections.map((s) => {
+                        const ms = contract.milestones.find((m) => m.id === s.milestoneId)
+                        const label = s.milestoneDescription || ms?.desc || s.milestoneId
+                        return (
+                          <li
+                            key={s.id}
+                            className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2"
+                          >
+                            {t('juryRejectLine', { milestone: label })}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('penaltyCountdownTitle')}</h3>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">
+                    {t('daysUntilDeadlineLabel')}:{' '}
+                    <span className={daysLeft < 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'font-semibold'}>
+                      {daysLeft}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {t('penaltyAccrued', { count: contract.penalties?.length ?? 0 })}
+                  </p>
+                  {(contract.penalties?.length ?? 0) > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                      {contract.penalties!.slice(0, 5).map((p) => (
+                        <li key={p.id}>
+                          {t('penaltyLine', {
+                            type: p.type,
+                            amount: new Intl.NumberFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ').format(p.amountTenge),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('contractorActions')}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWorkLogModalOpen(true)}
+                      className="inline-flex px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+                    >
+                      {t('addReport')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMilestoneModalOpen(true)}
+                      className="inline-flex px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500"
+                    >
+                      {t('submitMilestone')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Milestone tracker */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <h2 className="text-gray-900 dark:text-white font-semibold mb-5 flex items-center gap-2">
@@ -153,7 +613,11 @@ export default function ContractDetailPage() {
                 </svg>
                 {t('executionStages')}
               </h2>
-              <MilestoneTracker milestones={contract.milestones} contractId={contract.id} />
+              <MilestoneTracker
+                milestones={contract.milestones}
+                contractId={contract.id}
+                showCitizenJuryVote={showCitizenJuryVote}
+              />
             </div>
 
             {/* Photo evidence */}
@@ -189,19 +653,30 @@ export default function ContractDetailPage() {
             {/* Penalty calculator */}
             <PenaltyCalculator contract={contract} />
 
-            {/* Jury status */}
+            {/* Jury / acceptance (citizens vote; contractors only observe) */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <h3 className="text-gray-900 dark:text-white font-semibold mb-4 flex items-center gap-2">
                 <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                {t('jury')}
+                {showCitizenJuryVote
+                  ? t('jury')
+                  : user?.role === 'CONTRACTOR'
+                    ? t('juryContractorTitle')
+                    : t('juryObserverTitle')}
               </h3>
               {activeReviewMilestone ? (
                 <div className="space-y-3">
                   <div className="bg-yellow-50 dark:bg-yellow-500/20 border border-yellow-200 dark:border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-700 dark:text-yellow-300">
                     {t('activeReview')}
                   </div>
+                  {!showCitizenJuryVote && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {user?.role === 'CONTRACTOR'
+                        ? t('juryContractorLead')
+                        : t('juryObserverLead')}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">{t('voted')}</span>
                     <span className="text-gray-900 dark:text-white font-medium">7 / 9</span>
@@ -209,12 +684,21 @@ export default function ContractDetailPage() {
                   <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: '78%' }} />
                   </div>
-                  <Link
-                    href={`/jury/${contract.id}-${activeReviewMilestone.id}`}
-                    className="block w-full text-center py-2.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
-                  >
-                    {t('participateVoting')}
-                  </Link>
+                  {showCitizenJuryVote ? (
+                    <Link
+                      href={`/jury/${contract.id}-${activeReviewMilestone.id}`}
+                      className="block w-full text-center py-2.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
+                    >
+                      {t('participateVoting')}
+                    </Link>
+                  ) : !user ? (
+                    <Link
+                      href="/login"
+                      className="block w-full text-center py-2.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:border-emerald-500/40 transition-colors"
+                    >
+                      {t('loginToVote')}
+                    </Link>
+                  ) : null}
                 </div>
               ) : (
                 <div className="text-sm text-gray-400 dark:text-gray-500">{t('noActiveSessions')}</div>
@@ -241,6 +725,38 @@ export default function ContractDetailPage() {
           </div>
         </div>
       </div>
+
+      {isContractorView && contract.contractorId && (
+        <>
+          <WorkLogFormModal
+            open={workLogModalOpen}
+            onClose={() => setWorkLogModalOpen(false)}
+            contracts={[{ id: contract.id, title: contract.title }]}
+            authHeader={authHeader}
+            onSuccess={() => void loadContract()}
+          />
+          <MilestoneSubmitModal
+            open={milestoneModalOpen}
+            onClose={() => setMilestoneModalOpen(false)}
+            contracts={[
+              {
+                id: contract.id,
+                title: contract.title,
+                onChainPubkey: contract.onChainPubkey,
+                milestones: contract.milestones.map((m) => ({
+                  id: m.id,
+                  description: m.desc,
+                  sortOrder: m.sortOrder ?? 0,
+                  status: milestoneStatusForApi(m),
+                })),
+              },
+            ]}
+            contractorWalletAddress={contract.contractorWalletAddress}
+            authHeader={authHeader}
+            onSuccess={() => void loadContract()}
+          />
+        </>
+      )}
     </div>
   )
 }

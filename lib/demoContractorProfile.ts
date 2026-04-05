@@ -1,0 +1,128 @@
+/**
+ * Offline demo payload for login id `demo-contractor-1` when DB has no row
+ * (empty DB, CI, or seed not run). Matches Prisma contractor detail shape.
+ * Contract id `1` matches `DEMO_CONTRACTS` / getContractById fallback on detail page.
+ */
+
+export function getDemoContractorProfileForApi() {
+  const now = Date.now()
+  const day = 86_400_000
+
+  return {
+    id: 'demo-contractor-1',
+    name: 'ТОО СтройАлматы',
+    walletAddress: null as string | null,
+    rating: 'AA',
+    reputationScore: 82,
+    onTimeRate: 0.85,
+    acceptanceRate: 0.9,
+    updateFrequency: 0.88,
+    gpsAccuracy: 0.95,
+    blockerSpeed: 0.7,
+    createdAt: new Date(now - 90 * day).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+    contracts: [
+      {
+        id: '1',
+        title: 'Ремонт тротуара, набережная Весновки',
+        description: 'Демо-контракт для теста кабинета подрядчика.',
+        district: 'Медеуский',
+        lat: 43.2711,
+        lng: 76.9388,
+        contractorId: 'demo-contractor-1',
+        totalAmount: '45000000',
+        escrowAmount: '9000000',
+        penaltyAmount: '0',
+        startDate: new Date(now - 14 * day).toISOString(),
+        deadline: new Date(now + 7 * day).toISOString(),
+        status: 'ACTIVE',
+        category: 'Тротуары',
+        registryNumber: 'demo-10001',
+        customerName: 'Акимат города Алматы',
+        subjectType: 'Работа',
+        onChainPubkey: null as string | null,
+        createdAt: new Date(now - 14 * day).toISOString(),
+        updatedAt: new Date(now).toISOString(),
+        milestones: [
+          {
+            id: '1-1',
+            contractId: '1',
+            description: 'Демонтаж старой плитки',
+            deadlineDays: 3,
+            tranchePct: 25,
+            status: 'ACCEPTED',
+            sortOrder: 1,
+            createdAt: new Date(now - 10 * day).toISOString(),
+            updatedAt: new Date(now - 10 * day).toISOString(),
+          },
+          {
+            id: '1-2',
+            contractId: '1',
+            description: 'Укладка основания',
+            deadlineDays: 6,
+            tranchePct: 50,
+            status: 'UNDER_REVIEW',
+            sortOrder: 2,
+            createdAt: new Date(now - 8 * day).toISOString(),
+            updatedAt: new Date(now - 1 * day).toISOString(),
+          },
+          {
+            id: '1-3',
+            contractId: '1',
+            description: 'Финальная укладка + бордюры',
+            deadlineDays: 10,
+            tranchePct: 25,
+            status: 'PENDING',
+            sortOrder: 3,
+            createdAt: new Date(now - 8 * day).toISOString(),
+            updatedAt: new Date(now - 8 * day).toISOString(),
+          },
+        ],
+      },
+    ],
+    workLogs: [
+      {
+        id: 'demo-wl-1',
+        contractId: '1',
+        contractorId: 'demo-contractor-1',
+        type: 'DAILY_LOG',
+        title: 'Демонтаж старой плитки — участок 200 м',
+        description: 'Мусор вывезен, площадка подготовлена.',
+        completionPct: 100,
+        workersOnSite: 8,
+        equipmentCount: 2,
+        photoHashes: null,
+        gpsLat: 43.2711,
+        gpsLng: 76.9388,
+        gpsValid: true,
+        createdAt: new Date(now - 2 * day).toISOString(),
+        contract: {
+          id: '1',
+          title: 'Ремонт тротуара, набережная Весновки',
+          district: 'Медеуский',
+        },
+      },
+      {
+        id: 'demo-wl-2',
+        contractId: '1',
+        contractorId: 'demo-contractor-1',
+        type: 'MILESTONE_CLAIM',
+        title: 'Заявка на приёмку: укладка основания',
+        description: 'Песчано-гравийная подушка уложена и утрамбована.',
+        completionPct: 100,
+        workersOnSite: 12,
+        equipmentCount: 3,
+        photoHashes: null,
+        gpsLat: 43.2712,
+        gpsLng: 76.9389,
+        gpsValid: true,
+        createdAt: new Date(now - 1 * day).toISOString(),
+        contract: {
+          id: '1',
+          title: 'Ремонт тротуара, набережная Весновки',
+          district: 'Медеуский',
+        },
+      },
+    ],
+  }
+}

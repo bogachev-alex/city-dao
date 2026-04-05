@@ -2,7 +2,35 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { PublicKey } from '@solana/web3.js'
 import { generateSalt, hashVoteCommitment } from '@/lib/crypto'
+import { awardTokens } from '@/lib/tokens'
+import { useJuryMechanism } from '@/lib/web3/useJuryMechanism'
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(32)
+  for (let i = 0; i < 32; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
+}
+
+/** Try to parse a base58 Solana public key; return null if invalid. */
+function tryParsePublicKey(s: string): PublicKey | null {
+  try {
+    return new PublicKey(s)
+  } catch {
+    return null
+  }
+}
+
+/** Parse milestone index from milestone id like "contractId-milestoneIndex" or numeric string */
+function parseMilestoneIndex(milestoneId: string): number {
+  const parts = milestoneId.split('-')
+  const last = parseInt(parts[parts.length - 1])
+  return isNaN(last) ? 0 : last
+}
 
 interface JuryVotingProps {
   sessionId: string
@@ -33,6 +61,8 @@ interface JurySessionData {
 
 export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const t = useTranslations('components.juryVoting')
+  const { publicKey: walletPubkey } = useWallet()
+  const { commitVote: commitOnChain, revealVote: revealOnChain } = useJuryMechanism()
   const [session, setSession] = useState<JurySessionData | null>(null)
   const [phase, setPhase] = useState<Phase>('loading')
   const [vote, setVote] = useState<'accept' | 'reject' | null>(null)
@@ -41,6 +71,8 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
+  const [demoMode, setDemoMode] = useState(false)
+  const [onChainTx, setOnChainTx] = useState<string | null>(null)
 
   const storageKey = `jury_salt_${sessionId}`
 
@@ -51,13 +83,47 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   ]
 
 
+  const initDemoSession = () => {
+    setDemoMode(true)
+    const demoSession: JurySessionData = {
+      id: sessionId,
+      status: 'COMMIT_PHASE',
+      contract: { id: '1', title: 'Ремонт тротуара, набережная Весновки', district: 'Медеуский' },
+      milestone: { id: '1-2', description: 'Укладка основания' },
+      commitDeadline: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      revealDeadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
+      weightedAccept: 0,
+      weightedReject: 0,
+      result: null,
+      votes: [
+        { id: 'v1', citizenId: 'demo-citizen', isExpert: false, weight: 1, commitHash: null, revealedVote: null, citizen: { id: 'demo-citizen', walletAddress: 'Demo...Wallet', tier: 'ACTIVE' } },
+        { id: 'v2', citizenId: 'c2', isExpert: true, weight: 2, commitHash: 'abc123', revealedVote: null, citizen: { id: 'c2', walletAddress: '7xKq...9fPm', tier: 'TRUSTED' } },
+        { id: 'v3', citizenId: 'c3', isExpert: false, weight: 1, commitHash: 'def456', revealedVote: null, citizen: { id: 'c3', walletAddress: '3mRt...2wNx', tier: 'ACTIVE' } },
+      ],
+    }
+    setSession(demoSession)
+    const stored = localStorage.getItem(storageKey)
+    if (stored) {
+      const d = JSON.parse(stored)
+      setSalt(d.salt)
+      setVote(d.vote)
+      setCommitHash(d.hash)
+      setPhase('reveal')
+    } else {
+      setPhase('commit')
+    }
+    setTimeLeft(24 * 3600)
+  }
+
   useEffect(() => {
     fetch(`/api/jury?sessionId=${sessionId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('API error')
+        return r.json()
+      })
       .then((data) => {
         if (data.error) {
-          setError(data.error)
-          setPhase('error')
+          initDemoSession()
           return
         }
         setSession(data)
@@ -93,10 +159,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         }
       })
       .catch(() => {
-        setError(t('loadError'))
-        setPhase('error')
+        initDemoSession()
       })
-  }, [sessionId, storageKey, t])
+  }, [sessionId, storageKey])
 
   useEffect(() => {
     if (phase === 'results' || phase === 'loading' || phase === 'error') return
@@ -117,34 +182,54 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const handleCommit = async () => {
     if (!vote || !session) return
     setLoading(true)
+    setOnChainTx(null)
 
     try {
       const newSalt = generateSalt()
       const hash = await hashVoteCommitment(vote, newSalt)
 
-      const res = await fetch('/api/jury', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: session.id,
-          citizenId: session.votes[0]?.citizenId,
-          commitHash: hash,
-        }),
-      })
-      const result = await res.json()
-
-      if (result.error) {
-        setError(result.error)
-      } else {
-        localStorage.setItem(storageKey, JSON.stringify({ salt: newSalt, vote, hash }))
-        setSalt(newSalt)
-        setCommitHash(hash)
-        setPhase('reveal')
-        if (session.revealDeadline) {
-          setTimeLeft(Math.max(0, Math.floor((new Date(session.revealDeadline).getTime() - Date.now()) / 1000)))
-        } else {
-          setTimeLeft(24 * 3600)
+      if (!demoMode) {
+        const res = await fetch('/api/jury', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: session.id,
+            citizenId: session.votes[0]?.citizenId,
+            commitHash: hash,
+          }),
+        })
+        const result = await res.json()
+        if (result.error) {
+          setError(result.error)
+          setLoading(false)
+          return
         }
+      }
+
+      // Best-effort: also commit on-chain if wallet connected and contract id is a valid pubkey
+      if (walletPubkey) {
+        const contractPubkey = tryParsePublicKey(session.contract.id)
+        if (contractPubkey) {
+          const milestoneIndex = parseMilestoneIndex(session.milestone.id)
+          try {
+            const { tx } = await commitOnChain(contractPubkey, milestoneIndex, hexToBytes(hash))
+            setOnChainTx(tx)
+          } catch (onChainErr) {
+            // On-chain commit failed — log but don't block the flow
+            console.warn('On-chain commitVote failed:', onChainErr)
+          }
+        }
+      }
+
+      localStorage.setItem(storageKey, JSON.stringify({ salt: newSalt, vote, hash }))
+      setSalt(newSalt)
+      setCommitHash(hash)
+      awardTokens('jury_vote')
+      setPhase('reveal')
+      if (session.revealDeadline) {
+        setTimeLeft(Math.max(0, Math.floor((new Date(session.revealDeadline).getTime() - Date.now()) / 1000)))
+      } else {
+        setTimeLeft(24 * 3600)
       }
     } catch {
       setError(t('voteError'))
@@ -156,28 +241,61 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const handleReveal = async () => {
     if (!vote || !salt || !session) return
     setLoading(true)
+    setOnChainTx(null)
 
     try {
-      const res = await fetch('/api/jury', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: session.id,
-          citizenId: session.votes[0]?.citizenId,
-          vote: vote.toUpperCase(),
-          salt,
-        }),
-      })
-      const result = await res.json()
-
-      if (result.error) {
-        setError(result.error)
-      } else {
+      if (!demoMode) {
+        const res = await fetch('/api/jury', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: session.id,
+            citizenId: session.votes[0]?.citizenId,
+            vote: vote.toUpperCase(),
+            salt,
+          }),
+        })
+        const result = await res.json()
+        if (result.error) {
+          setError(result.error)
+          setLoading(false)
+          return
+        }
         const updated = await fetch(`/api/jury?sessionId=${sessionId}`).then((r) => r.json())
         setSession(updated)
-        localStorage.removeItem(storageKey)
-        setPhase('results')
+      } else {
+        // Demo mode: simulate results
+        setSession((prev) => prev ? {
+          ...prev,
+          status: 'FINALIZED',
+          result: vote === 'accept' ? 'ACCEPT' : 'REJECT',
+          weightedAccept: vote === 'accept' ? 3 : 1,
+          weightedReject: vote === 'reject' ? 3 : 1,
+          votes: prev.votes.map((v, i) => ({
+            ...v,
+            commitHash: v.commitHash || 'demo',
+            revealedVote: i === 0 ? vote!.toUpperCase() : (i === 1 ? 'ACCEPT' : 'REJECT'),
+          })),
+        } : prev)
       }
+
+      // Best-effort: also reveal on-chain if wallet connected and contract id is a valid pubkey
+      if (walletPubkey) {
+        const contractPubkey = tryParsePublicKey(session.contract.id)
+        if (contractPubkey) {
+          const milestoneIndex = parseMilestoneIndex(session.milestone.id)
+          try {
+            const { tx } = await revealOnChain(contractPubkey, milestoneIndex, vote, hexToBytes(salt))
+            setOnChainTx(tx)
+          } catch (onChainErr) {
+            console.warn('On-chain revealVote failed:', onChainErr)
+          }
+        }
+      }
+
+      localStorage.removeItem(storageKey)
+      awardTokens('jury_reveal')
+      setPhase('results')
     } catch {
       setError(t('revealError'))
     } finally {
@@ -256,6 +374,24 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       {/* Error display */}
       {error && (
         <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">{error}</div>
+      )}
+
+      {/* On-chain TX confirmation */}
+      {onChainTx && (
+        <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>On-chain TX: </span>
+          <a
+            href={`https://explorer.solana.com/tx/${onChainTx}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono underline hover:text-emerald-600"
+          >
+            {onChainTx.slice(0, 8)}…{onChainTx.slice(-8)}
+          </a>
+        </div>
       )}
 
       {/* COMMIT PHASE */}

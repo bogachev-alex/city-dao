@@ -7,9 +7,15 @@ import { Link } from '@/i18n/routing'
 interface MilestoneTrackerProps {
   milestones: Milestone[]
   contractId: string
+  /** Only registered citizens vote in jury; hide for contractors / akimat / guests */
+  showCitizenJuryVote?: boolean
 }
 
-export default function MilestoneTracker({ milestones, contractId }: MilestoneTrackerProps) {
+export default function MilestoneTracker({
+  milestones,
+  contractId,
+  showCitizenJuryVote = false,
+}: MilestoneTrackerProps) {
   const t = useTranslations('components.milestoneTracker')
 
   const statusConfig: Record<MilestoneStatus, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
@@ -134,8 +140,7 @@ export default function MilestoneTracker({ milestones, contractId }: MilestoneTr
                   )}
                 </div>
 
-                {/* Jury vote button for under_review */}
-                {milestone.status === 'under_review' && (
+                {milestone.status === 'under_review' && showCitizenJuryVote && (
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
                     <Link
                       href={`/jury/${contractId}-${milestone.id}`}
@@ -147,6 +152,11 @@ export default function MilestoneTracker({ milestones, contractId }: MilestoneTr
                       {t('voteAsJuror')}
                     </Link>
                   </div>
+                )}
+                {milestone.status === 'under_review' && !showCitizenJuryVote && (
+                  <p className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                    {t('juryReviewNote')}
+                  </p>
                 )}
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
@@ -12,31 +12,26 @@ import {
   ROLE_LABELS,
   ROLE_ICONS,
   walletToAuthUser,
+  DEMO_AUTH_USER,
+  HOME_PATH_BY_ROLE,
 } from '@/lib/auth'
 
 const ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
-const DEMO_ACCOUNTS: Record<UserRole, AuthUser> = {
-  CITIZEN:    { role: 'CITIZEN',    id: 'demo-citizen-1',    name: 'Алибек Джаксыбеков' },
-  CONTRACTOR: { role: 'CONTRACTOR', id: 'demo-contractor-1', name: 'ТОО СтройАлматы' },
-  AKIMAT:     { role: 'AKIMAT',     id: 'demo-akimat-1',     name: 'Сотрудник акимата' },
-}
-
-const REDIRECT_AFTER_LOGIN: Record<UserRole, string> = {
-  CITIZEN:    '/',
-  CONTRACTOR: '/',
-  AKIMAT:     '/admin',
-}
+const REDIRECT_AFTER_LOGIN = HOME_PATH_BY_ROLE
 
 export default function LoginPage() {
   const { user, login } = useAuth()
   const router = useRouter()
-  const { publicKey, connected, select, connect, wallets, wallet, connecting } = useWallet()
+  const { publicKey, connected, select, connect, disconnect, wallets, wallet, connecting } = useWallet()
 
   const [walletError, setWalletError] = useState<string | null>(null)
-  const [pendingConnect, setPendingConnect] = useState(false)
   const [checking, setChecking] = useState(false)
   const [notFound, setNotFound] = useState(false)
+
+  // Use ref (not state) to avoid stale closure race between select() and connect()
+  const pendingConnectRef = useRef(false)
+  const [connectingTooLong, setConnectingTooLong] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -44,12 +39,25 @@ export default function LoginPage() {
     }
   }, [user, router])
 
+  // After select() the adapter name changes — connect() in the next effect tick
   useEffect(() => {
-    if (pendingConnect && wallet && !connected && !connecting) {
-      setPendingConnect(false)
+    if (pendingConnectRef.current && wallet && !connected && !connecting) {
+      pendingConnectRef.current = false
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
     }
-  }, [pendingConnect, wallet, connected, connecting, connect])
+  }, [wallet?.adapter.name, connected, connecting, connect])
+
+  // If connecting takes >5s — show hint; >15s — auto-reset
+  useEffect(() => {
+    if (!connecting) { setConnectingTooLong(false); return }
+    const hintTimer = setTimeout(() => setConnectingTooLong(true), 5000)
+    const resetTimer = setTimeout(() => {
+      pendingConnectRef.current = false
+      disconnect().catch(() => {})
+      setWalletError('Время ожидания истекло. Попробуйте снова.')
+    }, 15000)
+    return () => { clearTimeout(hintTimer); clearTimeout(resetTimer) }
+  }, [connecting, disconnect])
 
   const handleWalletConnect = useCallback(() => {
     setWalletError(null)
@@ -60,15 +68,15 @@ export default function LoginPage() {
     const anyUsable = wallets.find((w) => isUsable(w.readyState))
     const target = phantom || anyUsable
     if (!target) {
-      window.open('https://phantom.app/', '_blank')
+      setWalletError('Phantom кошелёк не установлен. Установите расширение на phantom.app')
       return
     }
     if (wallet?.adapter.name === target.adapter.name) {
       connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
       return
     }
+    pendingConnectRef.current = true
     select(target.adapter.name)
-    setPendingConnect(true)
   }, [wallets, wallet, select, connect])
 
   const handleWalletLogin = async () => {
@@ -76,20 +84,42 @@ export default function LoginPage() {
     setChecking(true)
     setNotFound(false)
     try {
-      const res = await fetch(`/api/citizens?wallet=${publicKey.toBase58()}`)
-      if (res.ok) {
-        const data = await res.json()
-        // Use stored name from registration if available
-        const stored = localStorage.getItem('citizen_profile')
-        const name = stored ? JSON.parse(stored).name : undefined
-        const authUser = walletToAuthUser(publicKey.toBase58())
-        if (name) authUser.name = name
-        login(authUser)
-      } else {
-        setNotFound(true)
+      const wallet = publicKey.toBase58()
+      const rolesRes = await fetch(`/api/roles?wallet=${encodeURIComponent(wallet)}`)
+      let dbRoles: string[] = []
+      let dbNames: Record<string, string> = {}
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json()
+        dbRoles = rolesData.roles || []
+        dbNames = rolesData.names || {}
       }
+
+      const localRoles: string[] = []
+      const localNames: Record<string, string> = {}
+      const cpRaw = localStorage.getItem('contractor_profile')
+      if (cpRaw) { try { const cp = JSON.parse(cpRaw); if (cp.walletAddress === wallet) { localRoles.push('CONTRACTOR'); localNames['CONTRACTOR'] = cp.name } } catch {} }
+      const akRaw = localStorage.getItem('akimat_profile')
+      if (akRaw) { try { const ak = JSON.parse(akRaw); if (ak.walletAddress === wallet) { localRoles.push('AKIMAT'); localNames['AKIMAT'] = ak.name } } catch {} }
+      const ciRaw = localStorage.getItem('citizen_profile')
+      if (ciRaw) { try { const ci = JSON.parse(ciRaw); if (ci.walletAddress === wallet) { localRoles.push('CITIZEN'); localNames['CITIZEN'] = ci.name } } catch {} }
+
+      const allRoles = new Set([...dbRoles, ...localRoles])
+      if (!allRoles.size) {
+        const citizenRes = await fetch(`/api/citizens?wallet=${wallet}`)
+        if (citizenRes.ok) {
+          allRoles.add('CITIZEN')
+        }
+      }
+
+      if (!allRoles.size) {
+        setNotFound(true)
+        return
+      }
+
+      const pickRole = (Array.from(allRoles) as UserRole[])[0]
+      const name = dbNames[pickRole] || localNames[pickRole] || `${wallet.slice(0, 4)}...${wallet.slice(-4)}`
+      login({ role: pickRole, id: wallet, name })
     } catch {
-      // If API unreachable (no DB), fall through to demo mode
       login(walletToAuthUser(publicKey.toBase58()))
     } finally {
       setChecking(false)
@@ -97,7 +127,7 @@ export default function LoginPage() {
   }
 
   const handleDemoLogin = (role: UserRole) => {
-    login(DEMO_ACCOUNTS[role])
+    login(DEMO_AUTH_USER[role])
   }
 
   return (
@@ -128,9 +158,19 @@ export default function LoginPage() {
           </div>
 
           {walletError && (
-            <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
-              {walletError}
-            </p>
+            <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
+              <p>{walletError}</p>
+              {walletError.includes('phantom.app') && (
+                <a
+                  href="https://phantom.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block font-semibold underline hover:text-red-600 dark:hover:text-red-300"
+                >
+                  Установить Phantom →
+                </a>
+              )}
+            </div>
           )}
 
           {notFound && (
@@ -154,25 +194,45 @@ export default function LoginPage() {
           )}
 
           {!connected ? (
-            <button
-              onClick={handleWalletConnect}
-              disabled={connecting}
-              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              {connecting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Подключение...
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  Подключить Phantom
-                </>
+            <div className="space-y-2">
+              <button
+                onClick={handleWalletConnect}
+                disabled={connecting}
+                className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                {connecting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Подключение...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    Подключить Phantom
+                  </>
+                )}
+              </button>
+              {connecting && (
+                <div className="space-y-1.5 text-center">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Ожидаем подтверждения в Phantom...{' '}
+                    <button
+                      onClick={() => { pendingConnectRef.current = false; disconnect().catch(() => {}); setWalletError('Подключение отменено') }}
+                      className="underline hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      Отмена
+                    </button>
+                  </p>
+                  {connectingTooLong && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
+                      Проверьте иконку Phantom в панели браузера — возможно там ждёт подтверждение подключения
+                    </p>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 rounded-xl px-4 py-3">
@@ -207,7 +267,15 @@ export default function LoginPage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
             Ещё нет аккаунта?{' '}
             <Link href="/register" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
-              Зарегистрироваться
+              Гражданин
+            </Link>
+            {' · '}
+            <Link href="/register-contractor" className="text-amber-600 dark:text-amber-400 font-medium hover:underline">
+              Подрядчик
+            </Link>
+            {' · '}
+            <Link href="/register-akimat" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
+              Акимат
             </Link>
           </p>
         </div>

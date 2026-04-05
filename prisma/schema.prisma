@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -44,6 +45,12 @@ model Contract {
   deadline      DateTime
   status        ContractStatus @default(ACTIVE)
   category      String?
+  /// Goszakup.gov.kz registry number (ЕГЗ), e.g. 24953097
+  registryNumber String?       @unique
+  /// Customer / заказчик (full name as on the portal)
+  customerName   String?
+  /// Subject type: Работа (ref_subject_type=2), Товар, Услуга, etc.
+  subjectType    String?
   onChainPubkey String?        @unique // Solana account address
 
   milestones    Milestone[]
@@ -174,16 +181,18 @@ enum PenaltyType {
 }
 
 model Penalty {
-  id           String      @id @default(cuid())
-  contractId   String
-  contract     Contract    @relation(fields: [contractId], references: [id])
-  type         PenaltyType
-  amountTenge  BigInt
-  daysOverdue  Int?
-  triggeredBy  String?     // wallet address of citizen who called check_deadline
-  txSignature  String?     // Solana tx signature
+  id                  String           @id @default(cuid())
+  contractId          String
+  contract            Contract         @relation(fields: [contractId], references: [id])
+  type                PenaltyType
+  amountTenge         BigInt
+  daysOverdue         Int?
+  triggeredBy         String?          // wallet address of citizen who called check_deadline
+  txSignature         String?          // Solana tx signature
+  districtTreasuryId  String?
+  districtTreasury    DistrictTreasury? @relation(fields: [districtTreasuryId], references: [id])
 
-  createdAt    DateTime    @default(now())
+  createdAt           DateTime         @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -199,13 +208,15 @@ enum ProposalStatus {
 }
 
 model DistrictTreasury {
-  id        String             @id @default(cuid())
-  district  String             @unique
-  balance   BigInt             @default(0) // in tenge
-  proposals SpendingProposal[]
+  id            String             @id @default(cuid())
+  district      String             @unique
+  walletAddress String?            @unique
+  balance       BigInt             @default(0) // in tenge
+  proposals     SpendingProposal[]
+  penalties     Penalty[]
 
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model SpendingProposal {

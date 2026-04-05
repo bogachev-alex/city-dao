@@ -14,8 +14,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   CITIZEN: 'Голосуйте в жюри, следите за контрактами, участвуйте в краудфандинге',
-  CONTRACTOR: 'Управляйте своими контрактами и репутацией',
-  AKIMAT: 'Регистрируйте контракты, управляйте казной',
+  CONTRACTOR: 'Кабинет подрядчика: ваши контракты, этапы, дневники работ и репутация',
+  AKIMAT: 'Кабинет акимата: реестр, казны районов, регистрация контрактов',
 }
 
 export const ROLE_ICONS: Record<UserRole, string> = {
@@ -26,28 +26,54 @@ export const ROLE_ICONS: Record<UserRole, string> = {
 
 export type NavItem = { href: string; labelKey: string }
 
+/** Canonical demo accounts (same as login page). Used when switching roles in demo sessions. */
+export const DEMO_AUTH_USER: Record<UserRole, AuthUser> = {
+  CITIZEN: { role: 'CITIZEN', id: 'demo-citizen-1', name: 'Алибек Джаксыбеков' },
+  CONTRACTOR: { role: 'CONTRACTOR', id: 'demo-contractor-1', name: 'ТОО СтройАлматы' },
+  AKIMAT: { role: 'AKIMAT', id: 'demo-akimat-1', name: 'Сотрудник акимата' },
+}
+
+/** True for built-in demo logins (id stable across role switches). */
+export function isDemoSessionUser(user: AuthUser | null): boolean {
+  if (!user) return false
+  return user.id.startsWith('demo-')
+}
+
+/**
+ * When switching role from the navbar: demo users get the full profile for that role
+ * (id + name) so APIs like /api/contractors?id=… match. Wallet users only get role updated.
+ */
+export function authUserAfterRoleSwitch(current: AuthUser, role: UserRole): AuthUser {
+  if (isDemoSessionUser(current)) {
+    return { ...DEMO_AUTH_USER[role] }
+  }
+  return { ...current, role }
+}
+
+export const HOME_PATH_BY_ROLE: Record<UserRole, string> = {
+  CITIZEN: '/',
+  CONTRACTOR: '/contractor',
+  AKIMAT: '/akimat',
+}
+
 export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   CITIZEN: [
     { href: '/', labelKey: 'map' },
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
-    { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/profile', labelKey: 'profile' },
   ],
   CONTRACTOR: [
-    { href: '/', labelKey: 'map' },
+    { href: '/contractor', labelKey: 'contractorDesk' },
     { href: '/contracts', labelKey: 'contracts' },
-    { href: '/crowdfunding', labelKey: 'crowdfunding' },
-    { href: '/blockchain', labelKey: 'blockchain' },
-    { href: '/profile', labelKey: 'profile' },
+    { href: '/', labelKey: 'map' },
   ],
   AKIMAT: [
-    { href: '/', labelKey: 'map' },
+    { href: '/akimat', labelKey: 'akimatDesk' },
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
-    { href: '/blockchain', labelKey: 'blockchain' },
     { href: '/admin', labelKey: 'admin' },
   ],
 }

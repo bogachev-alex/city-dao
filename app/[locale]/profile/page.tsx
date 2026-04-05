@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/components/AuthContext'
-import { fetchCitizen } from '@/lib/api'
+import { fetchCitizen, registerCitizen } from '@/lib/api'
 import { Link, useRouter } from '@/i18n/routing'
+import { getWallet, formatBalance, type TokenWallet } from '@/lib/tokens'
 
 interface CitizenProfile {
   walletAddress: string
@@ -48,12 +49,53 @@ export default function ProfilePage() {
   const [citizen, setCitizen] = useState<CitizenProfile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [isDemo, setIsDemo] = useState(false)
+  const [tokenWallet, setTokenWallet] = useState<TokenWallet>({ balance: 0, transactions: [] })
+  const [onChainBalance, setOnChainBalance] = useState<number | null>(null)
+
+  // Load token wallet and listen for awards
+  useEffect(() => {
+    setTokenWallet(getWallet())
+    function refresh() { setTokenWallet(getWallet()) }
+    window.addEventListener('amanat-token-award', refresh)
+    return () => window.removeEventListener('amanat-token-award', refresh)
+  }, [])
+
+  // For real wallet users: fetch on-chain ADL balance
+  useEffect(() => {
+    if (!user || user.id.startsWith('demo-')) return
+    fetch(`/api/tokens/balance?wallet=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.configured && typeof data.balance === 'number') setOnChainBalance(data.balance) })
+      .catch(() => {})
+
+    function refreshOnChain() {
+      if (!user || user.id.startsWith('demo-')) return
+      setTimeout(() => {
+        fetch(`/api/tokens/balance?wallet=${user.id}`)
+          .then((r) => r.json())
+          .then((data) => { if (data.configured && typeof data.balance === 'number') setOnChainBalance(data.balance) })
+          .catch(() => {})
+      }, 3000) // wait for chain confirmation
+    }
+    window.addEventListener('amanat-token-award', refreshOnChain)
+    return () => window.removeEventListener('amanat-token-award', refreshOnChain)
+  }, [user])
 
   useEffect(() => {
     if (authLoading) return
 
     if (!user) {
       router.replace('/login' as any)
+      return
+    }
+
+    if (user.role === 'CONTRACTOR') {
+      router.replace('/contractor' as any)
+      return
+    }
+
+    if (user.role === 'AKIMAT') {
+      router.replace('/akimat' as any)
       return
     }
 
@@ -65,11 +107,19 @@ export default function ProfilePage() {
       return
     }
 
-    // Real wallet user — fetch from API
+    // Real wallet user — fetch from API, auto-register if not found
     setIsDemo(false)
     fetchCitizen(user.id)
-      .then((data) => {
-        if (data && !data.error) setCitizen(data)
+      .then(async (data) => {
+        if (data && !data.error) {
+          setCitizen(data)
+          return
+        }
+        // Wallet connected but no citizen record — auto-register with defaults
+        const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(user.id + ':auto-citizen') as unknown as ArrayBuffer)
+        const iinHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+        const created = await registerCitizen({ walletAddress: user.id, district: 'Алмалинский', iinHash })
+        if (created && !created.error) setCitizen(created)
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false))
@@ -202,6 +252,60 @@ export default function ProfilePage() {
               <div className="text-xs text-gray-400 dark:text-gray-500">{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* ADL Token wallet */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900 dark:text-white">Кошелёк ADL</h2>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <span className="text-emerald-400 font-bold text-xs">ADL</span>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-emerald-400">
+                  {onChainBalance !== null ? formatBalance(onChainBalance) : formatBalance(tokenWallet.balance)}
+                </span>
+                {onChainBalance !== null && (
+                  <div className="text-xs text-emerald-600">on-chain</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 mb-4">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {onChainBalance !== null
+                ? 'Реальный SPL-токен на Solana devnet. Начисляется за активность в протоколе.'
+                : 'Токен Amanat Protocol. Начисляется за активность: голосования, регистрация, краудфандинг.'}
+            </div>
+          </div>
+
+          {tokenWallet.transactions.length > 0 ? (
+            <div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">Последние начисления</div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {tokenWallet.transactions.slice(0, 10).map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <div>
+                      <span className="text-gray-900 dark:text-white">{tx.description}</span>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        {new Date(tx.timestamp).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <span className="text-emerald-500 font-semibold">+{tx.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-400 dark:text-gray-500 text-sm">
+              Пока нет транзакций. Совершайте действия, чтобы получать ADL!
+            </div>
+          )}
         </div>
 
         {/* Info card */}

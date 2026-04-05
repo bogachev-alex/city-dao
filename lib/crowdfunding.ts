@@ -34,6 +34,7 @@ export interface Campaign {
   photo_url?: string
   donors: CampaignDonor[]
   contract_id?: string        // linked contract after funding
+  onChainPubkey?: string | null
 }
 
 // Matching ratios by category: state pays this percentage, citizens pay the rest
@@ -81,18 +82,83 @@ export function getCampaignProgress(campaign: Campaign): number {
   return Math.min(100, Math.round((campaign.citizen_raised / campaign.citizen_target) * 100))
 }
 
+const MS_MIN = 60_000
+const MS_HOUR = 60 * MS_MIN
+const MS_DAY = 24 * MS_HOUR
+
+/** Remaining or elapsed time broken into calendar-like components (floor-based). */
+export function getDeadlineComponents(
+  deadlineIso: string,
+  nowMs: number = Date.now()
+): { isPast: boolean; days: number; hours: number; minutes: number } {
+  const deadlineMs = new Date(deadlineIso).getTime()
+  const delta = deadlineMs - nowMs
+  const isPast = delta <= 0
+  const absMs = Math.abs(delta)
+  const days = Math.floor(absMs / MS_DAY)
+  const hours = Math.floor((absMs % MS_DAY) / MS_HOUR)
+  const minutes = Math.floor((absMs % MS_HOUR) / MS_MIN)
+  return { isPast, days, hours, minutes }
+}
+
+/** Russian countdown / "ago" label for crowdfunding deadline (hours + minutes). */
+export function formatCrowdfundingCountdown(
+  deadlineIso: string,
+  nowMs: number = Date.now()
+): string {
+  const { isPast, days, hours, minutes } = getDeadlineComponents(deadlineIso, nowMs)
+  if (!isPast) {
+    if (days > 0) {
+      const parts: string[] = [`${days} дн.`]
+      if (hours > 0) parts.push(`${hours} ч.`)
+      if (minutes > 0) parts.push(`${minutes} мин`)
+      return parts.join(' ')
+    }
+    if (hours > 0) {
+      return minutes > 0 ? `${hours} ч. ${minutes} мин` : `${hours} ч.`
+    }
+    if (minutes > 0) return `${minutes} мин`
+    return 'меньше минуты'
+  }
+  if (days > 0) return `${days} дн. назад`
+  if (hours > 0) return `${hours} ч. назад`
+  if (minutes > 0) return `${minutes} мин. назад`
+  return 'только что'
+}
+
 export function getDaysLeft(deadline: string): number {
-  return Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / MS_DAY)
+}
+
+/** True when the campaign deadline (ISO string) is in the past. */
+export function isCrowdfundingDeadlinePassed(deadlineIso: string, nowMs: number = Date.now()): boolean {
+  return getDeadlineComponents(deadlineIso, nowMs).isPast
+}
+
+/**
+ * Status for UI and filters when the API still says ACTIVE but the deadline passed
+ * or the citizen goal is already met.
+ */
+export function getEffectiveCrowdfundingStatus(c: Campaign, nowMs: number = Date.now()): CampaignStatus {
+  const progress = getCampaignProgress(c)
+  if (c.status === 'active' && progress >= 100) return 'funded'
+  if (c.status !== 'active') return c.status
+  if (getDeadlineComponents(c.deadline, nowMs).isPast && progress < 100) return 'expired'
+  return 'active'
 }
 
 const KZT_PER_SOL = 80_000
 const KZT_PER_USDT = 510
 
 export function formatTenge(amount: number): string {
-  const tenge = new Intl.NumberFormat('ru-KZ').format(amount)
+  return `${new Intl.NumberFormat('ru-KZ').format(amount)} ₸`
+}
+
+/** Get crypto equivalents for tooltip display */
+export function getCryptoEquivalent(amount: number): string {
   const sol = (amount / KZT_PER_SOL).toFixed(1)
   const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(amount / KZT_PER_USDT))
-  return `${tenge} ₸ (${sol} SOL / ${usdt} USDT)`
+  return `≈ ${sol} SOL / ${usdt} USDT`
 }
 
 // Demo data — realistic Almaty campaigns
@@ -300,12 +366,13 @@ export function normalizeCampaign(c: any): Campaign {
     donor_count: c.donorCount ?? c._count?.contributions ?? c.donor_count ?? 0,
     deadline: c.deadline,
     created_at: c.createdAt || c.created_at,
-    creator: c.creator?.walletAddress?.slice(0, 8) + '...' || c.creator || '',
-    creator_wallet: c.creator?.walletAddress || c.creator_wallet || '',
-    creator_tier: TIER_MAP[c.creator?.tier] || c.creator_tier || 'Bronze',
+    creator: typeof c.creator === 'string' ? c.creator : (c.creator?.walletAddress?.slice(0, 8) + '...' || ''),
+    creator_wallet: typeof c.creator === 'string' ? (c.creator_wallet || '') : (c.creator?.walletAddress || c.creator_wallet || ''),
+    creator_tier: typeof c.creator === 'object' ? (TIER_MAP[c.creator?.tier] || 'Bronze') : (c.creator_tier || 'Bronze'),
     lat: c.lat,
     lng: c.lng,
     contract_id: c.contractId || c.contract_id,
+    onChainPubkey: c.onChainPubkey || c.on_chain_pubkey || null,
     donors: contributions.map((d: any) => ({
       id: d.id,
       name: d.anonymous ? 'Анонимный донор' : (d.citizen?.walletAddress?.slice(0, 8) + '...' || 'Донор'),

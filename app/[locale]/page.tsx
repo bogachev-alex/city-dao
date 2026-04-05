@@ -4,31 +4,54 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
+import TransactionFeed from '@/components/TransactionFeed'
+import { useDataSource } from '@/lib/web3/useDataSource'
+import { fetchAllContractsOnChain } from '@/lib/web3/onchain'
+import { DEMO_CONTRACTS } from '@/lib/contracts'
+import { useAuth } from '@/components/AuthContext'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
 const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
 
-const KZT_PER_SOL = 80_000
-const KZT_PER_USDT = 510
-
 function formatBigAmount(val: number): string {
-  let tenge: string
-  if (val >= 1_000_000_000) tenge = `${(val / 1_000_000_000).toFixed(1)}B`
-  else if (val >= 1_000_000) tenge = `${(val / 1_000_000).toFixed(0)}M`
-  else tenge = val.toLocaleString('ru-KZ')
-
-  const sol = (val / KZT_PER_SOL).toFixed(0)
-  const usdt = new Intl.NumberFormat('ru-KZ', { maximumFractionDigits: 0 }).format(Math.round(val / KZT_PER_USDT))
-  return `${tenge} ₸ (${sol} SOL)`
+  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)} млрд ₸`
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(0)} млн ₸`
+  return `${val.toLocaleString('ru-KZ')} ₸`
 }
 
 export default function HomePage() {
   const t = useTranslations('home')
+  const dataSource = useDataSource()
+  const { user } = useAuth()
   const [stats, setStats] = useState({ contracts: 0, totalAmount: 0, penalized: 0, citizens: 0 })
 
   useEffect(() => {
+    if (dataSource === 'onchain') {
+      // On-chain mode: read contracts from Solana devnet
+      fetchAllContractsOnChain()
+        .then((contracts) => {
+          const list = contracts.length > 0 ? contracts : DEMO_CONTRACTS
+          setStats({
+            contracts: list.length,
+            totalAmount: list.reduce((s, c) => s + c.amount_usdc, 0),
+            penalized: list.filter((c) => c.status === 'penalized').length,
+            citizens: 0, // citizen count requires separate program query
+          })
+        })
+        .catch(() => {
+          setStats({
+            contracts: DEMO_CONTRACTS.length,
+            totalAmount: DEMO_CONTRACTS.reduce((s, c) => s + c.amount_usdc, 0),
+            penalized: DEMO_CONTRACTS.filter((c) => c.status === 'penalized').length,
+            citizens: 0,
+          })
+        })
+      return
+    }
+
+    // Mock/DB mode: fetch from API (cached via lib/api)
     Promise.all([
-      fetch('/api/contracts').then(r => r.json()).catch(() => []),
+      import('@/lib/api').then(m => m.fetchContracts()).catch(() => []),
       fetch('/api/citizens').then(r => r.json()).catch(() => []),
       fetch('/api/goszakup?limit=50').then(r => r.json()).catch(() => ({ contracts: [] })),
     ]).then(([contracts, citizens, goszakup]) => {
@@ -43,7 +66,7 @@ export default function HomePage() {
         citizens: citizenList.length,
       })
     })
-  }, [])
+  }, [dataSource])
 
   const STATS = [
     { label: t('contractsMonitored'), value: String(stats.contracts), icon: '📋', color: 'text-blue-600 dark:text-blue-400' },
@@ -84,12 +107,14 @@ export default function HomePage() {
               >
                 {t('allContracts')}
               </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              >
-                {t('becomeJuror')}
-              </Link>
+              {!user && (
+                <Link
+                  href="/register"
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  {t('becomeJuror')}
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -98,6 +123,8 @@ export default function HomePage() {
       {/* Map container */}
       <div className="flex-1 relative">
         <AlmatyMap />
+
+        <TransactionFeed variant="floating" maxItems={12} includeDemo={false} />
 
         {/* Legend */}
         <div className="absolute bottom-6 left-4 z-[1000] bg-white dark:bg-gray-950/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg">

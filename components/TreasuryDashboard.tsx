@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import ProposalResearch from './ProposalResearch'
+import TransactionFeed from './TransactionFeed'
 import { useDistrictTreasury } from '@/lib/web3/useDistrictTreasury'
-import { formatTengeWithCrypto } from '@/lib/contracts'
+import { formatTengeWithCrypto, getSolanaExplorerTxUrl } from '@/lib/contracts'
+import { awardTokens } from '@/lib/tokens'
 
 interface Vote {
   id: string
   citizenId: string
   inFavor: boolean
+  createdAt?: string
+  citizen?: {
+    walletAddress?: string
+  } | null
 }
 
 interface Proposal {
@@ -29,8 +35,22 @@ interface Proposal {
 interface TreasuryData {
   id: string
   district: string
+  walletAddress: string | null
+  pdaAddress?: string | null
   balance: string
+  totalPenaltyIncome?: number
+  balanceOnChain?: string | null
   proposals: Proposal[]
+  penalties?: PenaltyData[]
+}
+
+interface PenaltyData {
+  id: string
+  type: string
+  amountTenge: string
+  daysOverdue?: number | null
+  createdAt: string
+  contract?: { id: string; title: string } | null
 }
 
 interface TreasuryDashboardProps {
@@ -47,6 +67,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   const [loading, setLoading] = useState(true)
   const [voteError, setVoteError] = useState<string | null>(null)
   const [txInfo, setTxInfo] = useState<string | null>(null)
+  const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const walletAddr = publicKey?.toBase58()
@@ -85,39 +106,56 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   const handleVote = async (proposalId: string, proposalTitle: string, inFavor: boolean) => {
     if (voted.has(proposalId)) return
     if (!citizenId) {
-      setVoteError('Зарегистрируйтесь как гражданин для голосования')
+      setCitizenId('demo-citizen')
+    }
+    if (!walletConnected || !publicKey) {
+      setVoteError('Подключите кошелёк: голосование в казне подтверждается on-chain.')
       return
     }
     setVoteError(null)
+    let txSignature: string
+    try {
+      const result = await voteOnChain(district, proposalId, proposalTitle, inFavor)
+      txSignature = result.tx
+      setTxInfo(result.tx)
+    } catch (err: any) {
+      setVoteError(err?.message || 'Не удалось подтвердить голос on-chain.')
+      return
+    }
 
     setVoted((prev) => new Set(prev).add(proposalId))
+    awardTokens('treasury_vote')
     setTreasury((prev) => {
       if (!prev) return prev
       return {
         ...prev,
         proposals: prev.proposals.map((p) =>
           p.id === proposalId
-            ? { ...p, votesFor: inFavor ? p.votesFor + 1 : p.votesFor, votesAgainst: !inFavor ? p.votesAgainst + 1 : p.votesAgainst }
+            ? {
+                ...p,
+                votesFor: inFavor ? p.votesFor + 1 : p.votesFor,
+                votesAgainst: !inFavor ? p.votesAgainst + 1 : p.votesAgainst,
+                votes: [
+                  {
+                    id: `local-${Date.now()}`,
+                    citizenId: citizenId ?? 'demo-citizen',
+                    inFavor,
+                    createdAt: new Date().toISOString(),
+                    citizen: { walletAddress: publicKey.toBase58() },
+                  },
+                  ...(p.votes || []),
+                ],
+              }
             : p
         ),
       }
     })
 
-    // Try on-chain voting if wallet connected
-    if (walletConnected) {
-      try {
-        const result = await voteOnChain(district, proposalTitle, inFavor)
-        setTxInfo(result.tx)
-      } catch (err: any) {
-        console.warn('On-chain vote failed (continuing with DB):', err.message)
-      }
-    }
-
     try {
       const res = await fetch(`/api/treasury/${encodeURIComponent(district)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposalId, citizenId, inFavor }),
+        body: JSON.stringify({ proposalId, citizenId, inFavor, txSignature }),
       })
       if (!res.ok) {
         revertVote(proposalId, inFavor)
@@ -135,7 +173,12 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
         ...prev,
         proposals: prev.proposals.map((p) =>
           p.id === proposalId
-            ? { ...p, votesFor: inFavor ? p.votesFor - 1 : p.votesFor, votesAgainst: !inFavor ? p.votesAgainst - 1 : p.votesAgainst }
+            ? {
+                ...p,
+                votesFor: inFavor ? p.votesFor - 1 : p.votesFor,
+                votesAgainst: !inFavor ? p.votesAgainst - 1 : p.votesAgainst,
+                votes: (p.votes || []).filter((v) => v.citizenId !== citizenId),
+              }
             : p
         ),
       }
@@ -143,8 +186,23 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   }
 
   const formatTenge = (n: number | string) => formatTengeWithCrypto(Number(n))
+  const shortAddress = (value?: string) => {
+    if (!value) return 'Unknown wallet'
+    if (value.length <= 10) return value
+    return `${value.slice(0, 4)}...${value.slice(-4)}`
+  }
 
-  const balance = treasury ? Number(treasury.balance) : 0
+  const balance = treasury
+    ? Number(
+        treasury.balanceOnChain != null && treasury.balanceOnChain !== ''
+          ? treasury.balanceOnChain
+          : treasury.balance
+      )
+    : 0
+  const balanceSourceOnChain =
+    treasury != null &&
+    treasury.balanceOnChain != null &&
+    treasury.balanceOnChain !== ''
   const proposals = treasury?.proposals || []
 
   if (loading) {
@@ -158,14 +216,40 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
   return (
     <div className="space-y-6">
       {/* Balance cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="sm:col-span-2 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/20 dark:to-emerald-600/10 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-6">
           <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('treasuryBalance')}</div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{formatTenge(balance)}</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
+          {treasury?.walletAddress && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 dark:text-gray-500">Кошелёк:</span>
+              <code className="text-xs font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded select-all">
+                {treasury.walletAddress}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(treasury.walletAddress!)}
+                className="text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
+                title="Копировать"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {treasury?.pdaAddress && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-xs text-gray-400 dark:text-gray-500">PDA:</span>
+              <code className="text-xs font-mono text-gray-500 dark:text-gray-400 select-all">{shortAddress(treasury.pdaAddress)}</code>
+            </div>
+          )}
           <div className="mt-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">{t('liveBalance')}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {balanceSourceOnChain ? t('onChainBalance') : t('liveBalance')}
+            </span>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
@@ -178,6 +262,13 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
             </div>
           </div>
         </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Штрафы подрядчиков</div>
+          <div className="text-2xl font-bold text-orange-500 dark:text-orange-400">
+            {treasury?.totalPenaltyIncome ? formatTenge(treasury.totalPenaltyIncome) : '0 ₸'}
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{treasury?.penalties?.length || 0} штрафов</div>
+        </div>
       </div>
 
       {/* On-chain tx notification */}
@@ -186,10 +277,40 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-emerald-600 dark:text-emerald-400">{t('voteRecorded')}</span>
           {txInfo && (
-            <a href={`https://explorer.solana.com/tx/${txInfo}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
+            <a href={getSolanaExplorerTxUrl(txInfo)} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-xs underline ml-auto">
               tx
             </a>
           )}
+        </div>
+      )}
+
+      {/* Penalty Income */}
+      {treasury?.penalties && treasury.penalties.length > 0 && (
+        <div>
+          <h3 className="text-gray-900 dark:text-white font-semibold mb-3 flex items-center gap-2">
+            <svg width="16" height="16" fill="none" stroke="#f97316" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Штрафы подрядчиков
+          </h3>
+          <div className="space-y-2">
+            {treasury.penalties.map((p) => (
+              <div key={p.id} className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                    {p.type === 'TIME_OVERDUE' ? 'Просрочка' : p.type === 'QUALITY_REJECTED' ? 'Брак' : 'Брошенный объект'}
+                    {p.daysOverdue ? ` (${p.daysOverdue} дн.)` : ''}
+                  </div>
+                  {p.contract && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.contract.title}</div>
+                  )}
+                </div>
+                <div className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                  +{formatTenge(p.amountTenge)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -216,6 +337,8 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
               const total = proposal.votesFor + proposal.votesAgainst
               const forPct = total > 0 ? Math.round((proposal.votesFor / total) * 100) : 50
               const hasVoted = voted.has(proposal.id)
+              const showVotes = expandedVotes.has(proposal.id)
+              const allVotes = proposal.votes || []
 
               return (
                 <div key={proposal.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
@@ -279,11 +402,56 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                       <div className="h-full bg-red-400 flex-1 transition-all duration-500" />
                     </div>
                   </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                      onClick={() =>
+                        setExpandedVotes((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(proposal.id)) next.delete(proposal.id)
+                          else next.add(proposal.id)
+                          return next
+                        })
+                      }
+                      className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                    >
+                      {showVotes ? 'Скрыть все голоса' : `Показать все голоса (${allVotes.length})`}
+                    </button>
+                    {showVotes && (
+                      <div className="mt-2 space-y-1.5">
+                        {allVotes.length === 0 ? (
+                          <div className="text-xs text-gray-400 dark:text-gray-500">Голосов пока нет</div>
+                        ) : (
+                          allVotes.map((v) => (
+                            <div
+                              key={v.id}
+                              className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 rounded px-2 py-1.5"
+                            >
+                              <span className={v.inFavor ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                                {v.inFavor ? 'За' : 'Против'}
+                              </span>
+                              <span className="font-mono text-gray-500 dark:text-gray-400">{shortAddress(v.citizen?.walletAddress)}</span>
+                              <span className="text-gray-400 dark:text-gray-500">{v.createdAt ? new Date(v.createdAt).toLocaleString('ru-RU') : '-'}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
           </div>
         )}
+      </div>
+
+      <div>
+        <h3 className="text-gray-900 dark:text-white font-semibold mb-3 flex items-center gap-2">
+          <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          {t('recentTransactions')}
+        </h3>
+        <TransactionFeed district={district} maxItems={12} variant="embedded" includeDemo={false} />
       </div>
     </div>
   )

@@ -1,0 +1,96 @@
+name: Deploy Crowdfunding Program (Devnet)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: Solana cluster RPC URL or alias
+        required: true
+        default: devnet
+      sync_idl:
+        description: Copy generated IDL to lib/web3/idl/crowdfunding.json
+        required: true
+        default: "true"
+
+jobs:
+  deploy-crowdfunding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Solana CLI
+        shell: bash
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor Version Manager (avm)
+        shell: bash
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          echo "$HOME/.avm/bin" >> "$GITHUB_PATH"
+          avm install 0.32.1
+          avm use 0.32.1
+
+      - name: Prepare keypairs
+        shell: bash
+        env:
+          SOLANA_WALLET_JSON: ${{ secrets.SOLANA_WALLET_JSON }}
+          CROWDFUNDING_PROGRAM_KEYPAIR_JSON: ${{ secrets.CROWDFUNDING_PROGRAM_KEYPAIR_JSON }}
+        run: |
+          if [ -z "$SOLANA_WALLET_JSON" ]; then
+            echo "Missing required secret: SOLANA_WALLET_JSON"
+            exit 1
+          fi
+          if [ -z "$CROWDFUNDING_PROGRAM_KEYPAIR_JSON" ]; then
+            echo "Missing required secret: CROWDFUNDING_PROGRAM_KEYPAIR_JSON"
+            exit 1
+          fi
+
+          mkdir -p "$HOME/.config/solana"
+          mkdir -p target/deploy
+
+          printf '%s' "$SOLANA_WALLET_JSON" > "$HOME/.config/solana/id.json"
+          printf '%s' "$CROWDFUNDING_PROGRAM_KEYPAIR_JSON" > target/deploy/crowdfunding-keypair.json
+
+      - name: Configure Solana
+        shell: bash
+        run: |
+          solana config set --keypair "$HOME/.config/solana/id.json"
+          solana config set --url "${{ inputs.cluster }}"
+          solana address
+          solana balance || true
+          solana-keygen pubkey target/deploy/crowdfunding-keypair.json
+
+      - name: Build crowdfunding program
+        shell: bash
+        run: anchor build -p crowdfunding
+
+      - name: Verify program id matches expected
+        shell: bash
+        run: |
+          EXPECTED="3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY"
+          ACTUAL="$(solana-keygen pubkey target/deploy/crowdfunding-keypair.json)"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "Program keypair mismatch. Expected $EXPECTED, got $ACTUAL"
+            exit 1
+          fi
+
+      - name: Deploy crowdfunding program
+        shell: bash
+        run: anchor deploy -p crowdfunding --provider.cluster "${{ inputs.cluster }}" --provider.wallet "$HOME/.config/solana/id.json"
+
+      - name: Confirm deployed program
+        shell: bash
+        run: solana program show 3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY --url "${{ inputs.cluster }}"
+
+      - name: Sync IDL to frontend path
+        if: ${{ inputs.sync_idl == 'true' }}
+        shell: bash
+        run: cp target/idl/crowdfunding.json lib/web3/idl/crowdfunding.json
