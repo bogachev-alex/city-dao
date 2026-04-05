@@ -87,6 +87,7 @@ export default function ContractDetailPage() {
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
   const [publishLoading, setPublishLoading] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
+  const [photoCids, setPhotoCids] = useState<string[]>([])
 
   const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
     let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
@@ -287,6 +288,28 @@ export default function ContractDetailPage() {
     void loadContract().finally(() => setLoading(false))
   }, [params.id, dataSource, loadContract, searchParams, applyOnChainOverlay])
 
+  // Load photo evidence from work logs
+  useEffect(() => {
+    if (!contract?.id) return
+    let cancelled = false
+    fetch(`/api/work-logs?contractId=${encodeURIComponent(contract.id)}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((logs: any[]) => {
+        if (cancelled) return
+        const cids: string[] = []
+        for (const log of logs) {
+          if (Array.isArray(log.photoHashes)) {
+            for (const h of log.photoHashes) {
+              if (typeof h === 'string' && h.length > 0 && !cids.includes(h)) cids.push(h)
+            }
+          }
+        }
+        setPhotoCids(cids)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [contract?.id])
+
   if (loading) {
     return (
       <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -320,11 +343,12 @@ export default function ContractDetailPage() {
       }).format(new Date(contract.signedAt))
     : null
 
-  const PHOTO_EVIDENCE = [
+  const PHOTO_PLACEHOLDERS = [
     { label: t('photoStart'), date: '10.03.2026' },
     { label: t('photoMid'), date: '18.03.2026' },
     { label: t('photoCurrent'), date: '25.03.2026' },
   ]
+  const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'https://gateway.pinata.cloud'
 
   const activeReviewMilestone = contract.milestones.find((m) => m.status === 'under_review')
   const onChainDaysLeft = onChainSnapshot ? getDaysUntilDeadline(onChainSnapshot.deadline) : null
@@ -651,23 +675,52 @@ export default function ContractDetailPage() {
                 </svg>
                 {t('photoEvidence')}
               </h2>
-              <div className="grid grid-cols-3 gap-3">
-                {PHOTO_EVIDENCE.map((photo, i) => (
-                  <div
-                    key={i}
-                    className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-all group"
-                  >
-                    <svg width="28" height="28" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24" className="group-hover:stroke-emerald-500 transition-colors">
-                      <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <div className="text-center px-2">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-700">{photo.label}</div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500">{photo.date}</div>
-                    </div>
+              {photoCids.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {photoCids.map((cid) => (
+                      <a
+                        key={cid}
+                        href={`${PINATA_GATEWAY}/ipfs/${cid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="aspect-video rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-all group relative"
+                      >
+                        <img
+                          src={`${PINATA_GATEWAY}/ipfs/${cid}`}
+                          alt="Evidence"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1">
+                          <span className="text-[10px] text-white/80 font-mono">{cid.slice(0, 12)}…</span>
+                        </div>
+                      </a>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t('photoIpfs')}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t('photoIpfs')}</p>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    {PHOTO_PLACEHOLDERS.map((photo, i) => (
+                      <div
+                        key={i}
+                        className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center gap-2"
+                      >
+                        <svg width="28" height="28" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <div className="text-center px-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{photo.label}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">{photo.date}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t('photoIpfs')}</p>
+                </>
+              )}
             </div>
           </div>
 
