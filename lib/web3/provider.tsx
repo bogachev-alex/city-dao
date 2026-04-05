@@ -5,7 +5,6 @@ import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-  BackpackWalletAdapter,
   CoinbaseWalletAdapter,
   TorusWalletAdapter,
   TrustWalletAdapter,
@@ -27,7 +26,6 @@ export const SolanaProvider: FC<Props> = ({ children }) => {
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
-      new BackpackWalletAdapter(),
       new CoinbaseWalletAdapter(),
       new TorusWalletAdapter(),
       new TrustWalletAdapter(),
