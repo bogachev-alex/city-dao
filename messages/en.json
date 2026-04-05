@@ -446,7 +446,18 @@
       "tranche": "Tranche:",
       "activeStage": "Active milestone",
       "voteAsJuror": "Vote as juror",
-      "juryReviewNote": "The milestone is under citizens jury review. After the jurors decide, the status will update here."
+      "continueRevealVote": "Reveal your vote",
+      "juryReviewNote": "The milestone is under citizens jury review. After the jurors decide, the status will update here.",
+      "juryCommitsProgress": "Commits: {committed}/{total}",
+      "juryRevealsProgress": "Revealed: {revealed}/{total}",
+      "juryResultAccepted": "Jury decision: accepted",
+      "juryResultRejected": "Jury decision: rejected",
+      "juryFinished": "Jury voting finished",
+      "juryEscalated": "Tied vote — case escalated",
+      "youCommittedPendingReveal": "You have committed; open voting and reveal your choice — the milestone finalizes only after reveal.",
+      "youRevealedAccept": "You revealed: accept",
+      "youRevealedReject": "You revealed: reject",
+      "notOnThisJury": "Your wallet is not among jurors for this stage."
     },
     "penaltyCalculator": {
       "title": "Penalty calculator",
@@ -509,6 +520,8 @@
       "commitVote": "Commit vote",
       "sendingToDb": "Sending to database...",
       "commitExplanation": "SHA-256(vote + salt) is saved in the database. The salt is stored in localStorage for the reveal.",
+      "commitRevealHint": "Two steps: commit locks your choice as a hash; reveal publishes it. The milestone can finalize only after reveal.",
+      "oneVoteTestNote": "For testing, a single accept after reveal can finalize this milestone.",
       "yourCommittedVote": "Your committed vote",
       "voteLabel": "Vote",
       "commitHash": "Commit hash (SHA-256)",

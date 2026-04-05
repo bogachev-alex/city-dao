@@ -40,7 +40,23 @@ async function enrichJurySessionForClient(session: SessionRow) {
     orderBy: { createdAt: 'desc' },
     select: { photoHashes: true },
   })
-  const cids = parsePhotoHashes(evidenceLog?.photoHashes)
+  let cids = parsePhotoHashes(evidenceLog?.photoHashes)
+  if (!cids.length) {
+    const snippet = (session.milestone.description || '').trim().slice(0, 40)
+    const legacyRows = await prisma.workLog.findMany({
+      where: { contractId: session.contractId, type: 'MILESTONE_CLAIM' },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { photoHashes: true, title: true },
+    })
+    const byTitle =
+      snippet.length > 0
+        ? legacyRows.find((r) => typeof r.title === 'string' && r.title.includes(snippet))
+        : undefined
+    const byPhotos = legacyRows.find((r) => parsePhotoHashes(r.photoHashes).length > 0)
+    const fallback = byTitle || byPhotos
+    cids = parsePhotoHashes(fallback?.photoHashes)
+  }
   const evidencePhotoUrls = cids.slice(0, 8).map(getIpfsUrl)
 
   return {
