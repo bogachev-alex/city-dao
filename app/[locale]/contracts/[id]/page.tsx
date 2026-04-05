@@ -15,7 +15,7 @@ import {
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
   resolveContractOnChainPubkey,
 } from '@/lib/contracts'
-import { fetchContract } from '@/lib/api'
+import { fetchContract, fetchContractorName } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
 import { fetchAllContractsOnChain, fetchContractOnChain } from '@/lib/web3/onchain'
 import { PublicKey } from '@solana/web3.js'
@@ -29,6 +29,7 @@ import WorkLogFormModal from '@/components/contractor/WorkLogFormModal'
 import MilestoneSubmitModal from '@/components/contractor/MilestoneSubmitModal'
 import OnChainLink from '@/components/OnChainLink'
 import ExternalLink from '@/components/ExternalLink'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 function milestoneStatusForApi(m: Milestone): string {
   const map: Record<Milestone['status'], string> = {
@@ -222,6 +223,22 @@ export default function ContractDetailPage() {
     disputed: { label: t('statusDisputed'), color: 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/30' },
   }
 
+  // Resolve contractor wallet address to human-readable name
+  useEffect(() => {
+    if (!contract) return
+    const addr = contract.contractorWalletAddress || contract.contractor
+    // Solana base58 addresses are 32-44 chars of alphanumeric (no spaces/cyrillic)
+    if (!addr || addr.length < 32 || addr.length > 44 || /[^A-Za-z0-9]/.test(addr)) return
+    // contractor already shows a real name (not a wallet address)
+    if (contract.contractor !== addr) return
+    let cancelled = false
+    fetchContractorName(addr).then((name) => {
+      if (cancelled || !name) return
+      setContract((prev) => prev ? { ...prev, contractor: name } : prev)
+    })
+    return () => { cancelled = true }
+  }, [contract?.contractor, contract?.contractorWalletAddress]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!params.id) return
     setLoading(true)
@@ -395,7 +412,9 @@ export default function ContractDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('amount')}</div>
-                  <div className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatTengeWithCrypto(contract.amount_usdc)}</div>
+                  <CryptoTooltip amount={contract.amount_usdc}>
+                    <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold">{formatTengeWithCrypto(contract.amount_usdc)}</span>
+                  </CryptoTooltip>
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">{t('deadline')}</div>
@@ -465,7 +484,9 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainAmount')}</div>
-                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</div>
+                          <CryptoTooltip amount={onChainSnapshot.amount_usdc}>
+                            <span className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.amount_usdc)}</span>
+                          </CryptoTooltip>
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainDeadline')}</div>
@@ -485,7 +506,9 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainEscrow')}</div>
-                          <div className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</div>
+                          <CryptoTooltip amount={onChainSnapshot.escrow_amount}>
+                            <span className="text-gray-700 dark:text-gray-300">{formatTengeWithCrypto(onChainSnapshot.escrow_amount)}</span>
+                          </CryptoTooltip>
                         </div>
                         <div>
                           <div className="text-gray-400 dark:text-gray-500">{t('onChainMilestones')}</div>
@@ -710,14 +733,14 @@ export default function ContractDetailPage() {
               <h3 className="text-gray-900 dark:text-white font-semibold mb-4">{t('metadata')}</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { label: t('contractId'), value: `#${contract.id.slice(0, 8)}` },
-                  { label: t('coordinates'), value: `${contract.lat}, ${contract.lng}` },
-                  { label: t('escrow20'), value: formatTengeWithCrypto(contract.escrow_amount) },
-                  { label: t('status'), value: statusConfig[contract.status].label },
+                  { label: t('contractId'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">#{contract.id.slice(0, 8)}</span> },
+                  { label: t('coordinates'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{contract.lat}, {contract.lng}</span> },
+                  { label: t('escrow20'), value: <CryptoTooltip amount={contract.escrow_amount}><span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{formatTengeWithCrypto(contract.escrow_amount)}</span></CryptoTooltip> },
+                  { label: t('status'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{statusConfig[contract.status].label}</span> },
                 ].map((item) => (
-                  <div key={item.label} className="flex justify-between">
+                  <div key={item.label} className="flex justify-between items-center">
                     <span className="text-gray-400 dark:text-gray-500">{item.label}</span>
-                    <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{item.value}</span>
+                    {item.value}
                   </div>
                 ))}
               </div>

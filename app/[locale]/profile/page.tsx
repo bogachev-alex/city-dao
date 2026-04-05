@@ -185,7 +185,7 @@ export default function ProfilePage() {
 
       {/* Profile header */}
       <div className={`bg-gradient-to-b ${tier.bg} border-b ${tier.border}`}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             {/* Avatar */}
             <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${tier.bg} border-2 ${tier.border} flex items-center justify-center shadow-lg`}>
@@ -237,7 +237,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[

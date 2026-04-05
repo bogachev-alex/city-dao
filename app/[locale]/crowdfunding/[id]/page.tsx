@@ -28,6 +28,7 @@ import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCi
 import { getContractDetailHref, getSolanaExplorerTxUrl } from '@/lib/contracts'
 import OnChainLink from '@/components/OnChainLink'
 import { tengeToLamports } from '@/lib/web3/constants'
+import CryptoTooltip from '@/components/CryptoTooltip'
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 25000, 50000, 100000]
 
@@ -560,15 +561,15 @@ export default function CampaignDetailPage({ params }: PageProps) {
                     <>
                       <div>
                         <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain собрано</div>
-                        <div className="text-gray-900 dark:text-white">
-                          {formatTenge(Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0))}
-                        </div>
+                        <CryptoTooltip amount={Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0)}>
+                          <span className="text-gray-900 dark:text-white">{formatTenge(Number(onChainInfo.citizenRaised ?? onChainInfo.citizen_raised ?? 0))}</span>
+                        </CryptoTooltip>
                       </div>
                       <div>
                         <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain цель граждан</div>
-                        <div className="text-gray-900 dark:text-white">
-                          {formatTenge(Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0))}
-                        </div>
+                        <CryptoTooltip amount={Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0)}>
+                          <span className="text-gray-900 dark:text-white">{formatTenge(Number(onChainInfo.citizenTarget ?? onChainInfo.citizen_target ?? 0))}</span>
+                        </CryptoTooltip>
                       </div>
                       <div>
                         <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">On-chain доноров</div>
@@ -613,7 +614,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Общий бюджет проекта</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(dc.target_amount)}</span>
+                  <CryptoTooltip amount={dc.target_amount}><span className="text-lg font-bold text-gray-900 dark:text-white">{formatTenge(dc.target_amount)}</span></CryptoTooltip>
                 </div>
               </div>
 
@@ -621,8 +622,10 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Доля граждан ({100 - category.statePercent}%)</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {formatTenge(dc.citizen_raised)} / {formatTenge(dc.citizen_target)}
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                    <CryptoTooltip amount={dc.citizen_raised}><span>{formatTenge(dc.citizen_raised)}</span></CryptoTooltip>
+                    <span>/</span>
+                    <CryptoTooltip amount={dc.citizen_target}><span>{formatTenge(dc.citizen_target)}</span></CryptoTooltip>
                   </span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -633,7 +636,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </div>
                 <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
                   <span>{progress}% собрано</span>
-                  {remaining > 0 && <span>Осталось: {formatTenge(remaining)}</span>}
+                  {remaining > 0 && <CryptoTooltip amount={remaining}><span>Осталось: {formatTenge(remaining)}</span></CryptoTooltip>}
                 </div>
               </div>
 
@@ -641,7 +644,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">Гос. субсидия ({category.statePercent}%)</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(dc.state_match)}</span>
+                  <CryptoTooltip amount={dc.state_match}><span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(dc.state_match)}</span></CryptoTooltip>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
@@ -732,9 +735,9 @@ export default function CampaignDetailPage({ params }: PageProps) {
                               </div>
                             </div>
                           </div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {formatTenge(donor.amount)}
-                          </div>
+                          <CryptoTooltip amount={donor.amount}>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(donor.amount)}</span>
+                          </CryptoTooltip>
                         </div>
                       )
                     })}
@@ -985,7 +988,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <div key={key} className="bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-sm font-medium ${cfg.color}`}>NFT «{cfg.label}»</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{formatTenge(cfg.min)}+</span>
+                      <CryptoTooltip amount={cfg.min}><span className="text-xs text-gray-400 dark:text-gray-500">{formatTenge(cfg.min)}+</span></CryptoTooltip>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {key === 'participant' && 'Имя в публичном списке доноров проекта'}
