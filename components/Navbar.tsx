@@ -10,6 +10,7 @@ import { useA11y } from './AccessibilityProvider'
 import { ROLE_LABELS, ROLE_ICONS, NAV_BY_ROLE, HOME_PATH_BY_ROLE, type UserRole, isDemoSessionUser } from '@/lib/auth'
 import { getWallet, formatBalance } from '@/lib/tokens'
 import { useWallet } from '@solana/wallet-adapter-react'
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 
 const ALL_ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 
@@ -27,6 +28,26 @@ export default function Navbar() {
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false)
   const [tokenBalance, setTokenBalance] = useState(0)
   const { connected: walletAdapterConnected, publicKey: walletPublicKey } = useWallet()
+
+  // Auto-login when any wallet connects and user has no session (or is demo)
+  const { login: authLogin } = useAuth()
+  useEffect(() => {
+    if (!walletAdapterConnected || !walletPublicKey) return
+    if (user && !user.id.startsWith('demo-')) return
+    const walletAddr = walletPublicKey.toBase58()
+    fetch(`/api/roles?wallet=${encodeURIComponent(walletAddr)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const roles: UserRole[] = data?.roles?.length ? data.roles : ['CITIZEN']
+        const names: Record<string, string> = data?.names || {}
+        const role = roles[0] as UserRole
+        const name = names[role] || `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}`
+        authLogin({ role, id: walletAddr, name })
+      })
+      .catch(() => {
+        authLogin({ role: 'CITIZEN', id: walletAddr, name: `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}` })
+      })
+  }, [walletAdapterConnected, walletPublicKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>(ALL_ROLES)
 
   useEffect(() => { setMounted(true) }, [])
@@ -213,25 +234,11 @@ export default function Navbar() {
                 </button>
                 {roleSwitcherOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden">
-                    {/* Phantom status */}
+                    {/* Wallet connect */}
                     <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-800">
-                      {walletAdapterConnected && walletPublicKey ? (
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse shrink-0" />
-                          <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
-                            {walletPublicKey.toBase58().slice(0, 6)}...{walletPublicKey.toBase58().slice(-4)}
-                          </span>
-                        </div>
-                      ) : (
-                        <Link
-                          href="/login"
-                          onClick={() => setRoleSwitcherOpen(false)}
-                          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-600 shrink-0" />
-                          Подключить Phantom
-                        </Link>
-                      )}
+                      <div className="wallet-adapter-btn">
+                        <WalletMultiButton />
+                      </div>
                     </div>
                     {/* Role switcher */}
                     <div className="px-3 pt-2 pb-1">
