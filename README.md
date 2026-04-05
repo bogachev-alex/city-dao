@@ -15,12 +15,12 @@
 
 ## Проблема
 
-В 2025 году **26 из 147** городских строительных проектов Алматы имели нарушения сроков или качества. **38 миллиардов тенге** инвестировано в инфраструктуру, но:
+В 2025 году из **147 муниципальных строительных проектов** Алматы нарушения сроков и качества [выявлены на **26 объектах**](https://informburo.kz/novosti/ploxo-stroiat-i-sryvaiut-sroki-skolko-podriadcikov-narusitelei-i-problemnyx-obieektov-v-almaty). Бюджет города на инфраструктуру превышает **244 млрд тенге** в год, но:
 
-- Подрядчики берут новые контракты, не завершив текущие
-- Штрафы за просрочку не применяются автоматически
+- Подрядчики [получают авансы и исчезают](https://bes.media/news/poluchayut-avans-i-ischezayut-pochemu-ubirayut-predoplatu-podryadchikam-obyasnil-akim-satibaldi/), срывают сроки, передают заказы третьим лицам
+- Текущий штраф — [0,01% от суммы контракта](https://informburo.kz/special/darxan-satybaldy-podriadciki-sryvaiushhie-sroki-budut-otstraneny-ot-goszakazov-v-almaty) — не работает как сдерживающий фактор
+- 110 компаний привлечены к ответственности, 6 лишены лицензий, [26 переданы в правоохранительные органы](https://tengrinews.kz/kazakhstan_news/podryadchikov-v-almatyi-massovo-lishayut-litsenziy-584421/)
 - У граждан нет инструмента для контроля расходования бюджета
-- Решения о расходах казны районов непрозрачны
 
 ## Решение
 

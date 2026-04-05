@@ -4,7 +4,7 @@
 
 Amanat Protocol is a City DAO built on Solana that enables transparent, citizen-driven monitoring of government construction contracts in Almaty, Kazakhstan. It replaces manual akimat oversight with automated smart contract enforcement, provably random jury selection, and AI-powered due diligence before any vote goes live.
 
-**Problem:** 26 of 147 Almaty city projects had delays or quality violations in 2025. 38 billion tenge invested — contractors take new contracts without finishing existing ones, penalties not enforced automatically.
+**Problem:** 26 of 147 Almaty city projects had delays or quality violations in 2025. Over 244 billion tenge allocated for infrastructure annually — contractors take new contracts without finishing existing ones, penalties (0.01% of contract) are not enforced effectively.
 
 **Solution:** Put contracts on-chain, escrow 20% of funds, auto-penalize via smart contract, let citizens verify via jury, vote on treasury spending with AI research context.
 
