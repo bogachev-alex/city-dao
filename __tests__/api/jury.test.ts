@@ -7,15 +7,49 @@ vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
 const { GET, POST, PATCH } = await import('@/app/api/jury/route')
 
-beforeEach(() => resetPrismaMock())
+/** Base58 Solana address (matches isSolanaAddress in blockchainDashboardModel). */
+const JUROR_WALLET = '3zuYfqNAXFy8RYYSo6guiXXRPNc1hTvw7CFiLUnXoQWp'
+
+function juryAuthHeaders(): HeadersInit {
+  const token = Buffer.from(JSON.stringify({ role: 'CITIZEN', id: JUROR_WALLET }), 'utf8').toString('base64')
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  }
+}
+
+const sessionRow = {
+  id: 's1',
+  contractId: 'contract1',
+  milestoneId: 'm1',
+  status: 'COMMIT_PHASE' as const,
+  commitDeadline: new Date(),
+  revealDeadline: new Date(),
+  weightedAccept: 0,
+  weightedReject: 0,
+  result: null as null,
+  contract: { id: 'contract1', title: 'T', district: 'D', onChainPubkey: null as string | null },
+  milestone: { id: 'm1', description: 'Milestone A' },
+  votes: [] as unknown[],
+}
+
+beforeEach(() => {
+  resetPrismaMock()
+  prismaMock.milestone.findMany.mockResolvedValue([{ id: 'm1' }])
+  prismaMock.workLog.findFirst.mockResolvedValue({ photoHashes: ['QmTest123'] })
+  prismaMock.citizen.findUnique.mockResolvedValue({ id: 'c1' })
+})
 
 describe('GET /api/jury', () => {
-  it('returns session by ID', async () => {
-    prismaMock.jurySession.findUnique.mockResolvedValue({
-      id: 's1', status: 'COMMIT_PHASE', votes: [],
-    })
+  it('returns session by ID with enrichment fields', async () => {
+    prismaMock.jurySession.findUnique.mockResolvedValue({ ...sessionRow })
+
     const res = await GET(new NextRequest('http://localhost/api/jury?sessionId=s1'))
     expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.milestoneIndexOnChain).toBe(0)
+    expect(Array.isArray(data.evidencePhotoUrls)).toBe(true)
+    expect(data.evidencePhotoUrls.length).toBeGreaterThan(0)
   })
 
   it('returns 404 for unknown session', async () => {
@@ -30,65 +64,121 @@ describe('POST /api/jury (commit)', () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
     prismaMock.juryVote.update.mockResolvedValue({ id: 'v1', commitHash: 'hash123' })
 
-    const res = await POST(new NextRequest('http://localhost/api/jury', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', commitHash: 'hash123' }),
-    }))
+    const res = await POST(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'POST',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', commitHash: 'hash123' }),
+      }),
+    )
     expect(res.status).toBe(200)
   })
 
   it('403 for non-juror', async () => {
     prismaMock.juryVote.findFirst.mockResolvedValue(null)
-    const res = await POST(new NextRequest('http://localhost/api/jury', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'intruder', commitHash: 'x' }),
-    }))
+    const res = await POST(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'POST',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', commitHash: 'x' }),
+      }),
+    )
+    expect(res.status).toBe(403)
+  })
+
+  it('401 without auth', async () => {
+    prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
+    const res = await POST(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: 's1', commitHash: 'hash123' }),
+      }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('403 when citizen id is not a Solana wallet', async () => {
+    const token = Buffer.from(JSON.stringify({ role: 'CITIZEN', id: 'demo-citizen-1' }), 'utf8').toString('base64')
+    prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
+    const res = await POST(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessionId: 's1', commitHash: 'hash123' }),
+      }),
+    )
     expect(res.status).toBe(403)
   })
 
   it('409 if already committed', async () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: 'existing' })
-    const res = await POST(new NextRequest('http://localhost/api/jury', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', commitHash: 'new' }),
-    }))
+    const res = await POST(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'POST',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', commitHash: 'new' }),
+      }),
+    )
     expect(res.status).toBe(409)
   })
 })
 
 describe('PATCH /api/jury (reveal) — hash verification', () => {
-  // BUG FIX: Backend now verifies hash(vote:salt) === commitHash
-  it('accepts reveal when hash matches', async () => {
+  it('accepts reveal when hash matches and finalizes early on single ACCEPT', async () => {
     const vote = 'accept'
     const salt = 'testsalt123'
     const correctHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
 
     prismaMock.juryVote.findFirst.mockResolvedValue({
-      id: 'v1', commitHash: correctHash, revealedVote: null, weight: 1,
+      id: 'v1',
+      commitHash: correctHash,
+      revealedVote: null,
+      weight: 1,
     })
     prismaMock.juryVote.update.mockResolvedValue({ id: 'v1', revealedVote: vote, revealedSalt: salt })
-    prismaMock.juryVote.findMany.mockResolvedValue([{ revealedVote: vote, weight: 1 }])
+    prismaMock.juryVote.findMany.mockResolvedValue([{ revealedVote: 'ACCEPT', weight: 1 }])
+    prismaMock.juryVote.findUnique.mockResolvedValue({ id: 'v1' })
+    prismaMock.jurySession.findUnique.mockResolvedValue({
+      status: 'COMMIT_PHASE',
+      milestoneId: 'm1',
+    })
     prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
+    prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
 
-    const res = await PATCH(new NextRequest('http://localhost/api/jury', {
-      method: 'PATCH',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote, salt }),
-    }))
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'PATCH',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', vote, salt }),
+      }),
+    )
     expect(res.status).toBe(200)
+    expect(prismaMock.jurySession.update).toHaveBeenCalled()
+    expect(prismaMock.milestone.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'm1' },
+        data: { status: 'ACCEPTED' },
+      }),
+    )
   })
 
   it('REJECTS reveal when hash does NOT match (vote manipulation)', async () => {
-    // Juror committed hash for "reject" but tries to reveal "accept"
     const commitHash = createHash('sha256').update('reject:originalsalt').digest('hex')
 
     prismaMock.juryVote.findFirst.mockResolvedValue({
-      id: 'v1', commitHash, revealedVote: null,
+      id: 'v1',
+      commitHash,
+      revealedVote: null,
     })
 
-    const res = await PATCH(new NextRequest('http://localhost/api/jury', {
-      method: 'PATCH',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote: 'accept', salt: 'differentsalt' }),
-    }))
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'PATCH',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', vote: 'accept', salt: 'differentsalt' }),
+      }),
+    )
     expect(res.status).toBe(400)
     const data = await res.json()
     expect(data.error).toContain('Hash mismatch')
@@ -96,10 +186,13 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
 
   it('400 if not yet committed', async () => {
     prismaMock.juryVote.findFirst.mockResolvedValue({ id: 'v1', commitHash: null })
-    const res = await PATCH(new NextRequest('http://localhost/api/jury', {
-      method: 'PATCH',
-      body: JSON.stringify({ sessionId: 's1', citizenId: 'c1', vote: 'accept', salt: 'x' }),
-    }))
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'PATCH',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', vote: 'accept', salt: 'x' }),
+      }),
+    )
     expect(res.status).toBe(400)
   })
 })

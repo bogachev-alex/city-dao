@@ -539,7 +539,12 @@
       "unknownError": "Неизвестная ошибка",
       "loadError": "Не удалось загрузить сессию",
       "voteError": "Ошибка при отправке голоса",
-      "revealError": "Ошибка при раскрытии голоса"
+      "revealError": "Ошибка при раскрытии голоса",
+      "notJurorWalletTitle": "Нужен кошелёк",
+      "notJurorWalletLead": "Подключите тот же Solana-кошелёк, с которым вы регистрировались как гражданин. Голос жюри привязан к вашему аккаунту.",
+      "openLogin": "Войти",
+      "notJurorAssignedTitle": "Вы не в составе жюри",
+      "notJurorAssignedLead": "Ваш кошелёк не входит в список присяжных по этой сессии."
     },
     "treasuryDashboard": {
       "treasuryBalance": "Баланс казны района",

@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
+import { Link } from '@/i18n/routing'
+import { useAuth } from '@/components/AuthContext'
 import { generateSalt, hashVoteCommitment } from '@/lib/crypto'
 import { awardTokens } from '@/lib/tokens'
+import { getSolanaExplorerTxUrl, isSolanaAddress } from '@/lib/blockchainDashboardModel'
 import { useJuryMechanism } from '@/lib/web3/useJuryMechanism'
 
 function hexToBytes(hex: string): Uint8Array {
@@ -25,13 +28,6 @@ function tryParsePublicKey(s: string): PublicKey | null {
   }
 }
 
-/** Parse milestone index from milestone id like "contractId-milestoneIndex" or numeric string */
-function parseMilestoneIndex(milestoneId: string): number {
-  const parts = milestoneId.split('-')
-  const last = parseInt(parts[parts.length - 1])
-  return isNaN(last) ? 0 : last
-}
-
 interface JuryVotingProps {
   sessionId: string
 }
@@ -41,8 +37,10 @@ type Phase = 'loading' | 'commit' | 'reveal' | 'results' | 'error'
 interface JurySessionData {
   id: string
   status: string
-  contract: { id: string; title: string; district: string }
+  contract: { id: string; title: string; district: string; onChainPubkey?: string | null }
   milestone: { id: string; description: string }
+  milestoneIndexOnChain?: number
+  evidencePhotoUrls?: string[]
   commitDeadline: string | null
   revealDeadline: string | null
   weightedAccept: number
@@ -61,6 +59,7 @@ interface JurySessionData {
 
 export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const t = useTranslations('components.juryVoting')
+  const { user, authHeader } = useAuth()
   const { publicKey: walletPubkey } = useWallet()
   const { commitVote: commitOnChain, revealVote: revealOnChain } = useJuryMechanism()
   const [session, setSession] = useState<JurySessionData | null>(null)
@@ -74,7 +73,21 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const [demoMode, setDemoMode] = useState(false)
   const [onChainTx, setOnChainTx] = useState<string | null>(null)
 
-  const storageKey = `jury_salt_${sessionId}`
+  const resolvedWallet = walletPubkey?.toBase58() || (user?.id && isSolanaAddress(user.id) ? user.id : null)
+
+  const jurorKey = useMemo(() => {
+    if (demoMode) return 'demo'
+    return resolvedWallet || 'anon'
+  }, [demoMode, resolvedWallet])
+
+  const storageKey = `jury_salt_${sessionId}_${jurorKey}`
+
+  const myVote = useMemo(() => {
+    if (!session?.votes?.length) return undefined
+    if (demoMode) return session.votes[0]
+    if (!resolvedWallet) return undefined
+    return session.votes.find((v) => v.citizen.walletAddress === resolvedWallet)
+  }, [session, demoMode, resolvedWallet])
 
   const PHOTO_PLACEHOLDERS = [
     { label: t('photo1'), color: 'from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700' },
@@ -88,8 +101,10 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
     const demoSession: JurySessionData = {
       id: sessionId,
       status: 'COMMIT_PHASE',
-      contract: { id: '1', title: 'Ремонт тротуара, набережная Весновки', district: 'Медеуский' },
+      contract: { id: '1', title: 'Ремонт тротуара, набережная Весновки', district: 'Медеуский', onChainPubkey: null },
       milestone: { id: '1-2', description: 'Укладка основания' },
+      milestoneIndexOnChain: 0,
+      evidencePhotoUrls: [],
       commitDeadline: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       revealDeadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
       weightedAccept: 0,
@@ -191,10 +206,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       if (!demoMode) {
         const res = await fetch('/api/jury', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader() },
           body: JSON.stringify({
             sessionId: session.id,
-            citizenId: session.votes[0]?.citizenId,
             commitHash: hash,
           }),
         })
@@ -206,16 +220,15 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         }
       }
 
-      // Best-effort: also commit on-chain if wallet connected and contract id is a valid pubkey
       if (walletPubkey) {
-        const contractPubkey = tryParsePublicKey(session.contract.id)
+        const pkStr = session.contract.onChainPubkey
+        const contractPubkey = pkStr ? tryParsePublicKey(pkStr) : null
+        const milestoneIndex = typeof session.milestoneIndexOnChain === 'number' ? session.milestoneIndexOnChain : 0
         if (contractPubkey) {
-          const milestoneIndex = parseMilestoneIndex(session.milestone.id)
           try {
             const { tx } = await commitOnChain(contractPubkey, milestoneIndex, hexToBytes(hash))
             setOnChainTx(tx)
           } catch (onChainErr) {
-            // On-chain commit failed — log but don't block the flow
             console.warn('On-chain commitVote failed:', onChainErr)
           }
         }
@@ -254,11 +267,10 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       if (!demoMode) {
         const res = await fetch('/api/jury', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader() },
           body: JSON.stringify({
             sessionId: session.id,
-            citizenId: session.votes[0]?.citizenId,
-            vote: vote.toUpperCase(),
+            vote,
             salt,
           }),
         })
@@ -286,11 +298,11 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         } : prev)
       }
 
-      // Best-effort: also reveal on-chain if wallet connected and contract id is a valid pubkey
       if (walletPubkey) {
-        const contractPubkey = tryParsePublicKey(session.contract.id)
+        const pkStr = session.contract.onChainPubkey
+        const contractPubkey = pkStr ? tryParsePublicKey(pkStr) : null
+        const milestoneIndex = typeof session.milestoneIndexOnChain === 'number' ? session.milestoneIndexOnChain : 0
         if (contractPubkey) {
-          const milestoneIndex = parseMilestoneIndex(session.milestone.id)
           try {
             const { tx } = await revealOnChain(contractPubkey, milestoneIndex, vote, hexToBytes(salt))
             setOnChainTx(tx)
@@ -332,6 +344,31 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         <div className="w-8 h-8 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     )
+  }
+
+  if (session && !demoMode && phase !== 'results') {
+    if (!resolvedWallet) {
+      return (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-center">
+          <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('notJurorWalletTitle')}</h2>
+          <p className="text-sm text-amber-800 dark:text-amber-300/90 mb-4">{t('notJurorWalletLead')}</p>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            {t('openLogin')}
+          </Link>
+        </div>
+      )
+    }
+    if (!myVote) {
+      return (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-center">
+          <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('notJurorAssignedTitle')}</h2>
+          <p className="text-sm text-amber-800 dark:text-amber-300/90">{t('notJurorAssignedLead')}</p>
+        </div>
+      )
+    }
   }
 
   if (phase === 'error') {
@@ -398,7 +435,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           </svg>
           <span>On-chain TX: </span>
           <a
-            href={`https://explorer.solana.com/tx/${onChainTx}?cluster=devnet`}
+            href={getSolanaExplorerTxUrl(onChainTx)}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono underline hover:text-emerald-600"
@@ -414,14 +451,28 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           <div>
             <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('contractorPhotos')}</h3>
             <div className="grid grid-cols-3 gap-3">
-              {PHOTO_PLACEHOLDERS.map((photo, i) => (
-                <div key={i} className={`aspect-video rounded-xl bg-gradient-to-br ${photo.color} border border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-colors group`}>
-                  <svg width="24" height="24" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24" className="group-hover:stroke-emerald-500 transition-colors">
-                    <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:text-gray-400 transition-colors">{photo.label}</span>
-                </div>
-              ))}
+              {session.evidencePhotoUrls && session.evidencePhotoUrls.length > 0 ? (
+                session.evidencePhotoUrls.map((url, i) => (
+                  <a
+                    key={`${url}-${i}`}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="aspect-video rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-colors block bg-gray-100 dark:bg-gray-900"
+                  >
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </a>
+                ))
+              ) : (
+                PHOTO_PLACEHOLDERS.map((photo, i) => (
+                  <div key={i} className={`aspect-video rounded-xl bg-gradient-to-br ${photo.color} border border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 transition-colors group`}>
+                    <svg width="24" height="24" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24" className="group-hover:stroke-emerald-500 transition-colors">
+                      <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:text-gray-400 transition-colors">{photo.label}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

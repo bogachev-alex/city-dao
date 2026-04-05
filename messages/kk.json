@@ -539,7 +539,12 @@
       "unknownError": "Белгісіз қате",
       "loadError": "Сессияны жүктеу мүмкін болмады",
       "voteError": "Дауыс жіберу кезінде қате",
-      "revealError": "Дауысты ашу кезінде қате"
+      "revealError": "Дауысты ашу кезінде қате",
+      "notJurorWalletTitle": "Әмиян қажет",
+      "notJurorWalletLead": "Азамат ретінде тіркелген Solana әмияныңызды қосыңыз. Жюри дауысы сіздің аккаунтыңызға байланысты.",
+      "openLogin": "Кіру",
+      "notJurorAssignedTitle": "Сіз жюриде емессіз",
+      "notJurorAssignedLead": "Сіздің әмияныңыз осы сессиядағы тізімде жоқ."
     },
     "treasuryDashboard": {
       "treasuryBalance": "Аудан қазынасының балансы",
