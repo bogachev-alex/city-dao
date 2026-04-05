@@ -6,11 +6,12 @@
 </p>
 
 <h1 align="center"><a href="https://74-208-191-110.nip.io:4443/" target"_blank">Amanat Protocol</a></h1>
-Dev server: https://74-208-191-110.nip.io:4443/
+
 <p align="center">
   <b>City DAO для прозрачного мониторинга государственных строительных контрактов Алматы</b>
 </p>
 
+Dev server: https://74-208-191-110.nip.io:4443/
 ---
 
 ## Проблема
