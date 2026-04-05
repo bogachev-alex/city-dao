@@ -68,11 +68,12 @@ jobs:
       - name: Restart app
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
         run: |
           ssh root@${{ secrets.DEPLOY_HOST }} bash << ENDSSH
             set -e
             cd /var/www/amanat
-            printf 'OPENAI_API_KEY=%s\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public\n' "${OPENAI_API_KEY}" > .env.local
+            printf 'OPENAI_API_KEY=%s\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public\nPINATA_JWT=%s\n' "${OPENAI_API_KEY}" "${PINATA_JWT}" > .env.local
             npm install --production=false --legacy-peer-deps --silent
             npx prisma generate
             DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public npx prisma migrate deploy
