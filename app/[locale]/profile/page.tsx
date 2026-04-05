@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/components/AuthContext'
-import { fetchCitizen } from '@/lib/api'
+import { fetchCitizen, registerCitizen } from '@/lib/api'
 import { Link, useRouter } from '@/i18n/routing'
 import { getWallet, formatBalance, type TokenWallet } from '@/lib/tokens'
 
@@ -107,11 +107,19 @@ export default function ProfilePage() {
       return
     }
 
-    // Real wallet user — fetch from API
+    // Real wallet user — fetch from API, auto-register if not found
     setIsDemo(false)
     fetchCitizen(user.id)
-      .then((data) => {
-        if (data && !data.error) setCitizen(data)
+      .then(async (data) => {
+        if (data && !data.error) {
+          setCitizen(data)
+          return
+        }
+        // Wallet connected but no citizen record — auto-register with defaults
+        const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(user.id + ':auto-citizen') as unknown as ArrayBuffer)
+        const iinHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+        const created = await registerCitizen({ walletAddress: user.id, district: 'Алмалинский', iinHash })
+        if (created && !created.error) setCitizen(created)
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false))
