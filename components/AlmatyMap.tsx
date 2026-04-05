@@ -113,8 +113,17 @@ export default function AlmatyMap() {
     const conn = connectionRef.current
 
     async function load() {
+      // Same as /contracts: Postgres (goszakup seed, admin) is the registry; Solana overlays state.
+      // Pure on-chain list only when the DB returns no rows.
       if (dataSource === 'onchain') {
         try {
+          const data: unknown = await fetchContracts()
+          if (cancelled) return
+          if (Array.isArray(data) && data.length > 0) {
+            const normalized = data.map(normalizeContract)
+            setContracts(await mergeContractsWithOnChain(normalized, conn))
+            return
+          }
           const onChain = await fetchAllContractsOnChain(conn)
           if (!cancelled) {
             setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
