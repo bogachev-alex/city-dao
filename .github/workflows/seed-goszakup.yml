@@ -1,3 +1,16 @@
+# Seeds real goszakup.gov.kz-style contracts into Postgres (prisma/seed-goszakup.ts).
+#
+# Required secrets (same as deploy):
+#   DEPLOY_KEY, DEPLOY_HOST
+#
+# Optional:
+#   DATABASE_URL — if unset, uses postgresql://postgres:postgres@localhost:5432/amanat?schema=public on the server
+#
+# Optional on-chain (devnet) — both must be set or neither is used:
+#   GOSZAKUP_SOLANA_KEYPAIR_JSON — full Solana keypair JSON array (akimat authority), same format as ~/.config/solana/id.json
+#   GOSZAKUP_ONCHAIN_CONTRACTOR — base58 pubkey of contractor wallet
+#   GOSZAKUP_SOLANA_RPC_URL — optional custom RPC for registration txs
+
 name: Seed Goszakup Contracts
 
 on:
@@ -6,7 +19,7 @@ on:
 jobs:
   seed:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -20,17 +33,61 @@ jobs:
       - name: Add server to known hosts
         run: ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Sync seed script
+      - name: Sync seed script and dependencies
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          rsync -az prisma/seed-goszakup.ts \
-            root@${{ secrets.DEPLOY_HOST }}:/var/www/amanat/prisma/seed-goszakup.ts
+          set -e
+          HOST="root@${DEPLOY_HOST}"
+          rsync -az prisma/seed-goszakup.ts "${HOST}:/var/www/amanat/prisma/"
+          rsync -az lib/goszakupOnChainRegister.ts "${HOST}:/var/www/amanat/lib/"
+          rsync -az lib/web3/contractTitleSeed.ts "${HOST}:/var/www/amanat/lib/web3/"
+
+      - name: Prepare optional Solana keypair on server
+        id: onchain
+        env:
+          KP: ${{ secrets.GOSZAKUP_SOLANA_KEYPAIR_JSON }}
+          CONTRACTOR: ${{ secrets.GOSZAKUP_ONCHAIN_CONTRACTOR }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -e
+          if [ -z "$KP" ] || [ -z "$CONTRACTOR" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "On-chain: skipped (set GOSZAKUP_SOLANA_KEYPAIR_JSON + GOSZAKUP_ONCHAIN_CONTRACTOR to enable)"
+            exit 0
+          fi
+          HOST="root@${DEPLOY_HOST}"
+          mkdir -p .gha-secrets
+          printf '%s' "$KP" > .gha-secrets/goszakup-solana.json
+          ssh "$HOST" "mkdir -p /var/www/amanat/.secrets"
+          rsync -az .gha-secrets/goszakup-solana.json "${HOST}:/var/www/amanat/.secrets/goszakup-solana.json"
+          ssh "$HOST" "chmod 600 /var/www/amanat/.secrets/goszakup-solana.json"
+          rm -f .gha-secrets/goszakup-solana.json
+          rmdir .gha-secrets 2>/dev/null || true
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "On-chain: keypair synced; will set SEED_GOSZAKUP_ONCHAIN=1 on server"
 
       - name: Run seed on server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          GOSZAKUP_ONCHAIN_CONTRACTOR: ${{ secrets.GOSZAKUP_ONCHAIN_CONTRACTOR }}
+          GOSZAKUP_SOLANA_RPC_URL: ${{ secrets.GOSZAKUP_SOLANA_RPC_URL }}
         run: |
-          ssh root@${{ secrets.DEPLOY_HOST }} bash << 'ENDSSH'
-            set -e
-            cd /var/www/amanat
-            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public \
-              npx tsx prisma/seed-goszakup.ts
-            echo "✅ Goszakup seed complete at $(date)"
-          ENDSSH
+          set -e
+          HOST="root@${DEPLOY_HOST}"
+          DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/amanat?schema=public}"
+          Q_DB="$(printf '%q' "$DB_URL")"
+
+          if [ "${{ steps.onchain.outputs.enabled }}" = "true" ]; then
+            Q_CTR="$(printf '%q' "$GOSZAKUP_ONCHAIN_CONTRACTOR")"
+            EXTRA=""
+            if [ -n "$GOSZAKUP_SOLANA_RPC_URL" ]; then
+              EXTRA="export SOLANA_RPC_URL=$(printf '%q' "$GOSZAKUP_SOLANA_RPC_URL"); "
+            fi
+            ssh "$HOST" bash -lc "set -e; cd /var/www/amanat; export DATABASE_URL=$Q_DB; export SEED_GOSZAKUP_ONCHAIN=1; export SOLANA_WALLET=/var/www/amanat/.secrets/goszakup-solana.json; export GOSZAKUP_ONCHAIN_CONTRACTOR=$Q_CTR; $EXTRA npx tsx prisma/seed-goszakup.ts"
+          else
+            ssh "$HOST" bash -lc "set -e; cd /var/www/amanat; export DATABASE_URL=$Q_DB; npx tsx prisma/seed-goszakup.ts"
+          fi
+
+          echo "✅ Goszakup seed complete at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
