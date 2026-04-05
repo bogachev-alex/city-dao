@@ -98,22 +98,22 @@ export default function HomePage() {
   ]
 
   return (
-    <main className="min-h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
+    <main className={`${user ? 'h-screen' : 'min-h-screen'} flex flex-col pt-16 bg-gray-50 dark:bg-gray-950`}>
       <Onboarding />
 
       {/* Hero section — only for unauthenticated users */}
       {!user && (
-        <section className="bg-gray-950 border-b border-gray-800">
+        <section className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
             {/* Title block */}
             <div className="text-center mb-10">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-3">
                 {t('heroTitle')}
               </h1>
-              <p className="text-lg sm:text-xl text-emerald-400 font-medium mb-4">
+              <p className="text-lg sm:text-xl text-emerald-600 dark:text-emerald-400 font-medium mb-4">
                 {t('heroSubtitle')}
               </p>
-              <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">
+              <p className="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto text-sm sm:text-base">
                 {t('heroDescription')}
               </p>
             </div>
@@ -124,13 +124,13 @@ export default function HomePage() {
                 <Link
                   key={card.title}
                   href={card.href}
-                  className="group block bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 hover:bg-gray-900/80 transition-all duration-200"
+                  className="group block bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-gray-900/80 transition-all duration-200"
                 >
                   <div className="text-3xl mb-3">{card.icon}</div>
-                  <h3 className="text-white font-semibold text-base mb-2 group-hover:text-emerald-400 transition-colors">
+                  <h3 className="text-gray-900 dark:text-white font-semibold text-base mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                     {card.title}
                   </h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                     {card.desc}
                   </p>
                 </Link>
@@ -141,7 +141,7 @@ export default function HomePage() {
             <div className="text-center">
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('start-onboarding'))}
-                className="text-emerald-400 hover:text-emerald-300 text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium transition-colors inline-flex items-center gap-1.5"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" />
@@ -156,9 +156,9 @@ export default function HomePage() {
 
       {/* Social proof strip — only for unauthenticated users */}
       {!user && (
-        <div className="bg-gray-900/50 border-b border-gray-800">
+        <div className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-center gap-3 text-sm">
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
               <svg width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
@@ -166,7 +166,7 @@ export default function HomePage() {
             </div>
             <Link
               href="/blockchain"
-              className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors"
             >
               {t('checkExplorer')} &rarr;
             </Link>
@@ -210,7 +210,7 @@ export default function HomePage() {
       </div>
 
       {/* Map container */}
-      <div className="flex-1 relative min-h-[400px]">
+      <div className={`${user ? 'flex-1' : 'h-[70vh]'} relative`}>
         <AlmatyMap />
 
         <TransactionFeed variant="floating" maxItems={6} includeDemo={false} />
