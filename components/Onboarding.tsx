@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import AmaniMascot from './AmaniMascot'
+import { useAuth } from './AuthContext'
 
 const STORAGE_KEY = 'onboarding_completed'
 
@@ -74,6 +75,7 @@ const STEPS: Step[] = [
 ]
 
 export default function Onboarding() {
+  const { user } = useAuth()
   const [visible, setVisible] = useState(false)
   const [step, setStep] = useState(0)
   const [pos, setPos] = useState<{ top: number; left: number; arrowLeft: number; targetRect: DOMRect | null }>({
@@ -139,12 +141,23 @@ export default function Onboarding() {
     })
   }, [])
 
+  // Auto-launch only for logged-in users who haven't seen the tour
   useEffect(() => {
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) {
+      if (user && !localStorage.getItem(STORAGE_KEY)) {
         setVisible(true)
       }
     } catch {}
+  }, [user])
+
+  // Listen for external trigger (e.g. from landing page "How it works" button)
+  useEffect(() => {
+    const handler = () => {
+      setStep(0)
+      setVisible(true)
+    }
+    window.addEventListener('start-onboarding', handler)
+    return () => window.removeEventListener('start-onboarding', handler)
   }, [])
 
   useEffect(() => {
