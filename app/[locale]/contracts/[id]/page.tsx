@@ -15,7 +15,7 @@ import {
   GOSZAKUP_ALMATY_WORKS_MIN10M_URL,
   resolveContractOnChainPubkey,
 } from '@/lib/contracts'
-import { fetchContract } from '@/lib/api'
+import { fetchContract, fetchContractorName } from '@/lib/api'
 import { useDataSource } from '@/lib/web3/useDataSource'
 import { fetchAllContractsOnChain, fetchContractOnChain } from '@/lib/web3/onchain'
 import { PublicKey } from '@solana/web3.js'
@@ -221,6 +221,22 @@ export default function ContractDetailPage() {
     completed: { label: t('statusCompleted'), color: 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
     disputed: { label: t('statusDisputed'), color: 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/30' },
   }
+
+  // Resolve contractor wallet address to human-readable name
+  useEffect(() => {
+    if (!contract) return
+    const addr = contract.contractorWalletAddress || contract.contractor
+    // Solana base58 addresses are 32-44 chars of alphanumeric (no spaces/cyrillic)
+    if (!addr || addr.length < 32 || addr.length > 44 || /[^A-Za-z0-9]/.test(addr)) return
+    // contractor already shows a real name (not a wallet address)
+    if (contract.contractor !== addr) return
+    let cancelled = false
+    fetchContractorName(addr).then((name) => {
+      if (cancelled || !name) return
+      setContract((prev) => prev ? { ...prev, contractor: name } : prev)
+    })
+    return () => { cancelled = true }
+  }, [contract?.contractor, contract?.contractorWalletAddress]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!params.id) return

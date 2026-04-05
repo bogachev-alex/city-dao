@@ -51,6 +51,16 @@ export async function fetchContract(id: string) {
   return cachedFetch(`${BASE}/api/contracts/${id}`, 60_000)
 }
 
+/** Resolve contractor display name by wallet address. Returns name or null. */
+export async function fetchContractorName(walletAddress: string): Promise<string | null> {
+  try {
+    const data = await cachedFetch(`${BASE}/api/contractors?id=${encodeURIComponent(walletAddress)}`, 120_000)
+    return data?.name || null
+  } catch {
+    return null
+  }
+}
+
 export async function createContract(
   data: {
     title: string
