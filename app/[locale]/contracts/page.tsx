@@ -71,7 +71,7 @@ export default function ContractsPage() {
         .then(async (data: any[]) => {
           if (Array.isArray(data) && data.length > 0) {
             const normalized = data.map(normalizeContract)
-            const merged = await applyOnChainOverlay(normalized)
+            const merged = await mergeContractsWithOnChain(normalized)
             setContracts(merged)
             return
           }
