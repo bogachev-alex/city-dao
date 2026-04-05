@@ -258,6 +258,16 @@ async function main() {
   console.log(`✓ Done. ${created} real contracts added from goszakup.gov.kz`)
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect())
+async function run() {
+  try {
+    await main()
+  } catch (err) {
+    console.error(err)
+    process.exitCode = 1
+  } finally {
+    await prisma.$disconnect().catch(() => {})
+  }
+  if (process.exitCode) process.exit(process.exitCode)
+}
+
+run()
