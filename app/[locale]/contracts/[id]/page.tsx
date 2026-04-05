@@ -88,6 +88,7 @@ export default function ContractDetailPage() {
   const [publishLoading, setPublishLoading] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [photoCids, setPhotoCids] = useState<string[]>([])
+  const [photosLoading, setPhotosLoading] = useState(true)
 
   const applyOnChainOverlay = useCallback(async (base: Contract, overrideOnChainPubkey?: string | null): Promise<Contract> => {
     let pubkeyStr = overrideOnChainPubkey || resolveContractOnChainPubkey(base.id, base.onChainPubkey)
@@ -291,6 +292,7 @@ export default function ContractDetailPage() {
   // Load photo evidence from work logs
   useEffect(() => {
     if (!contract?.id) return
+    setPhotosLoading(true)
     let cancelled = false
     fetch(`/api/work-logs?contractId=${encodeURIComponent(contract.id)}`)
       .then((r) => r.ok ? r.json() : [])
@@ -307,6 +309,7 @@ export default function ContractDetailPage() {
         setPhotoCids(cids)
       })
       .catch(() => {})
+      .finally(() => { if (!cancelled) setPhotosLoading(false) })
     return () => { cancelled = true }
   }, [contract?.id])
 
@@ -675,7 +678,11 @@ export default function ContractDetailPage() {
                 </svg>
                 {t('photoEvidence')}
               </h2>
-              {photoCids.length > 0 ? (
+              {photosLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-7 h-7 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                </div>
+              ) : photoCids.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {photoCids.map((cid) => (

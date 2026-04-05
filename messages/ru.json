@@ -10,7 +10,17 @@
     "login": "Войти",
     "blockchain": "Блокчейн",
     "contractorDesk": "Кабинет",
-    "akimatDesk": "Акимат"
+    "akimatDesk": "Акимат",
+    "a11yNormal": "Обычная версия",
+    "a11yAccessible": "Версия для слабовидящих",
+    "a11yOff": "Выключить режим для слабовидящих",
+    "a11yOn": "Включить режим для слабовидящих",
+    "themeLight": "Светлая тема",
+    "themeDark": "Тёмная тема",
+    "phantomNotConnected": "Phantom не подключён",
+    "role": "Роль",
+    "logout": "Выйти",
+    "switchRole": "Переключить роль"
   },
   "home": {
     "contractsMonitored": "Контрактов под мониторингом",
@@ -168,7 +178,19 @@
     "submitButton": "Зарегистрировать контракт",
     "escrow20": "Эскроу (20%)",
     "districtLabel": "Район",
-    "fillTestData": "Заполнить тестовыми данными"
+    "fillTestData": "Заполнить тестовыми данными",
+    "errorGeneric": "Ошибка при создании контракта",
+    "error": "Ошибка",
+    "walletSolana": "Кошелёк Solana",
+    "walletRequired": "обязательно для блокчейн",
+    "walletHint": "Кошелёк акимата используется для подписания on-chain транзакции. Может совпадать с кошельком гражданина или подрядчика.",
+    "walletConnecting": "Подключение...",
+    "walletConnect": "Подключить Phantom",
+    "walletConnected": "Кошелёк подключён",
+    "selectContractor": "— Выберите подрядчика —",
+    "category": "Категория",
+    "selectCategory": "Выберите категорию",
+    "connectWalletForChain": "Подключите кошелёк выше для регистрации в блокчейне"
   },
   "register": {
     "title": "Стать гражданином",

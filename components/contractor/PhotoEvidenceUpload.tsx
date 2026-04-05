@@ -103,7 +103,14 @@ export default function PhotoEvidenceUpload({
           disabled={disabled || uploading}
           onChange={(e) => void addFiles(e.target.files)}
         />
-        <p className="text-sm text-gray-600 dark:text-gray-300">{uploading ? t('uploading') : t('hint')}</p>
+        {uploading ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-emerald-200 dark:border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{t('uploading')}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600 dark:text-gray-300">{t('hint')}</p>
+        )}
         <p className="text-xs text-gray-400 mt-1">
           {t('count', { current: value.length, max: maxFiles })}
         </p>

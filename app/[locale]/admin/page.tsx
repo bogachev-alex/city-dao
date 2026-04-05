@@ -241,7 +241,7 @@ export default function AdminPage() {
 
       setSubmitted(true)
     } catch (err: any) {
-      setError(err.message || 'Ошибка при создании контракта')
+      setError(err.message || t('errorGeneric'))
     } finally {
       setSubmitting(false)
       setSubmitStep(null)
@@ -386,7 +386,7 @@ export default function AdminPage() {
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <p className="text-red-600 dark:text-red-400 text-sm font-medium">Ошибка</p>
+              <p className="text-red-600 dark:text-red-400 text-sm font-medium">{t('error')}</p>
               <p className="text-red-500 dark:text-red-400/80 text-sm">{error}</p>
             </div>
           </div>
@@ -400,11 +400,11 @@ export default function AdminPage() {
                 <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
             </div>
-            <span className="text-gray-900 dark:text-white font-semibold text-sm">Кошелёк Solana</span>
-            <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">обязательно для блокчейн</span>
+            <span className="text-gray-900 dark:text-white font-semibold text-sm">{t('walletSolana')}</span>
+            <span className="ml-auto text-xs text-red-500 dark:text-red-400 font-medium">{t('walletRequired')}</span>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 ml-10">
-            Кошелёк акимата используется для подписания on-chain транзакции. Может совпадать с кошельком гражданина или подрядчика.
+            {t('walletHint')}
           </p>
           {!wallet.connected ? (
             <button
@@ -415,14 +415,14 @@ export default function AdminPage() {
               {wallet.connecting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Подключение...
+                  {t('walletConnecting')}
                 </>
               ) : (
                 <>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  Подключить Phantom
+                  {t('walletConnect')}
                 </>
               )}
             </button>
@@ -434,7 +434,7 @@ export default function AdminPage() {
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">Кошелёк подключён</div>
+                <div className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">{t('walletConnected')}</div>
                 <div className="text-gray-500 dark:text-gray-400 font-mono text-xs truncate">{wallet.publicKey?.toBase58()}</div>
               </div>
               <span className="text-xs text-gray-400">akimat</span>
@@ -494,7 +494,7 @@ export default function AdminPage() {
                     }}
                     className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm appearance-none"
                   >
-                    <option value="">— Выберите подрядчика —</option>
+                    <option value="">{t('selectContractor')}</option>
                     {contractors.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} ({c.rating}, {c._count?.contracts ?? 0} контр.)
@@ -546,13 +546,13 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">Категория</label>
+                <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1.5">{t('category')}</label>
                 <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm"
                 >
-                  <option value="">Выберите категорию</option>
+                  <option value="">{t('selectCategory')}</option>
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -696,7 +696,7 @@ export default function AdminPage() {
             </button>
             {!wallet.publicKey && (
               <div className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
-                Подключите кошелёк выше для регистрации в блокчейне
+                {t('connectWalletForChain')}
               </div>
             )}
           </div>
