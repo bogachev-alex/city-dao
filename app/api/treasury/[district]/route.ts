@@ -51,7 +51,9 @@ export async function GET(
     if (!treasury) {
       // DB connected but district not seeded — fallback to demo
       const demo = getDemoTreasury(decodedDistrict)
-      if (demo) return NextResponse.json(demo)
+      if (demo) return NextResponse.json(demo, {
+        headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
+      })
       return NextResponse.json({ error: 'District not found' }, { status: 404 })
     }
 

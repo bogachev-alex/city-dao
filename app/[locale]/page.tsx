@@ -49,9 +49,9 @@ export default function HomePage() {
       return
     }
 
-    // Mock/DB mode: fetch from API
+    // Mock/DB mode: fetch from API (cached via lib/api)
     Promise.all([
-      fetch('/api/contracts').then(r => r.json()).catch(() => []),
+      import('@/lib/api').then(m => m.fetchContracts()).catch(() => []),
       fetch('/api/citizens').then(r => r.json()).catch(() => []),
       fetch('/api/goszakup?limit=50').then(r => r.json()).catch(() => ({ contracts: [] })),
     ]).then(([contracts, citizens, goszakup]) => {

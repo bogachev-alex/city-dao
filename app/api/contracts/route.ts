@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(toJsonSafe(contracts))
+    return NextResponse.json(toJsonSafe(contracts), {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    })
   } catch (err: any) {
     // Compatibility fallback for partially migrated production DBs:
     // fetch contracts with a reduced field set and join related data manually.
