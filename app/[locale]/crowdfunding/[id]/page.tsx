@@ -57,6 +57,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
     fetchCampaignAccount,
     fetchCampaignAccountByAddress,
     fetchDonorRecords,
+    refundOne,
     getCampaignPDA,
     loading: solanaLoading,
   } = useCrowdfunding()
@@ -245,6 +246,26 @@ export default function CampaignDetailPage({ params }: PageProps) {
     onChainStatusActive &&
     (onChainDeadlinePassed || deadlinePassed) &&
     progress < 100
+
+  const canClaimRefund =
+    walletConnected &&
+    !!publicKey &&
+    awaitingAutoRefundOnChain &&
+    onChainDonors.some((d) => String(d.donor) === publicKey.toBase58() && Number(d.lamports ?? 0) > 0)
+
+  const handleClaimRefund = async () => {
+    if (!campaign || !publicKey) return
+    try {
+      const creator = new PublicKey(onChainInfo?.creator ?? campaign.creator_wallet ?? '')
+      const titleSeed = normalizeCrowdfundingTitleSeed(campaign.title)
+      const { tx } = await refundOne(creator, titleSeed, publicKey)
+      setTxInfo(tx)
+      // Force refresh on-chain donors + campaign status
+      setOnChainRefreshKey((k) => k + 1)
+    } catch (e: any) {
+      setOnChainInfoError(e?.message || 'refund_one failed')
+    }
+  }
 
   const handleDonate = async () => {
     if (!canDonate) {
@@ -932,10 +953,20 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </h3>
                 <p className="text-xs text-amber-800 dark:text-amber-200/90 leading-relaxed">
                   Дедлайн прошёл, цель граждан не достигнута. Транзакция{' '}
-                  <code className="text-[10px]">refund_all</code> будет отправлена автоматически (до 15 минут): средства
+                  <code className="text-[10px]">refund_one</code> будет отправляться автоматически (до 15 минут) по
+                  участникам: средства
                   из escrow вернутся на кошельки доноров, комиссию сети покрывает залог создателя, заложенный при
                   создании кампании.
                 </p>
+                {canClaimRefund && (
+                  <button
+                    onClick={handleClaimRefund}
+                    disabled={solanaLoading}
+                    className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
+                  >
+                    Забрать возврат (SOL)
+                  </button>
+                )}
               </div>
             )}
 

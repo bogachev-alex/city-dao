@@ -134,29 +134,33 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
         { memcmp: { offset: 40, bytes: campaignPk.toBase58() } },
       ])
 
-      const remainingAccounts: AccountMeta[] = (donorRows as { publicKey: PublicKey; account: { donor: PublicKey } }[]).flatMap(
-        (d) => [
-          { pubkey: d.publicKey, isSigner: false, isWritable: true },
-          { pubkey: d.account.donor, isSigner: false, isWritable: true },
-        ]
-      )
-
       const [escrowPda] = PublicKey.findProgramAddressSync(
         [SEEDS.cfEscrow, campaignPk.toBuffer()],
         PROGRAM_IDS.crowdfunding
       )
 
-      await (program.methods as any)
-        .refundAll()
-        .accounts({
-          campaign: campaignPk,
-          escrow: escrowPda,
-          refundExecVault: vault,
-          caller: keeper.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .remainingAccounts(remainingAccounts)
-        .rpc()
+      // Execute per-donor refunds. This avoids remaining_accounts size limits of refund_all and
+      // allows idempotent progress even with many donors.
+      let refundedAny = false
+      for (const d of donorRows as { publicKey: PublicKey; account: { donor: PublicKey; lamports?: any } }[]) {
+        const donorWallet = d.account.donor
+        const donorLamports = Number(d.account.lamports ?? 0)
+        if (!donorWallet || donorLamports <= 0) continue
+
+        await (program.methods as any)
+          .refundOne()
+          .accounts({
+            campaign: campaignPk,
+            escrow: escrowPda,
+            donorRecord: d.publicKey,
+            donorWallet,
+            refundExecVault: vault,
+            caller: keeper.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+        refundedAny = true
+      }
 
       await prisma.crowdfundingCampaign.update({
         where: { id: row.id },
@@ -164,7 +168,7 @@ export async function runExpiredCrowdfundingRefunds(): Promise<{
       })
 
       processed++
-      details.push({ campaignId: row.id, outcome: 'refunded' })
+      details.push({ campaignId: row.id, outcome: refundedAny ? 'refunded' : 'refunded_noop' })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       skipped++
