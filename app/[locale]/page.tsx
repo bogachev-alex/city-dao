@@ -133,7 +133,7 @@ export default function HomePage() {
       <div className="flex-1 relative">
         <AlmatyMap />
 
-        <TransactionFeed variant="floating" maxItems={12} includeDemo={false} />
+        <TransactionFeed variant="floating" maxItems={6} includeDemo={false} />
 
         {/* Legend */}
         <div className="absolute bottom-6 left-4 z-[1000] bg-white dark:bg-gray-950/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-lg">

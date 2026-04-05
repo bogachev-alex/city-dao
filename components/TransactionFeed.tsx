@@ -198,8 +198,9 @@ export default function TransactionFeed({
             const refLabel =
               (tx.chainLabel && tx.chainLabel.length > 0 ? tx.chainLabel : null) ||
               truncateSig(tx.signature)
-            const rowClass =
-              'flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group'
+            const rowClass = variant === 'floating'
+              ? 'flex items-start gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group'
+              : 'flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-900/60 transition-colors group'
             const inner = (
               <>
                 <span className="text-base mt-0.5 shrink-0">{meta.icon}</span>
@@ -275,7 +276,7 @@ export default function TransactionFeed({
   if (variant === 'floating') {
     return (
       <div
-        className={`absolute top-4 right-4 z-[1000] w-72 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg flex flex-col max-h-[calc(100vh-8rem)] ${className}`}
+        className={`absolute top-4 left-4 z-[1000] w-64 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg flex flex-col max-h-[min(360px,calc(100vh-12rem))] ${className}`}
       >
         {inner}
       </div>

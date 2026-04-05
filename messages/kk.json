@@ -10,7 +10,17 @@
     "login": "Кіру",
     "blockchain": "Блокчейн",
     "contractorDesk": "Кабинет",
-    "akimatDesk": "Әкімдік"
+    "akimatDesk": "Әкімдік",
+    "a11yNormal": "Қарапайым нұсқа",
+    "a11yAccessible": "Нашар көретіндер нұсқасы",
+    "a11yOff": "Арнайы режимді өшіру",
+    "a11yOn": "Арнайы режимді қосу",
+    "themeLight": "Жарық тақырып",
+    "themeDark": "Қараңғы тақырып",
+    "phantomNotConnected": "Phantom қосылмаған",
+    "role": "Рөл",
+    "logout": "Шығу",
+    "switchRole": "Рөлді ауыстыру"
   },
   "home": {
     "contractsMonitored": "Бақылаудағы келісімшарттар",
@@ -168,7 +178,19 @@
     "submitButton": "Келісімшартты тіркеу",
     "escrow20": "Эскроу (20%)",
     "districtLabel": "Аудан",
-    "fillTestData": "Тест деректерімен толтыру"
+    "fillTestData": "Тест деректерімен толтыру",
+    "errorGeneric": "Келісімшарт жасау қатесі",
+    "error": "Қате",
+    "walletSolana": "Solana әмиян",
+    "walletRequired": "блокчейн үшін міндетті",
+    "walletHint": "Әкімдік әмияны on-chain транзакцияларды қол қою үшін пайдаланылады.",
+    "walletConnecting": "Қосылуда...",
+    "walletConnect": "Phantom қосу",
+    "walletConnected": "Әмиян қосылды",
+    "selectContractor": "— Мердігерді таңдаңыз —",
+    "category": "Санат",
+    "selectCategory": "Санатты таңдаңыз",
+    "connectWalletForChain": "Блокчейнге тіркеу үшін жоғарыдағы әмиянды қосыңыз"
   },
   "register": {
     "title": "Amanat азаматы болу",

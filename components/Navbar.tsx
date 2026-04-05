@@ -256,8 +256,8 @@ export default function Navbar() {
                     ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
-                title={a11y ? 'Обычная версия' : 'Версия для слабовидящих'}
-                aria-label={a11y ? 'Выключить режим для слабовидящих' : 'Включить режим для слабовидящих'}
+                title={a11y ? t('a11yNormal') : t('a11yAccessible')}
+                aria-label={a11y ? t('a11yOff') : t('a11yOn')}
               >
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -271,7 +271,7 @@ export default function Navbar() {
               <button
                 onClick={toggle}
                 className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+                title={theme === 'dark' ? t('themeLight') : t('themeDark')}
               >
                 {theme === 'dark' ? (
                   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -295,7 +295,7 @@ export default function Navbar() {
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${walletAdapterConnected ? 'bg-purple-500 animate-pulse' : 'bg-gray-400 dark:bg-gray-600'}`}
-                    title={walletAdapterConnected ? `Phantom: ${walletPublicKey?.toBase58().slice(0, 6)}...${walletPublicKey?.toBase58().slice(-4)}` : 'Phantom не подключён'}
+                    title={walletAdapterConnected ? `Phantom: ${walletPublicKey?.toBase58().slice(0, 6)}...${walletPublicKey?.toBase58().slice(-4)}` : t('phantomNotConnected')}
                   />
                   <span>{ROLE_ICONS[user.role]}</span>
                   <span className="max-w-[100px] truncate">{roleNames[user.role] || user.name}</span>
@@ -315,7 +315,7 @@ export default function Navbar() {
                     </div>
                     {/* Role switcher */}
                     <div className="px-3 pt-2 pb-1">
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">Роль</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('role')}</p>
                     </div>
                     {availableRoles.map((role) => (
                       <button
@@ -350,7 +350,7 @@ export default function Navbar() {
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        Выйти
+                        {t('logout')}
                       </button>
                     </div>
                   </div>
@@ -362,7 +362,7 @@ export default function Navbar() {
                 data-tour="auth"
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors"
               >
-                Войти
+                {t('login')}
               </Link>
             )}
 
@@ -403,7 +403,7 @@ export default function Navbar() {
             {mounted && user ? (
               <>
                 <div className="pt-2 pb-1 px-3 text-xs text-gray-500 uppercase tracking-widest">
-                  Переключить роль
+                  {t('switchRole')}
                 </div>
                 {availableRoles.map((role) => (
                   <button
@@ -438,7 +438,7 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="block px-3 py-2 rounded-md text-sm font-medium text-emerald-600 dark:text-emerald-400"
               >
-                Войти
+                {t('login')}
               </Link>
             )}
           </div>

@@ -10,7 +10,17 @@
     "login": "Log in",
     "blockchain": "Blockchain",
     "contractorDesk": "Dashboard",
-    "akimatDesk": "Akimat"
+    "akimatDesk": "Akimat",
+    "a11yNormal": "Standard version",
+    "a11yAccessible": "Accessible version",
+    "a11yOff": "Disable accessibility mode",
+    "a11yOn": "Enable accessibility mode",
+    "themeLight": "Light theme",
+    "themeDark": "Dark theme",
+    "phantomNotConnected": "Phantom not connected",
+    "role": "Role",
+    "logout": "Log out",
+    "switchRole": "Switch role"
   },
   "home": {
     "contractsMonitored": "Contracts monitored",
@@ -168,7 +178,19 @@
     "submitButton": "Register contract",
     "escrow20": "Escrow (20%)",
     "districtLabel": "District",
-    "fillTestData": "Fill with test data"
+    "fillTestData": "Fill with test data",
+    "errorGeneric": "Error creating contract",
+    "error": "Error",
+    "walletSolana": "Solana Wallet",
+    "walletRequired": "required for blockchain",
+    "walletHint": "The akimat wallet is used to sign on-chain transactions. It can be the same as a citizen or contractor wallet.",
+    "walletConnecting": "Connecting...",
+    "walletConnect": "Connect Phantom",
+    "walletConnected": "Wallet connected",
+    "selectContractor": "— Select contractor —",
+    "category": "Category",
+    "selectCategory": "Select category",
+    "connectWalletForChain": "Connect your wallet above to register on blockchain"
   },
   "register": {
     "title": "Become a citizen of",
