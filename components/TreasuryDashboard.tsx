@@ -125,6 +125,12 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
 
     setVoted((prev) => new Set(prev).add(proposalId))
     awardTokens('treasury_vote')
+    // Mint on-chain ADL if configured
+    fetch('/api/tokens/award', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'treasury_vote', walletAddress: publicKey!.toBase58() }),
+    }).catch(() => {})
     setTreasury((prev) => {
       if (!prev) return prev
       return {

@@ -426,6 +426,13 @@ export default function CampaignDetailPage({ params }: PageProps) {
     }
 
     awardTokens('crowdfunding_donation')
+    if (publicKey) {
+      fetch('/api/tokens/award', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'crowdfunding_donation', walletAddress: publicKey.toBase58() }),
+      }).catch(() => {})
+    }
   }
 
   return (

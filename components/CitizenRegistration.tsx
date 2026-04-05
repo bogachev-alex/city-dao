@@ -236,6 +236,11 @@ export default function CitizenRegistration() {
     }
     login(authUser)
     awardTokens('registration')
+    fetch('/api/tokens/award', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'registration', walletAddress }),
+    }).catch(() => {})
     setStep('done')
   }
 

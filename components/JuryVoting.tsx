@@ -225,6 +225,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       setSalt(newSalt)
       setCommitHash(hash)
       awardTokens('jury_vote')
+      if (walletPubkey) {
+        fetch('/api/tokens/award', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'jury_vote', walletAddress: walletPubkey.toBase58() }),
+        }).catch(() => {})
+      }
       setPhase('reveal')
       if (session.revealDeadline) {
         setTimeLeft(Math.max(0, Math.floor((new Date(session.revealDeadline).getTime() - Date.now()) / 1000)))
@@ -295,6 +302,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
 
       localStorage.removeItem(storageKey)
       awardTokens('jury_reveal')
+      if (walletPubkey) {
+        fetch('/api/tokens/award', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'jury_reveal', walletAddress: walletPubkey.toBase58() }),
+        }).catch(() => {})
+      }
       setPhase('results')
     } catch {
       setError(t('revealError'))
@@ -415,13 +429,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
             <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('yourVote')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setVote('accept')} className={`p-5 rounded-xl border-2 transition-all flex flex-col items-center gap-3 ${
-                vote === 'accept' ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/20 shadow-md' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-emerald-300 dark:hover:border-emerald-500/40'
+                vote === 'accept' ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-500/20 shadow-md' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-green-300 dark:hover:border-green-500/40'
               }`}>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${vote === 'accept' ? 'bg-emerald-500' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${vote === 'accept' ? 'bg-green-500' : 'bg-gray-100 dark:bg-gray-800'}`}>
                   <svg width="24" height="24" fill="none" stroke={vote === 'accept' ? 'white' : '#9ca3af'} strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <div>
-                  <div className={`font-semibold ${vote === 'accept' ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{t('accept')}</div>
+                  <div className={`font-semibold ${vote === 'accept' ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>{t('accept')}</div>
                   <div className="text-xs text-gray-400 dark:text-gray-500">{t('workDone')}</div>
                 </div>
               </button>
@@ -523,11 +537,11 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t('accepted')}</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">{t('accepted')}</span>
                   <span className="text-gray-900 dark:text-white font-bold">{acceptWeight} / {totalWeight}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${acceptPct}%` }} />
+                  <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${acceptPct}%` }} />
                 </div>
               </div>
               <div>

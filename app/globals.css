@@ -265,10 +265,11 @@ html.a11y .gap-4 { gap: 1.25rem !important; }
   background: #10b981 !important;
   color: white !important;
   border-radius: 8px !important;
-  font-size: 13px !important;
-  height: 36px !important;
-  padding: 0 16px !important;
+  font-size: 12px !important;
+  height: 32px !important;
+  padding: 0 12px !important;
   font-weight: 600 !important;
+  width: 100% !important;
 }
 
 .wallet-adapter-btn .wallet-adapter-button:hover {
@@ -279,7 +280,8 @@ html.a11y .gap-4 { gap: 1.25rem !important; }
   background: #10b981 !important;
 }
 
-.wallet-adapter-btn .wallet-adapter-button[data-state="connected"] {
+.wallet-adapter-btn .wallet-adapter-button[data-state="connected"],
+.wallet-adapter-btn .wallet-adapter-button.wallet-adapter-button-trigger[style*="background"] {
   background: rgba(16, 185, 129, 0.1) !important;
   color: #059669 !important;
   border: 1px solid rgba(16, 185, 129, 0.3) !important;
@@ -287,6 +289,14 @@ html.a11y .gap-4 { gap: 1.25rem !important; }
 html.dark .wallet-adapter-btn .wallet-adapter-button[data-state="connected"] {
   background: rgba(16, 185, 129, 0.15) !important;
   color: #34d399 !important;
+}
+
+/* WalletMultiButton connected state */
+.wallet-adapter-btn .wallet-adapter-button-trigger {
+  background: #10b981 !important;
+}
+html.dark .wallet-adapter-btn .wallet-adapter-button-trigger {
+  background: #059669 !important;
 }
 
 .wallet-adapter-modal-wrapper {
