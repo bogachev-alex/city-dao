@@ -118,17 +118,13 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph "Жизненный цикл контракта"
-        A["Contract<br/>Registry"] -->|этап сдан| B["Jury<br/>Mechanism"]
-        B -->|отклонён| C["Penalty<br/>Engine"]
-        C -->|штраф| D["District<br/>Treasury"]
-        B -->|принят| E["Транш<br/>подрядчику"]
-    end
-
-    subgraph "Участники"
-        F["Citizen<br/>Registry"] -.->|SBT| B
-        G["Crowdfunding"] -.->|финансирование| A
-    end
+    G["Crowdfunding"] -->|"финансирование<br/>проекта"| A
+    A["Contract<br/>Registry"] -->|"этап сдан"| B["Jury<br/>Mechanism"]
+    F["Citizen<br/>Registry"] -->|"пул жюри<br/>(SBT + репутация)"| B
+    B -->|"принят"| E["Транш<br/>подрядчику"]
+    B -->|"отклонён"| C["Penalty<br/>Engine"]
+    A -->|"просрочка"| C
+    C -->|"штраф (CPI)"| D["District<br/>Treasury"]
 
     style A fill:#6366f1,color:#fff
     style B fill:#f59e0b,color:#fff
@@ -137,6 +133,8 @@ graph LR
     style G fill:#10b981,color:#fff
     style F fill:#8b5cf6,color:#fff
 ```
+
+> **Все 6 блоков — отдельные Anchor-программы на Solana.** Стрелки — CPI-вызовы (cross-program invocations) или потоки данных между ними. Contract Registry — центральный: в него приходят деньги из Crowdfunding, из него уходят этапы в Jury, а штрафы через Penalty Engine попадают в District Treasury.
 
 | Программа | Назначение | Ключевые инструкции |
 |-----------|-----------|---------------------|
