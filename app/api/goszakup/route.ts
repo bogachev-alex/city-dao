@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { fetchGoszakupContracts, normalizeGoszakupContracts } from '@/lib/goszakup'
 
 export const dynamic = 'force-dynamic'
@@ -9,8 +10,16 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(searchParams.get('limit')) || 50, 200)
 
   try {
-    const raw = await fetchGoszakupContracts(limit)
-    const contracts = normalizeGoszakupContracts(raw)
+    const getCachedGoszakup = unstable_cache(
+      async () => {
+        const raw = await fetchGoszakupContracts(limit)
+        return normalizeGoszakupContracts(raw)
+      },
+      [`goszakup:${limit}`],
+      { revalidate: 3600 }, // 1 hour — external API, rarely changes
+    )
+
+    const contracts = await getCachedGoszakup()
     return NextResponse.json({
       source: 'goszakup.gov.kz',
       count: contracts.length,

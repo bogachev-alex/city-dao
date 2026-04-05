@@ -118,7 +118,6 @@ export default function Navbar() {
     { href: '/contracts', labelKey: 'contracts' },
     { href: '/crowdfunding', labelKey: 'crowdfunding' },
     { href: '/treasury/Ауэзовский', labelKey: 'treasury' },
-    { href: '/blockchain', labelKey: 'blockchain' },
   ]
 
   const navItems = user ? NAV_BY_ROLE[user.role] : DEFAULT_NAV

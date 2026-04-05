@@ -262,7 +262,7 @@ export default function TransactionFeed({
           }
         >
           <Link
-            href="/blockchain"
+            href="/contracts"
             className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
           >
             {t('viewAll')}

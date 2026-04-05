@@ -5,6 +5,7 @@ import {
   getContractPinColor,
   formatAmount,
   formatTengeWithCrypto,
+  getCryptoEquivalent,
   getMilestoneCompletedCount,
   getContractExplorerAddress,
   Contract,
@@ -93,12 +94,19 @@ describe('getContractPinColor', () => {
 })
 
 describe('formatTengeWithCrypto', () => {
-  it('shows tenge with SOL and USDT equivalents', () => {
+  it('shows tenge only (crypto in tooltip)', () => {
     const result = formatTengeWithCrypto(80_000_000) // 80M tenge
     expect(result).toContain('₸')
+    expect(result).not.toContain('SOL')
+  })
+})
+
+describe('getCryptoEquivalent', () => {
+  it('shows SOL and USDT equivalents', () => {
+    const result = getCryptoEquivalent(80_000_000)
     expect(result).toContain('SOL')
     expect(result).toContain('USDT')
-    expect(result).toContain('1000.0') // 80M / 80k = 1000 SOL
+    expect(result).toContain('1000.0')
   })
 })
 

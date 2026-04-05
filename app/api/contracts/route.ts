@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth-server'
 import { DEMO_CONTRACTS } from '@/lib/contracts'
@@ -21,26 +22,39 @@ export async function GET(req: NextRequest) {
   const amountMin = searchParams.get('amountMin')
 
   try {
-    const contracts = await prisma.contract.findMany({
-      where: {
-        ...(district && { district }),
-        ...(status && { status: status as any }),
-        ...(customer && {
-          customerName: { contains: customer, mode: 'insensitive' as const },
-        }),
-        ...(subjectType && { subjectType }),
-        ...(amountMin && !Number.isNaN(Number(amountMin)) && {
-          totalAmount: { gte: BigInt(amountMin) },
-        }),
-      },
-      include: {
-        contractor: { select: { id: true, name: true, rating: true } },
-        milestones: { orderBy: { sortOrder: 'asc' } },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const cacheKey = `contracts:${district || ''}:${status || ''}:${customer || ''}:${subjectType || ''}:${amountMin || ''}`
 
-    return NextResponse.json(toJsonSafe(contracts))
+    const getContracts = unstable_cache(
+      async () => {
+        const contracts = await prisma.contract.findMany({
+          where: {
+            ...(district && { district }),
+            ...(status && { status: status as any }),
+            ...(customer && {
+              customerName: { contains: customer, mode: 'insensitive' as const },
+            }),
+            ...(subjectType && { subjectType }),
+            ...(amountMin && !Number.isNaN(Number(amountMin)) && {
+              totalAmount: { gte: BigInt(amountMin) },
+            }),
+          },
+          include: {
+            contractor: { select: { id: true, name: true, rating: true } },
+            milestones: { orderBy: { sortOrder: 'asc' } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+        return toJsonSafe(contracts)
+      },
+      [cacheKey],
+      { revalidate: 60, tags: ['contracts'] },
+    )
+
+    const contracts = await getContracts()
+
+    return NextResponse.json(contracts, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    })
   } catch (err: any) {
     // Compatibility fallback for partially migrated production DBs:
     // fetch contracts with a reduced field set and join related data manually.
