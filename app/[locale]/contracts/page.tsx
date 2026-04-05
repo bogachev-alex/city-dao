@@ -231,13 +231,39 @@ export default function ContractsPage() {
   const loadContracts = useCallback(() => {
     setLoading(true)
 
-    // On-chain mode: read directly from Solana devnet
+    // On-chain mode: still load Postgres via API (goszakup seed, admin), then overlay Solana state.
+    // Fallback to pure on-chain list only when the DB registry is empty.
     if (dataSource === 'onchain') {
-      fetchAllContractsOnChain()
-        .then((onChain) => {
-          setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+      const amountMin = amountMinFilter.trim() ? Number(amountMinFilter.replace(/\s/g, '')) : undefined
+      fetchContracts({
+        district: districtFilter !== 'all' ? districtFilter : undefined,
+        status: statusFilter !== 'all' ? STATUS_API[statusFilter] : undefined,
+        customer: customerFilter.trim() || undefined,
+        subjectType: subjectTypeFilter !== 'all' ? subjectTypeFilter : undefined,
+        amountMin: amountMin != null && !Number.isNaN(amountMin) ? amountMin : undefined,
+      })
+        .then(async (data: any[]) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const normalized = data.map(normalizeContract)
+            const merged = await applyOnChainOverlay(normalized)
+            setContracts(merged)
+            return
+          }
+          try {
+            const onChain = await fetchAllContractsOnChain()
+            setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+          } catch {
+            setContracts(DEMO_CONTRACTS)
+          }
         })
-        .catch(() => setContracts(DEMO_CONTRACTS))
+        .catch(async () => {
+          try {
+            const onChain = await fetchAllContractsOnChain()
+            setContracts(onChain.length > 0 ? onChain : DEMO_CONTRACTS)
+          } catch {
+            setContracts(DEMO_CONTRACTS)
+          }
+        })
         .finally(() => setLoading(false))
       return
     }
