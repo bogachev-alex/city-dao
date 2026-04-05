@@ -84,6 +84,10 @@ export async function GET(req: NextRequest) {
           status: true,
           onChainPubkey: true,
           createdAt: true,
+          registryNumber: true,
+          customerName: true,
+          subjectType: true,
+          startDate: true,
         },
         orderBy: { createdAt: 'desc' },
       })
