@@ -40,11 +40,7 @@ describe('POST .../milestones/[milestoneId]/submit', () => {
       ],
     })
 
-    prismaMock.jurySession.findFirst.mockResolvedValue({
-      id: 'orphan-sess',
-      milestoneId: 'm1',
-      status: 'COMMIT_PHASE',
-    })
+    prismaMock.jurySession.findMany.mockResolvedValue([{ id: 'orphan-sess' }])
 
     prismaMock.citizen.findMany.mockResolvedValue([
       { id: 'j1' },
@@ -65,12 +61,39 @@ describe('POST .../milestones/[milestoneId]/submit', () => {
 
     expect(res.status).toBe(201)
     expect(prismaMock.juryVote.deleteMany).toHaveBeenCalledWith({
-      where: { sessionId: 'orphan-sess' },
+      where: { sessionId: { in: ['orphan-sess'] } },
     })
-    expect(prismaMock.jurySession.delete).toHaveBeenCalledWith({
-      where: { id: 'orphan-sess' },
+    expect(prismaMock.jurySession.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['orphan-sess'] } },
     })
     expect(prismaMock.jurySession.create).toHaveBeenCalled()
+  })
+
+  it('removes all stale active JurySessions when multiple orphans exist', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'c1',
+      contractorId: AUTH_ID,
+      district: 'Медеуский',
+      contractor: { name: 'Co', walletAddress: null },
+      milestones: [{ id: 'm1', status: 'PENDING', description: 'A', sortOrder: 1 }],
+    })
+    prismaMock.jurySession.findMany.mockResolvedValue([{ id: 's1' }, { id: 's2' }])
+    prismaMock.citizen.findMany.mockResolvedValue([{ id: 'j1' }, { id: 'j2' }, { id: 'j3' }])
+    prismaMock.milestone.update.mockResolvedValue({ id: 'm1', status: 'UNDER_REVIEW' })
+    prismaMock.jurySession.create.mockResolvedValue({ id: 'new', votes: [] })
+    prismaMock.workLog.create.mockResolvedValue({ id: 'w1' })
+
+    const res = await POST(submitRequest(), {
+      params: Promise.resolve({ id: 'c1', milestoneId: 'm1' }),
+    })
+
+    expect(res.status).toBe(201)
+    expect(prismaMock.juryVote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: { in: ['s1', 's2'] } },
+    })
+    expect(prismaMock.jurySession.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['s1', 's2'] } },
+    })
   })
 
   it('creates session when no stale session exists', async () => {
@@ -81,7 +104,7 @@ describe('POST .../milestones/[milestoneId]/submit', () => {
       contractor: { name: 'Co', walletAddress: null },
       milestones: [{ id: 'm1', status: 'PENDING', description: 'A', sortOrder: 1 }],
     })
-    prismaMock.jurySession.findFirst.mockResolvedValue(null)
+    prismaMock.jurySession.findMany.mockResolvedValue([])
     prismaMock.citizen.findMany.mockResolvedValue([{ id: 'j1' }, { id: 'j2' }, { id: 'j3' }])
     prismaMock.milestone.update.mockResolvedValue({ id: 'm1', status: 'UNDER_REVIEW' })
     prismaMock.jurySession.create.mockResolvedValue({ id: 's1', votes: [] })
@@ -93,6 +116,6 @@ describe('POST .../milestones/[milestoneId]/submit', () => {
 
     expect(res.status).toBe(201)
     expect(prismaMock.juryVote.deleteMany).not.toHaveBeenCalled()
-    expect(prismaMock.jurySession.delete).not.toHaveBeenCalled()
+    expect(prismaMock.jurySession.deleteMany).not.toHaveBeenCalled()
   })
 })

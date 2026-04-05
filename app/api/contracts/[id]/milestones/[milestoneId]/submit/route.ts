@@ -63,18 +63,20 @@ export async function POST(
     )
   }
 
-  // Legacy orphan: old GET /api/contracts/[id] bootstrap created JurySession for PENDING/SUBMITTED
-  // milestones without updating milestone status — submit then hit 409. Remove stale session and continue.
-  const staleSession = await prisma.jurySession.findFirst({
+  // Legacy orphan: older stacks returned 409 if any active JurySession existed while milestone was still
+  // PENDING/SUBMITTED. Remove all in-flight sessions for this milestone, then create a fresh one.
+  const staleSessionIds = await prisma.jurySession.findMany({
     where: {
       milestoneId,
       status: { in: ['SELECTING', 'COMMIT_PHASE', 'REVEAL_PHASE'] },
     },
+    select: { id: true },
   })
-  if (staleSession) {
+  if (staleSessionIds.length > 0) {
+    const ids = staleSessionIds.map((s) => s.id)
     await prisma.$transaction([
-      prisma.juryVote.deleteMany({ where: { sessionId: staleSession.id } }),
-      prisma.jurySession.delete({ where: { id: staleSession.id } }),
+      prisma.juryVote.deleteMany({ where: { sessionId: { in: ids } } }),
+      prisma.jurySession.deleteMany({ where: { id: { in: ids } } }),
     ])
   }
 
