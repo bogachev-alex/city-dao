@@ -1,11 +1,20 @@
 /**
  * Real contracts scraped from goszakup.gov.kz — 50 "Работа" contracts, Алматы, ≥10M тг
  * Scraped: 2026-03-30
- * Run: npx ts-node --project tsconfig.json prisma/seed-goszakup.ts
+ * Run: npx tsx prisma/seed-goszakup.ts
+ *
+ * Optional Solana devnet (contract_registry): SEED_GOSZAKUP_ONCHAIN=1 plus SOLANA_WALLET (keypair JSON path),
+ * GOSZAKUP_ONCHAIN_CONTRACTOR (base58 pubkey). On-chain amounts are capped lamports (GOSZAKUP_ONCHAIN_LAMPORTS,
+ * default 100_000_000); the database still stores real ₸ from goszakup.
  */
 
 import { PrismaClient } from '../lib/generated/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
+import {
+  createGoszakupOnChainEnv,
+  registerGoszakupRowOnChain,
+  type GoszakupOnChainEnv,
+} from '../lib/goszakupOnChainRegister'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
@@ -72,6 +81,25 @@ const RAW: Array<{
   { goszakupId: '24900783b', title: 'Ремонт и благоустройство детских площадок на территории Алатауского района', supplier: 'ТОО "ALA-Prime"', customer: 'Аппарат акима Алатауского района города Алматы', amount: 54500000, signDate: '2026-03-18' },
   { goszakupId: '24875939b', title: 'Текущий ремонт автомобильных дорог и тротуаров Наурызбайского района', supplier: 'ТОО "Стройсервис-2000"', customer: 'Аппарат акима Наурызбайского района города Алматы', amount: 220000000, signDate: '2026-03-15' },
 ]
+
+type RawGoszakupRow = (typeof RAW)[0]
+
+function dedupeByGoszakupId(rows: RawGoszakupRow[]): RawGoszakupRow[] {
+  const map = new Map<string, RawGoszakupRow>()
+  for (const r of rows) {
+    if (!map.has(r.goszakupId)) map.set(r.goszakupId, r)
+  }
+  return [...map.values()]
+}
+
+/** P2002 on registryNumber — row appeared between findUnique and create, or duplicate id in data */
+function isRegistryNumberUniqueViolation(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null || !('code' in err)) return false
+  if ((err as { code: string }).code !== 'P2002') return false
+  const target = (err as { meta?: { target?: string[] } }).meta?.target
+  if (!target || !Array.isArray(target)) return true
+  return target.some((t) => String(t).includes('registryNumber'))
+}
 
 // ─────────────────────────────────────────────
 // District / coords lookup
@@ -186,12 +214,64 @@ function getMilestones(category: string, totalDays: number): MilestoneSpec[] {
   }
 }
 
+async function tryLinkOnChain(
+  onChainEnv: GoszakupOnChainEnv,
+  contractId: string,
+  c: (typeof RAW)[0],
+  district: string,
+  lat: number,
+  lng: number,
+  deadline: Date,
+  milespecs: MilestoneSpec[],
+): Promise<boolean> {
+  const row = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { onChainPubkey: true },
+  })
+  if (row?.onChainPubkey) return true
+
+  const deadlineUnix = Math.floor(deadline.getTime() / 1000)
+  const milestones = milespecs.map((m) => ({
+    description: m.d,
+    deadlineDays: m.days,
+    tranchePct: m.p,
+  }))
+
+  const pda = await registerGoszakupRowOnChain(onChainEnv, {
+    dbTitle: c.title,
+    district,
+    deadlineUnix,
+    lat,
+    lng,
+    milestones,
+  })
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: { onChainPubkey: pda },
+  })
+  return true
+}
+
 async function main() {
   console.log('Seeding 50 real contracts from goszakup.gov.kz...')
 
-  let created = 0
+  let onChainEnv: GoszakupOnChainEnv | null = null
+  if (process.env.SEED_GOSZAKUP_ONCHAIN === '1') {
+    onChainEnv = await createGoszakupOnChainEnv()
+  }
 
-  for (const c of RAW) {
+  let created = 0
+  let skipped = 0
+  let onChainLinked = 0
+  let onChainFailed = 0
+
+  const items = dedupeByGoszakupId(RAW)
+  if (items.length < RAW.length) {
+    console.log(`Note: dropped ${RAW.length - items.length} duplicate goszakupId row(s) in RAW`)
+  }
+
+  for (const c of items) {
     const district = detectDistrict(c.customer, c.title)
     const [baseLat, baseLng] = DISTRICT_COORDS[district] ?? [43.238, 76.900]
     const lat = jitter(baseLat)
@@ -214,48 +294,95 @@ async function main() {
 
     const signAt = new Date(`${c.signDate}T12:00:00.000Z`)
 
-    await prisma.contract.create({
-      data: {
-        title: c.title,
-        description: [
-          `Предмет договора: Работа (как ref_subject_type=2 на goszakup.gov.kz).`,
-          `Заказчик: ${c.customer}.`,
-          `Поставщик: ${c.supplier}.`,
-          `Номер в реестре ЕГЗ: ${c.goszakupId}.`,
-          `Дата подписания: ${c.signDate}.`,
-          `Отбор соответствует фильтрам портала: заказчик — Алматы, вид «Работа», сумма от 10 000 000 ₸.`,
-        ].join(' '),
-        district,
-        lat,
-        lng,
-        contractorId: contractor.id,
-        registryNumber: c.goszakupId,
-        customerName: c.customer,
-        subjectType: 'Работа',
-        totalAmount: BigInt(c.amount),
-        escrowAmount: BigInt(Math.round(c.amount * 0.2)),
-        penaltyAmount: BigInt(0),
-        startDate: signAt,
-        deadline,
-        status: 'ACTIVE',
-        category,
-        milestones: {
-          create: milespecs.map((m, i) => ({
-            description: m.d,
-            deadlineDays: m.days,
-            tranchePct: m.p,
-            status: msStatuses[i] ?? 'PENDING',
-            sortOrder: i + 1,
-          })),
-        },
-      },
+    const existing = await prisma.contract.findUnique({
+      where: { registryNumber: c.goszakupId },
+      select: { id: true, onChainPubkey: true },
     })
 
-    created++
-    if (created % 10 === 0) console.log(`  ${created}/50 inserted`)
+    let contractId: string
+
+    if (existing) {
+      skipped++
+      contractId = existing.id
+      if (!onChainEnv || existing.onChainPubkey) {
+        continue
+      }
+    } else {
+      try {
+        const row = await prisma.contract.create({
+          data: {
+            title: c.title,
+            description: [
+              `Предмет договора: Работа (как ref_subject_type=2 на goszakup.gov.kz).`,
+              `Заказчик: ${c.customer}.`,
+              `Поставщик: ${c.supplier}.`,
+              `Номер в реестре ЕГЗ: ${c.goszakupId}.`,
+              `Дата подписания: ${c.signDate}.`,
+              `Отбор соответствует фильтрам портала: заказчик — Алматы, вид «Работа», сумма от 10 000 000 ₸.`,
+            ].join(' '),
+            district,
+            lat,
+            lng,
+            contractorId: contractor.id,
+            registryNumber: c.goszakupId,
+            customerName: c.customer,
+            subjectType: 'Работа',
+            totalAmount: BigInt(c.amount),
+            escrowAmount: BigInt(Math.round(c.amount * 0.2)),
+            penaltyAmount: BigInt(0),
+            startDate: signAt,
+            deadline,
+            status: 'ACTIVE',
+            category,
+            milestones: {
+              create: milespecs.map((m, i) => ({
+                description: m.d,
+                deadlineDays: m.days,
+                tranchePct: m.p,
+                status: msStatuses[i] ?? 'PENDING',
+                sortOrder: i + 1,
+              })),
+            },
+          },
+          select: { id: true },
+        })
+        contractId = row.id
+        created++
+        if (created % 10 === 0) console.log(`  ${created}/${items.length} inserted`)
+      } catch (err) {
+        if (!isRegistryNumberUniqueViolation(err)) throw err
+        const again = await prisma.contract.findUnique({
+          where: { registryNumber: c.goszakupId },
+          select: { id: true, onChainPubkey: true },
+        })
+        if (!again) throw err
+        skipped++
+        contractId = again.id
+        console.log(`  skip (race/duplicate): registry ${c.goszakupId} already in DB`)
+        if (!onChainEnv || again.onChainPubkey) {
+          continue
+        }
+      }
+    }
+
+    if (onChainEnv) {
+      try {
+        await tryLinkOnChain(onChainEnv, contractId, c, district, lat, lng, deadline, milespecs)
+        onChainLinked++
+      } catch (err) {
+        onChainFailed++
+        console.error(`[on-chain] registry ${c.goszakupId}:`, err)
+      }
+    }
   }
 
-  console.log(`✓ Done. ${created} real contracts added from goszakup.gov.kz`)
+  const parts = [
+    `✓ Done. ${created} inserted, ${skipped} skipped (already had registryNumber), from goszakup.gov.kz`,
+  ]
+  if (onChainEnv) {
+    parts.push(`On-chain: ${onChainLinked} linked/updated, ${onChainFailed} failed`)
+  }
+  console.log(parts.join('. '))
 }
 
 async function run() {

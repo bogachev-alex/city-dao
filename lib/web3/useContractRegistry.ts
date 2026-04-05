@@ -6,36 +6,8 @@ import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { getContractPDA, getEscrowPDA } from './pda'
 import { SOLANA_NETWORK } from './constants'
+import { normalizeContractTitleSeed } from './contractTitleSeed'
 import idl from './idl/contract_registry.json'
-
-const MAX_SEED_BYTES = 32
-
-function shortStableHash(input: string): string {
-  let h = 5381
-  for (let i = 0; i < input.length; i++) {
-    h = ((h << 5) + h) ^ input.charCodeAt(i)
-  }
-  return (h >>> 0).toString(16).padStart(8, '0')
-}
-
-function normalizeSeedString(input: string): string {
-  // Solana seed max length is 32 bytes, not 32 chars.
-  const raw = String(input || '').trim()
-  const hashSuffix = `-${shortStableHash(raw)}`
-  let out = raw
-  while (Buffer.byteLength(out, 'utf8') > MAX_SEED_BYTES) {
-    out = out.slice(0, -1)
-  }
-  if (out === raw) return out
-
-  // Keep deterministic uniqueness for long titles that would otherwise collide after truncation.
-  let pref = raw
-  const budget = MAX_SEED_BYTES - Buffer.byteLength(hashSuffix, 'utf8')
-  while (Buffer.byteLength(pref, 'utf8') > Math.max(1, budget)) {
-    pref = pref.slice(0, -1)
-  }
-  return `${pref}${hashSuffix}`
-}
 
 interface MilestoneInput {
   description: string
@@ -72,7 +44,7 @@ export function useContractRegistry() {
     const program = getProgram()
     if (!program) return null
 
-    const onChainTitle = normalizeSeedString(title)
+    const onChainTitle = normalizeContractTitleSeed(title)
     const [pda] = getContractPDA(authority, onChainTitle)
     try {
       const account = await (program.account as any).governmentContract.fetch(pda)
@@ -100,7 +72,7 @@ export function useContractRegistry() {
     setError(null)
 
     try {
-      const onChainTitle = normalizeSeedString(title)
+      const onChainTitle = normalizeContractTitleSeed(title)
       const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
       const [escrowPDA] = getEscrowPDA(contractPDA)
 
@@ -134,7 +106,7 @@ export function useContractRegistry() {
     } catch (err: any) {
       // If PDA was created earlier (e.g., repeated submit), treat as success.
       if (isAlreadyInUseError(err)) {
-        const onChainTitle = normalizeSeedString(title)
+        const onChainTitle = normalizeContractTitleSeed(title)
         const [contractPDA] = getContractPDA(wallet.publicKey, onChainTitle)
         return { tx: null, pda: contractPDA.toBase58() }
       }
