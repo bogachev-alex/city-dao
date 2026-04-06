@@ -353,22 +353,28 @@ export async function PATCH(req: NextRequest) {
   const allVotes = await prisma.juryVote.findMany({
     where: { sessionId: realSessionId },
   })
-  const committed = allVotes.filter((v) => v.commitHash)
-  const { weightedAccept, weightedReject } = tallyRevealedVotes(allVotes)
-  const allCommittedRevealed =
-    committed.length > 0 && committed.every((v) => v.revealedVote !== null)
-
-  if (!allCommittedRevealed) {
-    return NextResponse.json(updated)
-  }
 
   const sessionMeta = await prisma.jurySession.findUnique({
     where: { id: realSessionId },
     select: { status: true, milestoneId: true },
   })
-  if (!sessionMeta || (sessionMeta.status !== 'COMMIT_PHASE' && sessionMeta.status !== 'REVEAL_PHASE')) {
+  if (!sessionMeta) {
     return NextResponse.json(updated)
   }
+  if (sessionMeta.status === 'FINALIZED' || sessionMeta.status === 'ESCALATED') {
+    return NextResponse.json(updated)
+  }
+
+  const revealedVotes = allVotes.filter((v) => v.revealedVote !== null)
+  // One revealed vote is enough to finalize (open jury; no fixed panel size).
+  if (revealedVotes.length < 1) {
+    return NextResponse.json(updated)
+  }
+  if (sessionMeta.status !== 'COMMIT_PHASE' && sessionMeta.status !== 'REVEAL_PHASE') {
+    return NextResponse.json(updated)
+  }
+
+  const { weightedAccept, weightedReject } = tallyRevealedVotes(allVotes)
 
   let result: 'ACCEPT' | 'REJECT' | null
   let status: 'FINALIZED' | 'ESCALATED'

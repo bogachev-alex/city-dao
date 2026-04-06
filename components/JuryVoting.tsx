@@ -350,7 +350,6 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   const rejectPct = totalWeight > 0 ? 100 - acceptPct : 0
   const committed = session?.votes.filter((v) => v.commitHash).length || 0
   const revealed = session?.votes.filter((v) => v.revealedVote).length || 0
-  const totalVoters = session?.votes.length || 0
 
   if (phase === 'loading') {
     return (
@@ -413,9 +412,13 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="text-gray-700 dark:text-gray-300">{session.contract.title}</span> → {session.milestone.description}
           <span className="ml-2">•</span>
-          <span className="ml-2">{committed}/{totalVoters} {t('commits')}</span>
+          <span className="ml-2">{t('commitsCount', { count: committed })}</span>
           <span className="ml-1">•</span>
-          <span className="ml-1">{revealed}/{totalVoters} {t('revealed')}</span>
+          <span className="ml-1">
+            {committed > 0
+              ? t('revealedOfCommitted', { revealed, committed })
+              : t('revealedCount', { count: revealed })}
+          </span>
         </div>
       )}
 
@@ -587,7 +590,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('jurorsCommitted', { committed, total: totalVoters })}
+              {committed > 0
+                ? t('jurorsCommitted', { revealed, committed })
+                : t('jurorsCommittedNoCommits')}
             </div>
           </div>
 
