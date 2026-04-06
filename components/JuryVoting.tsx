@@ -111,9 +111,15 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       weightedReject: 0,
       result: null,
       votes: [
-        { id: 'v1', citizenId: 'demo-citizen', isExpert: false, weight: 1, commitHash: null, revealedVote: null, citizen: { id: 'demo-citizen', walletAddress: 'Demo...Wallet', tier: 'ACTIVE' } },
-        { id: 'v2', citizenId: 'c2', isExpert: true, weight: 2, commitHash: 'abc123', revealedVote: null, citizen: { id: 'c2', walletAddress: '7xKq...9fPm', tier: 'TRUSTED' } },
-        { id: 'v3', citizenId: 'c3', isExpert: false, weight: 1, commitHash: 'def456', revealedVote: null, citizen: { id: 'c3', walletAddress: '3mRt...2wNx', tier: 'ACTIVE' } },
+        {
+          id: 'v1',
+          citizenId: 'demo-citizen',
+          isExpert: false,
+          weight: 1,
+          commitHash: null,
+          revealedVote: null,
+          citizen: { id: 'demo-citizen', walletAddress: 'DemoWallet…', tier: 'ACTIVE' },
+        },
       ],
     }
     setSession(demoSession)
@@ -302,12 +308,12 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           ...prev,
           status: 'FINALIZED',
           result: vote === 'accept' ? 'ACCEPT' : 'REJECT',
-          weightedAccept: vote === 'accept' ? 3 : 1,
-          weightedReject: vote === 'reject' ? 3 : 1,
+          weightedAccept: vote === 'accept' ? 1 : 0,
+          weightedReject: vote === 'reject' ? 1 : 0,
           votes: prev.votes.map((v, i) => ({
             ...v,
             commitHash: v.commitHash || 'demo',
-            revealedVote: i === 0 ? vote!.toUpperCase() : (i === 1 ? 'ACCEPT' : 'REJECT'),
+            revealedVote: i === 0 ? vote!.toUpperCase() : v.revealedVote,
           })),
         } : prev)
       }
@@ -343,14 +349,19 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
     }
   }
 
-  const totalWeight = session ? session.votes.reduce((sum, v) => sum + v.weight, 0) : 0
   const acceptWeight = session?.weightedAccept || 0
   const rejectWeight = session?.weightedReject || 0
-  const acceptPct = totalWeight > 0 ? Math.round((acceptWeight / totalWeight) * 100) : 0
-  const rejectPct = totalWeight > 0 ? 100 - acceptPct : 0
+  /** Total weight among revealed votes only (not all jury slots). */
+  const revealedWeightTotal =
+    acceptWeight + rejectWeight > 0
+      ? acceptWeight + rejectWeight
+      : session?.votes.filter((v) => v.revealedVote).reduce((s, v) => s + v.weight, 0) ?? 0
+  const acceptPct =
+    revealedWeightTotal > 0 ? Math.round((acceptWeight / revealedWeightTotal) * 100) : 0
+  const rejectPct =
+    revealedWeightTotal > 0 ? Math.round((rejectWeight / revealedWeightTotal) * 100) : 0
   const committed = session?.votes.filter((v) => v.commitHash).length || 0
   const revealed = session?.votes.filter((v) => v.revealedVote).length || 0
-  const totalVoters = session?.votes.length || 0
 
   if (phase === 'loading') {
     return (
@@ -413,9 +424,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         <div className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="text-gray-700 dark:text-gray-300">{session.contract.title}</span> → {session.milestone.description}
           <span className="ml-2">•</span>
-          <span className="ml-2">{committed}/{totalVoters} {t('commits')}</span>
+          <span className="ml-2">{t('commitsCount', { count: committed })}</span>
           <span className="ml-1">•</span>
-          <span className="ml-1">{revealed}/{totalVoters} {t('revealed')}</span>
+          <span className="ml-1">{t('revealedCount', { count: revealed })}</span>
         </div>
       )}
 
@@ -587,7 +598,9 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mt-0.5 shrink-0">
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {t('jurorsCommitted', { committed, total: totalVoters })}
+              {committed > 0
+                ? t('jurorsCommitted', { revealed, committed })
+                : t('jurorsCommittedNoCommits')}
             </div>
           </div>
 
@@ -631,7 +644,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
                   <span className="text-green-600 dark:text-green-400 font-medium">{t('accepted')}</span>
-                  <span className="text-gray-900 dark:text-white font-bold">{acceptWeight} / {totalWeight}</span>
+                  <span className="text-gray-900 dark:text-white font-bold">{acceptWeight} / {revealedWeightTotal}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${acceptPct}%` }} />
@@ -640,7 +653,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
                   <span className="text-red-500 dark:text-red-400 font-medium">{t('rejected')}</span>
-                  <span className="text-gray-900 dark:text-white font-bold">{rejectWeight} / {totalWeight}</span>
+                  <span className="text-gray-900 dark:text-white font-bold">{rejectWeight} / {revealedWeightTotal}</span>
                 </div>
                 <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${rejectPct}%` }} />
@@ -653,7 +666,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
             <h4 className="text-gray-500 dark:text-gray-400 text-sm mb-3">{t('jurorVotes')}</h4>
             <div className="space-y-2">
-              {session?.votes.map((v) => (
+              {(session?.votes.filter((v) => v.revealedVote) ?? []).map((v) => (
                 <div key={v.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${v.isExpert ? 'bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>

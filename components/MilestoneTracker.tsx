@@ -101,7 +101,6 @@ export default function MilestoneTracker({
         const session =
           milestone.status === 'under_review' ? pickJurySessionForMilestone(jurySessions, milestone.id) : null
         const votes = session?.votes ?? []
-        const totalJurors = votes.length
         const committed = votes.filter((v) => v.commitHash).length
         const revealed = votes.filter((v) => v.revealedVote).length
         const myVote = jurorWallet ? votes.find((v) => v.walletAddress === jurorWallet) : undefined
@@ -135,9 +134,9 @@ export default function MilestoneTracker({
           } else if (session.status === 'ESCALATED') {
             juryStatusLines.push(t('juryEscalated'))
           } else if (session.status === 'COMMIT_PHASE' || session.status === 'REVEAL_PHASE') {
-            if (totalJurors > 0) {
-              juryStatusLines.push(t('juryCommitsProgress', { committed, total: totalJurors }))
-              juryStatusLines.push(t('juryRevealsProgress', { revealed, total: totalJurors }))
+            if (committed > 0) {
+              juryStatusLines.push(t('juryCommitsProgress', { committed }))
+              juryStatusLines.push(t('juryRevealsProgress', { revealed, total: committed }))
             }
             if (myVote?.commitHash && !myVote.revealedVote) {
               juryStatusLines.push(t('youCommittedPendingReveal'))
@@ -149,7 +148,7 @@ export default function MilestoneTracker({
               showCitizenJuryVote &&
               jurorWallet &&
               !myVote &&
-              totalJurors > 0 &&
+              committed > 0 &&
               session.status === 'REVEAL_PHASE'
             ) {
               juryStatusLines.push(t('missedCommitShort'))
