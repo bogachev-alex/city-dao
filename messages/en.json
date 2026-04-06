@@ -657,7 +657,9 @@
       "notJurorWalletLead": "Connect the same Solana wallet you used to register as a citizen. Jury votes are tied to your on-chain citizen account.",
       "openLogin": "Open login",
       "notJurorAssignedTitle": "You are not on this jury",
-      "notJurorAssignedLead": "Your wallet is not among the jurors selected for this session."
+      "notJurorAssignedLead": "Your wallet is not among the jurors selected for this session.",
+      "sessionNotStarted": "Jury session not found. Open the contract page; the milestone must be submitted for review.",
+      "backToContract": "Back to contract page"
     },
     "treasuryDashboard": {
       "treasuryBalance": "District treasury balance",

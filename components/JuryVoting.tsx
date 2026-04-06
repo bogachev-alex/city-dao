@@ -131,14 +131,21 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   }
 
   useEffect(() => {
-    fetch(`/api/jury?sessionId=${sessionId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error('API error')
-        return r.json()
-      })
-      .then((data) => {
-        if (data.error) {
-          initDemoSession()
+    if (sessionId === 'demo' || sessionId.startsWith('demo-')) {
+      initDemoSession()
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/jury?sessionId=${encodeURIComponent(sessionId)}`)
+        const data = await r.json().catch(() => ({}))
+        if (cancelled) return
+        if (!r.ok || data.error) {
+          const notFound = r.status === 404 || data.error === 'Session not found'
+          setError(notFound ? t('sessionNotStarted') : typeof data.error === 'string' ? data.error : t('loadError'))
+          setPhase('error')
           return
         }
         setSession(data)
@@ -172,11 +179,18 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
             setTimeLeft(Math.max(0, Math.floor((new Date(data.commitDeadline).getTime() - Date.now()) / 1000)))
           }
         }
-      })
-      .catch(() => {
-        initDemoSession()
-      })
-  }, [sessionId, storageKey])
+      } catch {
+        if (!cancelled) {
+          setError(t('loadError'))
+          setPhase('error')
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, storageKey, t])
 
   useEffect(() => {
     if (phase === 'results' || phase === 'loading' || phase === 'error') return
@@ -372,9 +386,19 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
   }
 
   if (phase === 'error') {
+    const parts = sessionId.split('-').filter(Boolean)
+    const contractHref = parts.length >= 1 && parts[0] !== 'demo' ? `/contracts/${encodeURIComponent(parts[0])}` : null
     return (
-      <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-5 text-red-600 dark:text-red-400 text-sm">
-        {error || t('unknownError')}
+      <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-amber-900 dark:text-amber-200 text-sm space-y-4">
+        <p>{error || t('unknownError')}</p>
+        {contractHref && (
+          <Link
+            href={contractHref}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            {t('backToContract')}
+          </Link>
+        )}
       </div>
     )
   }

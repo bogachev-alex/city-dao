@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import PhotoEvidenceUpload from '@/components/contractor/PhotoEvidenceUpload'
+import { invalidateCache } from '@/lib/api'
 import { useContractRegistry } from '@/lib/web3/useContractRegistry'
 
 type Milestone = {
@@ -167,6 +168,7 @@ export default function MilestoneSubmitModal({
         }
       }
 
+      invalidateCache(`/api/contracts/${selectedContract.id}`)
       reset()
       onSuccess()
       onClose()
