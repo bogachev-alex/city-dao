@@ -401,6 +401,24 @@ export async function PATCH(req: NextRequest) {
         where: { id: sessionMeta.milestoneId },
         data: { status: 'ACCEPTED' },
       })
+      const contractId = sessionRow.contractId
+      const milestoneTotal = await tx.milestone.count({ where: { contractId } })
+      if (milestoneTotal > 0) {
+        const acceptedTotal = await tx.milestone.count({
+          where: { contractId, status: 'ACCEPTED' },
+        })
+        if (acceptedTotal === milestoneTotal) {
+          // Off-chain completion. Actual SOL transfer to the contractor still requires an
+          // on-chain `accept_milestone` (authority wallet) per milestone — see contract_registry program.
+          await tx.contract.update({
+            where: { id: contractId },
+            data: {
+              status: 'COMPLETED',
+              escrowAmount: BigInt(0),
+            },
+          })
+        }
+      }
     } else if (status === 'FINALIZED' && result === 'REJECT') {
       await tx.milestone.update({
         where: { id: sessionMeta.milestoneId },
