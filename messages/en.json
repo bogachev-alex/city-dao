@@ -547,7 +547,7 @@
       "activeStage": "Active milestone",
       "voteAsJuror": "Vote as juror",
       "continueRevealVote": "Reveal your vote",
-      "juryReviewNote": "The milestone is under citizens jury review. After the jurors decide, the status will update here.",
+      "juryReviewNote": "The milestone is open for citizen review. Any registered citizen may vote; when voting finishes, the status will update here.",
       "juryCommitsProgress": "Commits: {committed}/{total}",
       "juryRevealsProgress": "Revealed: {revealed}/{total}",
       "juryResultAccepted": "Jury decision: accepted",
@@ -557,7 +557,8 @@
       "youCommittedPendingReveal": "You have committed; open voting and reveal your choice — the milestone finalizes only after reveal.",
       "youRevealedAccept": "You revealed: accept",
       "youRevealedReject": "You revealed: reject",
-      "notOnThisJury": "Your wallet is not among jurors for this stage."
+      "notOnThisJury": "Your wallet is not among jurors for this stage.",
+      "missedCommitShort": "Reveal phase — you did not commit during the voting window."
     },
     "penaltyCalculator": {
       "title": "Penalty calculator",
@@ -658,6 +659,8 @@
       "openLogin": "Open login",
       "notJurorAssignedTitle": "You are not on this jury",
       "notJurorAssignedLead": "Your wallet is not among the jurors selected for this session.",
+      "missedCommitTitle": "Commit phase has ended",
+      "missedCommitLead": "You did not submit a commitment before the reveal phase started, so you cannot vote in this session.",
       "sessionNotStarted": "Jury session not found. Open the contract page; the milestone must be submitted for review.",
       "backToContract": "Back to contract page"
     },

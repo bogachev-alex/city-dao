@@ -375,13 +375,16 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
         </div>
       )
     }
-    if (!myVote) {
-      return (
-        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-center">
-          <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('notJurorAssignedTitle')}</h2>
-          <p className="text-sm text-amber-800 dark:text-amber-300/90">{t('notJurorAssignedLead')}</p>
-        </div>
-      )
+    if (session.status === 'REVEAL_PHASE' && !myVote) {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
+      if (!stored) {
+        return (
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-6 text-center">
+            <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-2">{t('missedCommitTitle')}</h2>
+            <p className="text-sm text-amber-800 dark:text-amber-300/90">{t('missedCommitLead')}</p>
+          </div>
+        )
+      }
     }
   }
 

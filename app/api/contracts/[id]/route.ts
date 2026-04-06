@@ -35,13 +35,6 @@ async function ensureJurySessionForTesting(contractId: string) {
   const milestone = (contract.milestones || []).find((m) => m.status === 'UNDER_REVIEW')
   if (!milestone) return
 
-  const jurors = await prisma.citizen.findMany({
-    where: { district: contract.district },
-    orderBy: { reputationScore: 'desc' },
-    take: 5,
-  })
-  if (jurors.length === 0) return
-
   const now = new Date()
   const commitDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000)
   const revealDeadline = new Date(now.getTime() + 72 * 60 * 60 * 1000)
@@ -53,13 +46,6 @@ async function ensureJurySessionForTesting(contractId: string) {
       status: 'COMMIT_PHASE',
       commitDeadline,
       revealDeadline,
-      votes: {
-        create: jurors.map((c, idx) => ({
-          citizenId: c.id,
-          weight: idx === 0 ? 2 : 1,
-          isExpert: idx === 0,
-        })),
-      },
     },
   })
 }

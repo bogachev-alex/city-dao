@@ -85,13 +85,6 @@ describe('GET /api/contracts/[id] ensureJurySessionForTesting', () => {
     })
 
     prismaMock.contract.findUnique.mockResolvedValue({ ...payload })
-    prismaMock.citizen.findMany.mockResolvedValue([
-      { id: 'cit1' },
-      { id: 'cit2' },
-      { id: 'cit3' },
-      { id: 'cit4' },
-      { id: 'cit5' },
-    ])
     prismaMock.jurySession.create.mockResolvedValue({ id: 'sess1' })
 
     const res = await GET(new NextRequest('http://localhost/api/contracts/contract-c1'), {
