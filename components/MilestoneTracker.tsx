@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { Milestone, MilestoneStatus } from '@/lib/contracts'
+import { Milestone, MilestoneStatus, JurySessionSummary, pickJurySessionForMilestone } from '@/lib/contracts'
 import { Link } from '@/i18n/routing'
 
 interface MilestoneTrackerProps {
@@ -9,12 +9,17 @@ interface MilestoneTrackerProps {
   contractId: string
   /** Only registered citizens vote in jury; hide for contractors / akimat / guests */
   showCitizenJuryVote?: boolean
+  jurySessions?: JurySessionSummary[]
+  /** Connected wallet or auth id when it is a Solana address */
+  jurorWallet?: string | null
 }
 
 export default function MilestoneTracker({
   milestones,
   contractId,
   showCitizenJuryVote = false,
+  jurySessions,
+  jurorWallet = null,
 }: MilestoneTrackerProps) {
   const t = useTranslations('components.milestoneTracker')
 
@@ -85,16 +90,65 @@ export default function MilestoneTracker({
 
   const activeIndex = milestones.findIndex((m) => m.status === 'under_review' || m.status === 'submitted')
 
+  const juryHref = (milestoneId: string) => `/jury/${contractId}-${milestoneId}`
+
   return (
     <div className="space-y-0">
       {milestones.map((milestone, index) => {
         const config = statusConfig[milestone.status]
         const isActive = index === activeIndex
         const isLast = index === milestones.length - 1
+        const session =
+          milestone.status === 'under_review' ? pickJurySessionForMilestone(jurySessions, milestone.id) : null
+        const votes = session?.votes ?? []
+        const totalJurors = votes.length
+        const committed = votes.filter((v) => v.commitHash).length
+        const revealed = votes.filter((v) => v.revealedVote).length
+        const myVote = jurorWallet ? votes.find((v) => v.walletAddress === jurorWallet) : undefined
+
+        let showVoteCta = false
+        let voteLinkLabel = t('voteAsJuror')
+        if (
+          milestone.status === 'under_review' &&
+          showCitizenJuryVote &&
+          jurorWallet &&
+          myVote &&
+          session &&
+          (session.status === 'COMMIT_PHASE' || session.status === 'REVEAL_PHASE')
+        ) {
+          if (!myVote.revealedVote) {
+            showVoteCta = true
+            voteLinkLabel = myVote.commitHash ? t('continueRevealVote') : t('voteAsJuror')
+          }
+        }
+
+        const juryStatusLines: string[] = []
+        if (milestone.status === 'under_review' && session) {
+          if (session.status === 'FINALIZED') {
+            if (session.result === 'ACCEPT') juryStatusLines.push(t('juryResultAccepted'))
+            else if (session.result === 'REJECT') juryStatusLines.push(t('juryResultRejected'))
+            else juryStatusLines.push(t('juryFinished'))
+          } else if (session.status === 'ESCALATED') {
+            juryStatusLines.push(t('juryEscalated'))
+          } else if (session.status === 'COMMIT_PHASE' || session.status === 'REVEAL_PHASE') {
+            if (totalJurors > 0) {
+              juryStatusLines.push(t('juryCommitsProgress', { committed, total: totalJurors }))
+              juryStatusLines.push(t('juryRevealsProgress', { revealed, total: totalJurors }))
+            }
+            if (myVote?.commitHash && !myVote.revealedVote) {
+              juryStatusLines.push(t('youCommittedPendingReveal'))
+            } else if (myVote?.revealedVote) {
+              juryStatusLines.push(
+                myVote.revealedVote === 'ACCEPT' ? t('youRevealedAccept') : t('youRevealedReject'),
+              )
+            } else if (showCitizenJuryVote && jurorWallet && !myVote && totalJurors > 0) {
+              juryStatusLines.push(t('notOnThisJury'))
+            }
+          }
+        }
 
         return (
           <div key={milestone.id} className="flex gap-4">
-            {/* Timeline line + icon */}
             <div className="flex flex-col items-center">
               <div
                 className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${config.bg} ${config.color} ${
@@ -106,11 +160,14 @@ export default function MilestoneTracker({
               {!isLast && <div className="w-0.5 flex-1 bg-gray-200 my-1 min-h-[1.5rem]" />}
             </div>
 
-            {/* Content */}
             <div className={`pb-6 flex-1 ${isLast ? 'pb-0' : ''}`}>
-              <div className={`rounded-xl border p-4 transition-all ${
-                isActive ? 'border-yellow-300 dark:border-yellow-500/40 bg-yellow-50 dark:bg-yellow-500/20' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
-              }`}>
+              <div
+                className={`rounded-xl border p-4 transition-all ${
+                  isActive
+                    ? 'border-yellow-300 dark:border-yellow-500/40 bg-yellow-50 dark:bg-yellow-500/20'
+                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
+                }`}
+              >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h4 className={`font-medium text-sm ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                     {milestone.desc}
@@ -140,16 +197,24 @@ export default function MilestoneTracker({
                   )}
                 </div>
 
-                {milestone.status === 'under_review' && showCitizenJuryVote && (
+                {milestone.status === 'under_review' && juryStatusLines.length > 0 && (
+                  <ul className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                    {juryStatusLines.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+
+                {milestone.status === 'under_review' && showCitizenJuryVote && showVoteCta && (
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
                     <Link
-                      href={`/jury/${contractId}-${milestone.id}`}
+                      href={juryHref(milestone.id)}
                       className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/30 transition-colors"
                     >
                       <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {t('voteAsJuror')}
+                      {voteLinkLabel}
                     </Link>
                   </div>
                 )}

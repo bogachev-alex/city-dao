@@ -448,6 +448,16 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       {/* COMMIT PHASE */}
       {phase === 'commit' && session && (
         <div className="space-y-5">
+          {!demoMode && (
+            <div className="space-y-2">
+              <div className="bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/30 rounded-lg p-3 text-xs text-sky-800 dark:text-sky-200">
+                {t('commitRevealHint')}
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-xs text-gray-600 dark:text-gray-400">
+                {t('oneVoteTestNote')}
+              </div>
+            </div>
+          )}
           <div>
             <h3 className="text-gray-900 dark:text-white font-semibold mb-3">{t('contractorPhotos')}</h3>
             <div className="grid grid-cols-3 gap-3">
@@ -522,6 +532,11 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
       {/* REVEAL PHASE */}
       {phase === 'reveal' && (
         <div className="space-y-5">
+          {!demoMode && (
+            <div className="bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/30 rounded-lg p-3 text-xs text-sky-800 dark:text-sky-200">
+              {t('commitRevealHint')}
+            </div>
+          )}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
             <h3 className="text-gray-900 dark:text-white font-semibold mb-4">{t('yourCommittedVote')}</h3>
             <div className="space-y-3">

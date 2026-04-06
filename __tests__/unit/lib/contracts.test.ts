@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   normalizeContract,
+  pickJurySessionForMilestone,
   getDaysUntilDeadline,
   getContractPinColor,
   formatAmount,
@@ -68,6 +69,48 @@ describe('normalizeContract', () => {
     expect(result.customerName).toContain('Алматы')
     expect(result.subjectType).toBe('Работа')
     expect(result.signedAt).toBe('2026-03-27T12:00:00.000Z')
+  })
+
+  it('maps jury session votes and weights', () => {
+    const result = normalizeContract({
+      id: '1',
+      title: 'X',
+      status: 'ACTIVE',
+      milestones: [],
+      jurySessions: [
+        {
+          id: 'js1',
+          status: 'COMMIT_PHASE',
+          result: null,
+          milestoneId: 'm1',
+          milestone: { description: 'Step' },
+          weightedAccept: 0,
+          weightedReject: 0,
+          votes: [
+            {
+              commitHash: 'abc',
+              revealedVote: null,
+              citizen: { walletAddress: '7xKq9fPmAbCdEfGhIjKlMnOpQrStUvWxYz123456789' },
+            },
+          ],
+        },
+      ],
+    })
+    expect(result.jurySessions?.[0].votes?.[0].walletAddress).toContain('7xKq')
+    expect(result.jurySessions?.[0].votes?.[0].commitHash).toBe('abc')
+  })
+})
+
+describe('pickJurySessionForMilestone', () => {
+  it('prefers active phase over finalized', () => {
+    const s = pickJurySessionForMilestone(
+      [
+        { id: 'old', status: 'FINALIZED', result: 'ACCEPT', milestoneId: 'm1' },
+        { id: 'new', status: 'COMMIT_PHASE', result: null, milestoneId: 'm1', votes: [] },
+      ],
+      'm1',
+    )
+    expect(s?.id).toBe('new')
   })
 })
 

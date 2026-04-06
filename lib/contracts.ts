@@ -12,12 +12,33 @@ export interface Milestone {
   sortOrder?: number
 }
 
+export interface JuryVoteSummary {
+  walletAddress: string
+  commitHash: string | null
+  revealedVote: string | null
+}
+
 export interface JurySessionSummary {
   id: string
   status: string
   result: string | null
   milestoneId: string
   milestoneDescription?: string
+  weightedAccept?: number
+  weightedReject?: number
+  votes?: JuryVoteSummary[]
+}
+
+/** Pick the active jury session for a milestone, or the most recent one. */
+export function pickJurySessionForMilestone(
+  sessions: JurySessionSummary[] | undefined,
+  milestoneId: string,
+): JurySessionSummary | null {
+  if (!sessions?.length) return null
+  const list = sessions.filter((s) => s.milestoneId === milestoneId)
+  if (!list.length) return null
+  const active = list.find((s) => s.status === 'COMMIT_PHASE' || s.status === 'REVEAL_PHASE')
+  return active ?? list[0]
 }
 
 export interface PenaltySummary {
@@ -290,6 +311,13 @@ export function normalizeContract(c: any): Contract {
       result: s.result ?? null,
       milestoneId: s.milestoneId,
       milestoneDescription: s.milestone?.description,
+      weightedAccept: typeof s.weightedAccept === 'number' ? s.weightedAccept : 0,
+      weightedReject: typeof s.weightedReject === 'number' ? s.weightedReject : 0,
+      votes: (s.votes || []).map((v: any) => ({
+        walletAddress: String(v.citizen?.walletAddress ?? ''),
+        commitHash: v.commitHash ?? null,
+        revealedVote: v.revealedVote ?? null,
+      })),
     })),
     penalties: penaltiesRaw.map((p: any) => ({
       id: p.id,
