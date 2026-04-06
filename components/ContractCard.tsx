@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   Contract,
+  ContractStatus,
   getDaysUntilDeadline,
   getMilestoneCompletedCount,
   formatTengeWithCrypto,
@@ -41,7 +42,9 @@ export default function ContractCard({ contract }: ContractCardProps) {
     disputed: { label: t('disputed'), color: 'bg-yellow-50 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/30' },
   }
 
-  const status = statusConfig[contract.status]
+  const effectiveStatus: ContractStatus =
+    contract.status === 'active' && total > 0 && completed === total ? 'completed' : contract.status
+  const status = statusConfig[effectiveStatus]
 
   const deadlineColor =
     daysLeft < 0 ? 'text-red-500 dark:text-red-400' : daysLeft < 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-gray-400'
