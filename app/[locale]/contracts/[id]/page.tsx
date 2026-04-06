@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   Contract,
+  ContractStatus,
   Milestone,
   getContractById,
   getDaysUntilDeadline,
@@ -337,7 +338,9 @@ export default function ContractDetailPage() {
   const completed = getMilestoneCompletedCount(contract)
   const total = contract.milestones.length
   const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0
-  const status = statusConfig[contract.status]
+  const effectiveStatus: ContractStatus =
+    contract.status === 'active' && total > 0 && completed === total ? 'completed' : contract.status
+  const status = statusConfig[effectiveStatus]
 
   const signedLabel = contract.signedAt
     ? new Intl.DateTimeFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ', {
@@ -748,7 +751,7 @@ export default function ContractDetailPage() {
                   { label: t('contractId'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">#{contract.id.slice(0, 8)}</span> },
                   { label: t('coordinates'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{contract.lat}, {contract.lng}</span> },
                   { label: t('escrow20'), value: <CryptoTooltip amount={contract.escrow_amount}><span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{formatTengeWithCrypto(contract.escrow_amount)}</span></CryptoTooltip> },
-                  { label: t('status'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{statusConfig[contract.status].label}</span> },
+                  { label: t('status'), value: <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">{statusConfig[effectiveStatus].label}</span> },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between items-center">
                     <span className="text-gray-400 dark:text-gray-500">{item.label}</span>
