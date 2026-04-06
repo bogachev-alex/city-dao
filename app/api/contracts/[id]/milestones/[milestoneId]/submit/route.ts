@@ -10,7 +10,7 @@ const HOUR_MS = 60 * 60 * 1000
 
 /**
  * POST /api/contracts/[id]/milestones/[milestoneId]/submit
- * Contractor submits milestone for jury review; creates a minimal JurySession + juror slots.
+ * Contractor submits milestone for jury review; creates JurySession + juror slots (opens voting).
  */
 export async function POST(
   req: NextRequest,
@@ -63,8 +63,6 @@ export async function POST(
     )
   }
 
-  // Legacy orphan: older stacks returned 409 if any active JurySession existed while milestone was still
-  // PENDING/SUBMITTED. Remove all in-flight sessions for this milestone, then create a fresh one.
   const staleSessionIds = await prisma.jurySession.findMany({
     where: {
       milestoneId,
