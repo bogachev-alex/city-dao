@@ -171,6 +171,8 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
     prismaMock.juryVote.findUnique.mockResolvedValue({ id: 'v1' })
     prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
     prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+    prismaMock.milestone.count.mockResolvedValue(1)
+    prismaMock.contract.update.mockResolvedValue({ id: 'contract1', status: 'COMPLETED' })
 
     const res = await PATCH(
       new NextRequest('http://localhost/api/jury', {
@@ -187,6 +189,47 @@ describe('PATCH /api/jury (reveal) — hash verification', () => {
         data: { status: 'ACCEPTED' },
       }),
     )
+    expect(prismaMock.contract.update).toHaveBeenCalledWith({
+      where: { id: 'contract1' },
+      data: { status: 'COMPLETED', escrowAmount: BigInt(0) },
+    })
+  })
+
+  it('does not mark contract completed when other milestones are not accepted', async () => {
+    const vote = 'accept'
+    const salt = 'testsalt123'
+    const correctHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
+
+    prismaMock.jurySession.findUnique
+      .mockResolvedValueOnce(openSessionRow)
+      .mockResolvedValueOnce({ status: 'COMMIT_PHASE', milestoneId: 'm1' })
+    prismaMock.juryVote.findFirst.mockResolvedValue({
+      id: 'v1',
+      commitHash: correctHash,
+      revealedVote: null,
+      weight: 1,
+    })
+    prismaMock.juryVote.update.mockResolvedValue({ id: 'v1' })
+    prismaMock.juryVote.findMany.mockResolvedValue([
+      { revealedVote: 'ACCEPT', weight: 1, commitHash: correctHash },
+    ])
+    prismaMock.juryVote.findUnique.mockResolvedValue({ id: 'v1' })
+    prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
+    prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+    prismaMock.milestone.count.mockImplementation((args: { where?: { status?: string } }) => {
+      if (args?.where?.status === 'ACCEPTED') return Promise.resolve(1)
+      return Promise.resolve(2)
+    })
+
+    const res = await PATCH(
+      new NextRequest('http://localhost/api/jury', {
+        method: 'PATCH',
+        headers: juryAuthHeaders(),
+        body: JSON.stringify({ sessionId: 's1', vote, salt }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(prismaMock.contract.update).not.toHaveBeenCalled()
   })
 
   it('REJECTS reveal when hash does NOT match (vote manipulation)', async () => {
