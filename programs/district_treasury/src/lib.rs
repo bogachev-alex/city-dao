@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 declare_id!("HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ");
 
@@ -122,19 +123,38 @@ pub mod district_treasury {
         require!(proposal.status == ProposalStatus::Voting, TreasuryError::NotVoting);
 
         let total_votes = proposal.votes_for + proposal.votes_against;
-        // Quorum: minimum 5 votes for hackathon demo (real: 5% of SBT holders)
         require!(total_votes >= 5, TreasuryError::QuorumNotMet);
         require!(proposal.votes_for > proposal.votes_against, TreasuryError::MajorityNotReached);
 
         let treasury = &mut ctx.accounts.district_treasury;
         require!(treasury.balance >= proposal.amount, TreasuryError::InsufficientFunds);
 
-        treasury.balance -= proposal.amount;
+        let amount = proposal.amount;
+        let treasury_seeds = &[
+            b"treasury",
+            treasury.district.as_bytes(),
+            &[treasury.bump],
+        ];
+        let signer_seeds = &[&treasury_seeds[..]];
+
+        system_program::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.district_treasury.to_account_info(),
+                    to: ctx.accounts.recipient.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            amount,
+        )?;
+
+        treasury.balance -= amount;
         proposal.status = ProposalStatus::Executed;
 
         emit!(ProposalExecuted {
             proposal: proposal.key(),
-            amount: proposal.amount,
+            amount,
             treasury_remaining: treasury.balance,
         });
 
@@ -206,9 +226,16 @@ pub struct VoteOnProposal<'info> {
 pub struct ExecuteProposal<'info> {
     #[account(mut)]
     pub district_treasury: Account<'info, DistrictTreasuryAccount>,
-    #[account(mut, constraint = spending_proposal.treasury == district_treasury.key() @ TreasuryError::WrongTreasury)]
+    #[account(
+        mut,
+        constraint = spending_proposal.treasury == district_treasury.key() @ TreasuryError::WrongTreasury
+    )]
     pub spending_proposal: Account<'info, SpendingProposalAccount>,
-    pub executor: Signer<'info>, // Anyone can execute after quorum
+    /// CHECK: Recipient wallet — receives disbursed funds
+    #[account(mut)]
+    pub recipient: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+    pub executor: Signer<'info>,
 }
 
 // ─── State ───

@@ -271,15 +271,54 @@ export function useContractRegistry() {
       setError(null)
 
       try {
+        const [escrowPDA] = getEscrowPDA(contractPubkey)
+
         const tx = await (program.methods as any)
           .terminateContract()
           .accounts({
             governmentContract: contractPubkey,
+            escrow: escrowPDA,
             authority: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
           })
           .rpc()
 
         console.log('Contract terminated on-chain:', tx)
+        return { tx }
+      } catch (err: unknown) {
+        const msg = toReadableError(err)
+        setError(msg)
+        throw new Error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [getProgram, wallet.publicKey, toReadableError]
+  )
+
+  const withdrawPenalty = useCallback(
+    async (contractPubkey: PublicKey, treasuryPDA: PublicKey, amount: number) => {
+      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      const program = getProgram()
+      if (!program) throw new Error('Program not initialized')
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [escrowPDA] = getEscrowPDA(contractPubkey)
+
+        const tx = await (program.methods as any)
+          .withdrawPenalty(new BN(amount))
+          .accounts({
+            governmentContract: contractPubkey,
+            escrow: escrowPDA,
+            districtTreasury: treasuryPDA,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc()
+
+        console.log('Penalty withdrawn on-chain:', tx)
         return { tx }
       } catch (err: unknown) {
         const msg = toReadableError(err)
@@ -300,6 +339,7 @@ export function useContractRegistry() {
     rejectMilestone,
     checkDeadline,
     terminateContract,
+    withdrawPenalty,
     loading,
     error,
     connected: !!wallet.publicKey,

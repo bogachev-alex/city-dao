@@ -5,7 +5,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
 import { AnchorProvider, BN, Program } from '@coral-xyz/anchor'
 import { PROGRAM_IDS, SEEDS, SOLANA_NETWORK } from './constants'
-import { getTreasuryPDA } from './pda'
+import { getTreasuryPDA, getEscrowPDA } from './pda'
 import idl from './idl/penalty_engine.json'
 
 export type PenaltyType = 'timeOverdue' | 'qualityRejected' | 'ghostSite'
@@ -76,6 +76,7 @@ export function usePenaltyEngine() {
     try {
       const [penaltyRecordPDA] = getPenaltyRecordPDA(contractDataPubkey, nonce)
       const [districtTreasuryPDA] = getTreasuryPDA(district)
+      const [escrowPDA] = getEscrowPDA(contractDataPubkey)
 
       const tx = await (program.methods as any)
         .executePenalty(
@@ -87,8 +88,12 @@ export function usePenaltyEngine() {
         )
         .accounts({
           contractData: contractDataPubkey,
+          governmentContract: contractDataPubkey,
+          escrow: escrowPDA,
           penaltyRecord: penaltyRecordPDA,
           districtTreasury: districtTreasuryPDA,
+          districtTreasuryProgram: PROGRAM_IDS.districtTreasury,
+          contractRegistryProgram: PROGRAM_IDS.contractRegistry,
           caller: wallet.publicKey,
           systemProgram: SystemProgram.programId,
         })
