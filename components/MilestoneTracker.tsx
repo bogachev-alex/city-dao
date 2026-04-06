@@ -112,11 +112,15 @@ export default function MilestoneTracker({
           milestone.status === 'under_review' &&
           showCitizenJuryVote &&
           jurorWallet &&
-          myVote &&
           session &&
           (session.status === 'COMMIT_PHASE' || session.status === 'REVEAL_PHASE')
         ) {
-          if (!myVote.revealedVote) {
+          if (!myVote) {
+            if (session.status === 'COMMIT_PHASE') {
+              showVoteCta = true
+              voteLinkLabel = t('voteAsJuror')
+            }
+          } else if (!myVote.revealedVote) {
             showVoteCta = true
             voteLinkLabel = myVote.commitHash ? t('continueRevealVote') : t('voteAsJuror')
           }
@@ -141,8 +145,14 @@ export default function MilestoneTracker({
               juryStatusLines.push(
                 myVote.revealedVote === 'ACCEPT' ? t('youRevealedAccept') : t('youRevealedReject'),
               )
-            } else if (showCitizenJuryVote && jurorWallet && !myVote && totalJurors > 0) {
-              juryStatusLines.push(t('notOnThisJury'))
+            } else if (
+              showCitizenJuryVote &&
+              jurorWallet &&
+              !myVote &&
+              totalJurors > 0 &&
+              session.status === 'REVEAL_PHASE'
+            ) {
+              juryStatusLines.push(t('missedCommitShort'))
             }
           }
         }

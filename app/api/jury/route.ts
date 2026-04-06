@@ -160,12 +160,6 @@ async function createSessionFromLegacyAlias(sessionId: string): Promise<SessionR
   })
   if (existing) return existing
 
-  const jurors = await prisma.citizen.findMany({
-    where: { district: contract.district },
-    orderBy: { reputationScore: 'desc' },
-    take: 5,
-  })
-
   const session = await prisma.jurySession.create({
     data: {
       contractId: contract.id,
@@ -173,13 +167,6 @@ async function createSessionFromLegacyAlias(sessionId: string): Promise<SessionR
       status: 'COMMIT_PHASE',
       commitDeadline,
       revealDeadline,
-      votes: {
-        create: jurors.map((c, idx) => ({
-          citizenId: c.id,
-          weight: idx === 0 ? 2 : 1,
-          isExpert: idx === 0,
-        })),
-      },
     },
     include: sessionInclude,
   })
@@ -209,6 +196,17 @@ async function resolveJuryCitizenId(req: NextRequest): Promise<{ citizenId: stri
   }
 
   return { citizenId: citizen.id }
+}
+
+async function resolveSessionForMutation(sessionId: string): Promise<SessionRow | NextResponse> {
+  let session = await resolveSession(sessionId)
+  if (!session) {
+    session = await createSessionFromLegacyAlias(sessionId)
+  }
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  }
+  return session
 }
 
 function tallyRevealedVotes(
@@ -263,11 +261,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sessionId and commitHash required' }, { status: 400 })
   }
 
-  const vote = await prisma.juryVote.findFirst({
-    where: { sessionId, citizenId },
+  const sessionRow = await resolveSessionForMutation(sessionId)
+  if (sessionRow instanceof NextResponse) return sessionRow
+  const realSessionId = sessionRow.id
+
+  if (sessionRow.status !== 'COMMIT_PHASE') {
+    return NextResponse.json({ error: 'Commit phase is closed for this session' }, { status: 400 })
+  }
+  if (sessionRow.commitDeadline && new Date(sessionRow.commitDeadline).getTime() < Date.now()) {
+    return NextResponse.json({ error: 'Commit deadline has passed' }, { status: 400 })
+  }
+
+  let vote = await prisma.juryVote.findFirst({
+    where: { sessionId: realSessionId, citizenId },
   })
   if (!vote) {
-    return NextResponse.json({ error: 'Not a juror in this session' }, { status: 403 })
+    const citizen = await prisma.citizen.findUnique({
+      where: { id: citizenId },
+      select: { isEligible: true, banUntil: true },
+    })
+    if (!citizen?.isEligible) {
+      return NextResponse.json({ error: 'Citizen is not eligible to vote' }, { status: 403 })
+    }
+    if (citizen.banUntil && new Date(citizen.banUntil) > new Date()) {
+      return NextResponse.json({ error: 'Citizen is not eligible to vote' }, { status: 403 })
+    }
+    vote = await prisma.juryVote.create({
+      data: {
+        sessionId: realSessionId,
+        citizenId,
+        weight: 1,
+        isExpert: false,
+      },
+    })
   }
   if (vote.commitHash) {
     return NextResponse.json({ error: 'Already committed' }, { status: 409 })
@@ -298,11 +324,15 @@ export async function PATCH(req: NextRequest) {
   }
   const voteEnum = normalizedVote === 'accept' ? 'ACCEPT' : 'REJECT'
 
+  const sessionRow = await resolveSessionForMutation(sessionId)
+  if (sessionRow instanceof NextResponse) return sessionRow
+  const realSessionId = sessionRow.id
+
   const juryVote = await prisma.juryVote.findFirst({
-    where: { sessionId, citizenId },
+    where: { sessionId: realSessionId, citizenId },
   })
   if (!juryVote) {
-    return NextResponse.json({ error: 'Not a juror in this session' }, { status: 403 })
+    return NextResponse.json({ error: 'No vote commitment found for this session' }, { status: 403 })
   }
   if (!juryVote.commitHash) {
     return NextResponse.json({ error: 'Must commit before reveal' }, { status: 400 })
@@ -321,52 +351,53 @@ export async function PATCH(req: NextRequest) {
   const updated = await prisma.juryVote.findUnique({ where: { id: juryVote.id } })
 
   const allVotes = await prisma.juryVote.findMany({
-    where: { sessionId },
+    where: { sessionId: realSessionId },
   })
+  const committed = allVotes.filter((v) => v.commitHash)
   const { weightedAccept, weightedReject } = tallyRevealedVotes(allVotes)
-  const allRevealed = allVotes.every((v) => v.revealedVote !== null)
+  const allCommittedRevealed =
+    committed.length > 0 && committed.every((v) => v.revealedVote !== null)
 
-  const earlyAccept = weightedAccept >= 1
-  if (!earlyAccept && !allRevealed) {
+  if (!allCommittedRevealed) {
     return NextResponse.json(updated)
   }
 
-  const sessionRow = await prisma.jurySession.findUnique({
-    where: { id: sessionId },
+  const sessionMeta = await prisma.jurySession.findUnique({
+    where: { id: realSessionId },
     select: { status: true, milestoneId: true },
   })
-  if (!sessionRow || (sessionRow.status !== 'COMMIT_PHASE' && sessionRow.status !== 'REVEAL_PHASE')) {
+  if (!sessionMeta || (sessionMeta.status !== 'COMMIT_PHASE' && sessionMeta.status !== 'REVEAL_PHASE')) {
     return NextResponse.json(updated)
   }
 
   let result: 'ACCEPT' | 'REJECT' | null
   let status: 'FINALIZED' | 'ESCALATED'
 
-  if (earlyAccept) {
+  if (weightedAccept > weightedReject) {
     result = 'ACCEPT'
     status = 'FINALIZED'
-  } else if (weightedAccept === 2 && weightedReject === 2) {
-    status = 'ESCALATED'
-    result = null
-  } else {
+  } else if (weightedReject > weightedAccept) {
     result = 'REJECT'
     status = 'FINALIZED'
+  } else {
+    status = 'ESCALATED'
+    result = null
   }
 
   await prisma.$transaction(async (tx) => {
     await tx.jurySession.update({
-      where: { id: sessionId },
+      where: { id: realSessionId },
       data: { status, result, weightedAccept, weightedReject },
     })
 
     if (status === 'FINALIZED' && result === 'ACCEPT') {
       await tx.milestone.update({
-        where: { id: sessionRow.milestoneId },
+        where: { id: sessionMeta.milestoneId },
         data: { status: 'ACCEPTED' },
       })
     } else if (status === 'FINALIZED' && result === 'REJECT') {
       await tx.milestone.update({
-        where: { id: sessionRow.milestoneId },
+        where: { id: sessionMeta.milestoneId },
         data: { status: 'REJECTED' },
       })
     }

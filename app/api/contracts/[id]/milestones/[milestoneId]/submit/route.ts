@@ -5,12 +5,11 @@ import { ownsContract } from '@/lib/ownsContract'
 
 export const dynamic = 'force-dynamic'
 
-const JURORS = 3
 const HOUR_MS = 60 * 60 * 1000
 
 /**
  * POST /api/contracts/[id]/milestones/[milestoneId]/submit
- * Contractor submits milestone for jury review; creates JurySession + juror slots (opens voting).
+ * Contractor submits milestone for jury review; creates JurySession (any registered citizen may vote).
  */
 export async function POST(
   req: NextRequest,
@@ -78,14 +77,6 @@ export async function POST(
     ])
   }
 
-  const jurors = await pickJurors(contract.district, JURORS)
-  if (jurors.length < JURORS) {
-    return NextResponse.json(
-      { error: 'Not enough citizens registered to form a jury' },
-      { status: 503 }
-    )
-  }
-
   const now = Date.now()
   const commitDeadline = new Date(now + 48 * HOUR_MS)
   const revealDeadline = new Date(now + 72 * HOUR_MS)
@@ -109,13 +100,6 @@ export async function POST(
         status: 'COMMIT_PHASE',
         commitDeadline,
         revealDeadline,
-        votes: {
-          create: jurors.map((citizenId, i) => ({
-            citizenId,
-            isExpert: i === 0,
-            weight: i === 0 ? 2 : 1,
-          })),
-        },
       },
       include: { votes: true },
     })
@@ -138,26 +122,4 @@ export async function POST(
   })
 
   return NextResponse.json(result, { status: 201 })
-}
-
-async function pickJurors(district: string, count: number): Promise<string[]> {
-  const local = await prisma.citizen.findMany({
-    where: { district, isEligible: true },
-    take: count,
-    orderBy: { reputationScore: 'desc' },
-    select: { id: true },
-  })
-  if (local.length >= count) {
-    return local.map((c) => c.id)
-  }
-  const rest = await prisma.citizen.findMany({
-    where: {
-      isEligible: true,
-      id: { notIn: local.map((c) => c.id) },
-    },
-    take: count - local.length,
-    orderBy: { reputationScore: 'desc' },
-    select: { id: true },
-  })
-  return [...local, ...rest].map((c) => c.id)
 }
