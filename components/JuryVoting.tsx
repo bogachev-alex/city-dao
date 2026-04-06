@@ -426,11 +426,7 @@ export default function JuryVoting({ sessionId }: JuryVotingProps) {
           <span className="ml-2">•</span>
           <span className="ml-2">{t('commitsCount', { count: committed })}</span>
           <span className="ml-1">•</span>
-          <span className="ml-1">
-            {committed > 0
-              ? t('revealedOfCommitted', { revealed, committed })
-              : t('revealedCount', { count: revealed })}
-          </span>
+          <span className="ml-1">{t('revealedCount', { count: revealed })}</span>
         </div>
       )}
 

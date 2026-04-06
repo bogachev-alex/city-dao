@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
@@ -26,6 +26,12 @@ export default function JuryPage() {
       })
       .catch(() => {})
   }, [sessionId])
+
+  const commitsRecordedCount = useMemo(() => {
+    const votes = sessionInfo?.votes as Array<{ commitHash?: string | null }> | undefined
+    if (!votes?.length) return 0
+    return votes.filter((v) => Boolean(v.commitHash)).length
+  }, [sessionInfo?.votes])
 
   return (
     <div className="min-h-screen pt-16 bg-gray-50 dark:bg-gray-950">
@@ -71,8 +77,10 @@ export default function JuryPage() {
                 <div className="text-gray-900 dark:text-white font-medium">Commit-Reveal</div>
               </div>
               <div>
-                <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">{t('jurors')}</div>
-                <div className="text-gray-900 dark:text-white font-medium">{sessionInfo?.votes?.length || '...'}</div>
+                <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">{t('commitsRecorded')}</div>
+                <div className="text-gray-900 dark:text-white font-medium">
+                  {sessionInfo?.votes ? commitsRecordedCount : '...'}
+                </div>
               </div>
               <div>
                 <div className="text-gray-400 dark:text-gray-500 text-xs mb-1">{t('status')}</div>
