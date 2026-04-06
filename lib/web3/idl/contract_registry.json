@@ -309,14 +309,102 @@
           "writable": true
         },
         {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "government_contract"
+              }
+            ]
+          }
+        },
+        {
           "name": "authority",
+          "writable": true,
           "signer": true,
           "relations": [
             "government_contract"
           ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
+    },
+    {
+      "name": "withdraw_penalty",
+      "docs": [
+        "Withdraw penalty from escrow to district treasury.",
+        "Called by penalty_engine via CPI."
+      ],
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "government_contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "district_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -438,6 +526,19 @@
         97,
         164
       ]
+    },
+    {
+      "name": "PenaltyWithdrawn",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     }
   ],
   "errors": [
@@ -475,6 +576,11 @@
       "code": 6006,
       "name": "CannotTerminate",
       "msg": "Contract cannot be terminated in current status"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientEscrow",
+      "msg": "Insufficient escrow balance"
     }
   ],
   "types": [
@@ -808,6 +914,26 @@
           },
           {
             "name": "triggered_by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PenaltyWithdrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
             "type": "pubkey"
           }
         ]

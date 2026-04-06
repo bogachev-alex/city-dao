@@ -38,6 +38,14 @@
           ]
         },
         {
+          "name": "government_contract",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
           "name": "penalty_record",
           "writable": true,
           "pda": {
@@ -68,6 +76,14 @@
         {
           "name": "district_treasury",
           "writable": true
+        },
+        {
+          "name": "district_treasury_program",
+          "address": "HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ"
+        },
+        {
+          "name": "contract_registry_program",
+          "address": "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4"
         },
         {
           "name": "caller",

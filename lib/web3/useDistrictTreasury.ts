@@ -204,6 +204,7 @@ export function useDistrictTreasury() {
   const executeProposal = useCallback(async (
     district: string,
     proposalPubkey: PublicKey,
+    recipientPubkey: PublicKey,
   ) => {
     if (!wallet.publicKey) throw new Error('Wallet not connected')
     const program = getProgram()
@@ -220,6 +221,8 @@ export function useDistrictTreasury() {
         .accounts({
           districtTreasury: treasuryPDA,
           spendingProposal: proposalPubkey,
+          recipient: recipientPubkey,
+          systemProgram: SystemProgram.programId,
           executor: wallet.publicKey,
         })
         .rpc()

@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::system_program;
 
 declare_id!("9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT");
 
@@ -39,7 +38,6 @@ pub mod penalty_engine {
 
         require!(actual_penalty > 0, PenaltyError::NoPenaltyDue);
 
-        // Record penalty
         record.contract = ctx.accounts.contract_data.key();
         record.penalty_type = penalty_type;
         record.amount = actual_penalty;
@@ -48,35 +46,25 @@ pub mod penalty_engine {
         record.timestamp = clock.unix_timestamp;
         record.bump = ctx.bumps.penalty_record;
 
-        // Transfer SOL from caller to district treasury PDA
-        if actual_penalty > 0 {
-            let treasury_lamports = actual_penalty.min(ctx.accounts.caller.lamports());
-            if treasury_lamports > 0 {
-                let transfer_ix = system_program::transfer(
-                    ctx.accounts.caller.key,
-                    ctx.accounts.district_treasury.key,
-                    treasury_lamports,
-                );
-                anchor_lang::solana_program::program::invoke_signed(
-                    &transfer_ix,
-                    &[
-                        ctx.accounts.caller.to_account_info(),
-                        ctx.accounts.district_treasury.to_account_info(),
-                        ctx.accounts.system_program.to_account_info(),
-                    ],
-                    &[],
-                )?;
-            }
+        // CPI: withdraw_penalty from contract_registry (escrow → treasury)
+        let cpi_program = ctx.accounts.contract_registry_program.to_account_info();
+        let cpi_accounts = contract_registry::cpi::accounts::WithdrawPenalty {
+            government_contract: ctx.accounts.government_contract.to_account_info(),
+            escrow: ctx.accounts.escrow.to_account_info(),
+            district_treasury: ctx.accounts.district_treasury.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        contract_registry::cpi::withdraw_penalty(cpi_ctx, actual_penalty)?;
 
-            // CPI: deposit into district_treasury program to update on-chain balance
-            let cpi_program = ctx.accounts.district_treasury_program.to_account_info();
-            let cpi_accounts = district_treasury::cpi::accounts::Deposit {
-                district_treasury: ctx.accounts.district_treasury.to_account_info(),
-                depositor: ctx.accounts.caller.to_account_info(),
-            };
-            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-            district_treasury::cpi::deposit(cpi_ctx, actual_penalty)?;
-        }
+        // CPI: deposit into district_treasury (update balance counter)
+        let treasury_cpi_program = ctx.accounts.district_treasury_program.to_account_info();
+        let treasury_cpi_accounts = district_treasury::cpi::accounts::Deposit {
+            district_treasury: ctx.accounts.district_treasury.to_account_info(),
+            depositor: ctx.accounts.caller.to_account_info(),
+        };
+        let treasury_cpi_ctx = CpiContext::new(treasury_cpi_program, treasury_cpi_accounts);
+        district_treasury::cpi::deposit(treasury_cpi_ctx, actual_penalty)?;
 
         emit!(PenaltyExecuted {
             contract: record.contract,
@@ -98,12 +86,15 @@ pub mod penalty_engine {
     }
 }
 
-// ─── Accounts ───
-
 #[derive(Accounts)]
 #[instruction(nonce: u64)]
 pub struct ExecutePenalty<'info> {
     pub contract_data: Account<'info, ContractRef>,
+    #[account(mut)]
+    pub government_contract: Account<'info, contract_registry::GovernmentContract>,
+    /// CHECK: Verified by contract_registry CPI
+    #[account(mut)]
+    pub escrow: UncheckedAccount<'info>,
     #[account(
         init,
         payer = caller,
@@ -119,17 +110,13 @@ pub struct ExecutePenalty<'info> {
     /// CHECK: District treasury PDA — receives penalty funds
     #[account(mut)]
     pub district_treasury: UncheckedAccount<'info>,
-    /// District treasury program for CPI deposit
     pub district_treasury_program: Program<'info, district_treasury::program::DistrictTreasury>,
+    pub contract_registry_program: Program<'info, contract_registry::program::ContractRegistry>,
     #[account(mut)]
     pub caller: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
-// ─── State ───
-
-/// Minimal reference to contract data needed for penalty calculation.
-/// In production, this is read via CPI from contract_registry.
 #[account]
 pub struct ContractRef {
     pub total_amount: u64,
@@ -139,27 +126,25 @@ pub struct ContractRef {
 
 #[account]
 pub struct PenaltyRecord {
-    pub contract: Pubkey,         // 32
-    pub penalty_type: PenaltyType, // 1
-    pub amount: u64,              // 8
-    pub days_overdue: u64,        // 8
-    pub triggered_by: Pubkey,     // 32
-    pub timestamp: i64,           // 8
-    pub bump: u8,                 // 1
+    pub contract: Pubkey,
+    pub penalty_type: PenaltyType,
+    pub amount: u64,
+    pub days_overdue: u64,
+    pub triggered_by: Pubkey,
+    pub timestamp: i64,
+    pub bump: u8,
 }
 
 impl PenaltyRecord {
-    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 32 + 8 + 1; // 98
+    pub const SPACE: usize = 8 + 32 + 1 + 8 + 8 + 32 + 8 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
 pub enum PenaltyType {
-    TimeOverdue,      // 1% per day
-    QualityRejected,  // 10% per rejection
-    GhostSite,        // 5% per ghost-site report
+    TimeOverdue,
+    QualityRejected,
+    GhostSite,
 }
-
-// ─── Events ───
 
 #[event]
 pub struct PenaltyExecuted {
@@ -176,8 +161,6 @@ pub struct PenaltyCapped {
     pub contract: Pubkey,
     pub total_penalty: u64,
 }
-
-// ─── Errors ───
 
 #[error_code]
 pub enum PenaltyError {

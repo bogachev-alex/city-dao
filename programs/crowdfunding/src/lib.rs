@@ -183,16 +183,29 @@ pub mod crowdfunding {
         require!(campaign.status == CampaignStatus::Funded, CrowdfundingError::TargetNotReached);
         require!(!campaign.state_deposited, CrowdfundingError::AlreadyMatched);
 
+        let match_amount = campaign.state_match;
+
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.akimat.to_account_info(),
+                    to: ctx.accounts.escrow.to_account_info(),
+                },
+            ),
+            match_amount,
+        )?;
+
         campaign.state_deposited = true;
         campaign.status = CampaignStatus::Matched;
         escrow.total_deposited = escrow
             .total_deposited
-            .checked_add(campaign.state_match)
+            .checked_add(match_amount)
             .ok_or(CrowdfundingError::Overflow)?;
 
         emit!(StateMatched {
             campaign: campaign.key(),
-            state_amount: campaign.state_match,
+            state_amount: match_amount,
             total_funds: escrow.total_deposited,
         });
 

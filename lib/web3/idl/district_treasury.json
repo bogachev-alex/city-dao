@@ -145,6 +145,14 @@
           "writable": true
         },
         {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
           "name": "executor",
           "signer": true
         }

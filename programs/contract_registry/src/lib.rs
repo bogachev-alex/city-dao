@@ -237,7 +237,59 @@ pub mod contract_registry {
         );
         contract.status = ContractStatus::Terminated;
 
+        let remaining = ctx.accounts.escrow.lamports();
+        let rent_exempt = Rent::get()?.minimum_balance(0);
+        if remaining > rent_exempt {
+            let refund = remaining - rent_exempt;
+            let contract_key = contract.key();
+            let escrow_seeds = &[b"escrow", contract_key.as_ref(), &[ctx.bumps.escrow]];
+            let signer_seeds = &[&escrow_seeds[..]];
+            system_program::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.system_program.to_account_info(),
+                    system_program::Transfer {
+                        from: ctx.accounts.escrow.to_account_info(),
+                        to: ctx.accounts.authority.to_account_info(),
+                    },
+                    signer_seeds,
+                ),
+                refund,
+            )?;
+        }
+
         emit!(ContractTerminated { contract: contract.key() });
+        Ok(())
+    }
+
+    /// Withdraw penalty from escrow to district treasury.
+    /// Called by penalty_engine via CPI.
+    pub fn withdraw_penalty(ctx: Context<WithdrawPenalty>, amount: u64) -> Result<()> {
+        let contract = &mut ctx.accounts.government_contract;
+        require!(contract.escrow_amount >= amount, ContractError::InsufficientEscrow);
+        contract.escrow_amount -= amount;
+        contract.penalty_amount += amount;
+
+        let contract_key = contract.key();
+        let escrow_seeds = &[b"escrow", contract_key.as_ref(), &[ctx.bumps.escrow]];
+        let signer_seeds = &[&escrow_seeds[..]];
+
+        system_program::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.escrow.to_account_info(),
+                    to: ctx.accounts.district_treasury.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            amount,
+        )?;
+
+        emit!(PenaltyWithdrawn {
+            contract: contract.key(),
+            amount,
+            treasury: ctx.accounts.district_treasury.key(),
+        });
         Ok(())
     }
 }
@@ -321,7 +373,33 @@ pub struct CheckDeadline<'info> {
 pub struct TerminateContract<'info> {
     #[account(mut, has_one = authority)]
     pub government_contract: Account<'info, GovernmentContract>,
-    pub authority: Signer<'info>, // Akimat admin
+    /// CHECK: Escrow PDA — remaining funds returned to authority
+    #[account(
+        mut,
+        seeds = [b"escrow", government_contract.key().as_ref()],
+        bump,
+    )]
+    pub escrow: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawPenalty<'info> {
+    #[account(mut)]
+    pub government_contract: Account<'info, GovernmentContract>,
+    /// CHECK: Escrow PDA — penalty funds withdrawn from here
+    #[account(
+        mut,
+        seeds = [b"escrow", government_contract.key().as_ref()],
+        bump,
+    )]
+    pub escrow: UncheckedAccount<'info>,
+    /// CHECK: District treasury PDA — receives penalty funds
+    #[account(mut)]
+    pub district_treasury: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 // ─── State ───
@@ -445,6 +523,13 @@ pub struct ContractTerminated {
     pub contract: Pubkey,
 }
 
+#[event]
+pub struct PenaltyWithdrawn {
+    pub contract: Pubkey,
+    pub amount: u64,
+    pub treasury: Pubkey,
+}
+
 // ─── Errors ───
 
 #[error_code]
@@ -463,4 +548,6 @@ pub enum ContractError {
     MilestoneNotUnderReview,
     #[msg("Contract cannot be terminated in current status")]
     CannotTerminate,
+    #[msg("Insufficient escrow balance")]
+    InsufficientEscrow,
 }
