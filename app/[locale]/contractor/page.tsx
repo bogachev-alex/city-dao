@@ -72,6 +72,15 @@ function contractProgress(c: ApiContract): { done: number; total: number; pct: n
   return { done, total, pct: Math.round((done / total) * 100) }
 }
 
+function effectiveStatus(c: ApiContract): string {
+  if (c.status === 'ACTIVE') {
+    const ms = c.milestones || []
+    const total = ms.length
+    if (total > 0 && ms.every((m) => m.status === 'ACCEPTED')) return 'COMPLETED'
+  }
+  return c.status
+}
+
 const LOG_TYPE_LABEL: Record<string, string> = {
   DAILY_LOG: 'Дневник',
   MILESTONE_CLAIM: 'Этап',
@@ -201,14 +210,14 @@ export default function ContractorCabinetPage() {
   const stats = useMemo(() => {
     if (!data?.contracts) return null
     const contracts = data.contracts
-    const active = contracts.filter((c) => c.status === 'ACTIVE').length
+    const active = contracts.filter((c) => effectiveStatus(c) === 'ACTIVE').length
     const atRisk = contracts.filter((c) => {
-      if (c.status !== 'ACTIVE') return false
+      if (effectiveStatus(c) !== 'ACTIVE') return false
       const d = daysUntil(c.deadline)
       return d >= 0 && d < 7
     }).length
-    const overdue = contracts.filter((c) => c.status === 'PENALIZED').length
-    const disputed = contracts.filter((c) => c.status === 'DISPUTED').length
+    const overdue = contracts.filter((c) => effectiveStatus(c) === 'PENALIZED').length
+    const disputed = contracts.filter((c) => effectiveStatus(c) === 'DISPUTED').length
     return { active, atRisk, overdue, disputed, total: contracts.length }
   }, [data])
 
@@ -481,7 +490,8 @@ export default function ContractorCabinetPage() {
               {data.contracts.map((c) => {
                 const { done, total, pct } = contractProgress(c)
                 const dLeft = daysUntil(c.deadline)
-                const risk = c.status === 'ACTIVE' && dLeft >= 0 && dLeft < 7
+                const cStatus = effectiveStatus(c)
+                const risk = cStatus === 'ACTIVE' && dLeft >= 0 && dLeft < 7
                 const review = (c.milestones || []).some((m) => m.status === 'UNDER_REVIEW')
                 const activeBlocker = activeBlockersByContract.get(c.id)
                 const penalties = c.penalties || []
@@ -519,14 +529,16 @@ export default function ContractorCabinetPage() {
                       <div className="flex flex-wrap gap-2">
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full border ${
-                            c.status === 'ACTIVE'
+                            cStatus === 'ACTIVE'
                               ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
-                              : c.status === 'PENALIZED'
+                              : cStatus === 'PENALIZED'
                                 ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
-                                : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/30'
+                                : cStatus === 'COMPLETED'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                  : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/30'
                           }`}
                         >
-                          {c.status}
+                          {cStatus}
                         </span>
                         {risk && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
@@ -569,12 +581,12 @@ export default function ContractorCabinetPage() {
                       </span>
                     </div>
                     <div className="mb-3 space-y-1">
-                      {c.status === 'ACTIVE' && dLeft >= 0 && (
+                      {cStatus === 'ACTIVE' && dLeft >= 0 && (
                         <p className="text-xs text-amber-700 dark:text-amber-300">
                           {t('penaltyCountdown', { days: dLeft })}
                         </p>
                       )}
-                      {c.status === 'PENALIZED' && (
+                      {cStatus === 'PENALIZED' && (
                         <p className="text-xs text-red-700 dark:text-red-300">
                           {t('penaltyRunning', { amount: new Intl.NumberFormat(locale === 'kk' ? 'kk-KZ' : 'ru-KZ').format(penaltyTotal) })}
                         </p>
