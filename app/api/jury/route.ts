@@ -356,7 +356,7 @@ export async function PATCH(req: NextRequest) {
 
   const sessionMeta = await prisma.jurySession.findUnique({
     where: { id: realSessionId },
-    select: { status: true, milestoneId: true },
+    select: { status: true, milestoneId: true, contractId: true },
   })
   if (!sessionMeta) {
     return NextResponse.json(updated)
@@ -390,6 +390,8 @@ export async function PATCH(req: NextRequest) {
     result = null
   }
 
+  let paymentInfo: { amount: string; escrowRemaining: string; contractCompleted: boolean } | undefined
+
   await prisma.$transaction(async (tx) => {
     await tx.jurySession.update({
       where: { id: realSessionId },
@@ -397,27 +399,46 @@ export async function PATCH(req: NextRequest) {
     })
 
     if (status === 'FINALIZED' && result === 'ACCEPT') {
-      await tx.milestone.update({
+      // Update milestone status to ACCEPTED
+      const milestone = await tx.milestone.update({
         where: { id: sessionMeta.milestoneId },
         data: { status: 'ACCEPTED' },
       })
-      const contractId = sessionRow.contractId
-      const milestoneTotal = await tx.milestone.count({ where: { contractId } })
-      if (milestoneTotal > 0) {
-        const acceptedTotal = await tx.milestone.count({
-          where: { contractId, status: 'ACCEPTED' },
+
+      // Get contract to calculate payment and check completion
+      const contract = await tx.contract.findUnique({
+        where: { id: sessionMeta.contractId },
+        include: { milestones: true },
+      })
+      if (!contract) throw new Error('Contract not found')
+
+      // Calculate payment: tranchePct / 100 * totalAmount
+      const payment = BigInt(Math.floor(Number(contract.totalAmount) * milestone.tranchePct / 100))
+
+      // Release payment from escrow to contractor
+      const updatedContract = await tx.contract.update({
+        where: { id: contract.id },
+        data: {
+          paidAmount: { increment: payment },
+          escrowAmount: { decrement: payment },
+        },
+      })
+
+      // Check if ALL milestones are now ACCEPTED → complete contract
+      const allAccepted = contract.milestones.every((m) =>
+        m.id === milestone.id ? true : m.status === 'ACCEPTED'
+      )
+      if (allAccepted) {
+        await tx.contract.update({
+          where: { id: contract.id },
+          data: { status: 'COMPLETED', escrowAmount: BigInt(0) },
         })
-        if (acceptedTotal === milestoneTotal) {
-          // Off-chain completion. Actual SOL transfer to the contractor still requires an
-          // on-chain `accept_milestone` (authority wallet) per milestone — see contract_registry program.
-          await tx.contract.update({
-            where: { id: contractId },
-            data: {
-              status: 'COMPLETED',
-              escrowAmount: BigInt(0),
-            },
-          })
-        }
+      }
+
+      paymentInfo = {
+        amount: payment.toString(),
+        escrowRemaining: updatedContract.escrowAmount.toString(),
+        contractCompleted: allAccepted,
       }
     } else if (status === 'FINALIZED' && result === 'REJECT') {
       await tx.milestone.update({
@@ -427,5 +448,5 @@ export async function PATCH(req: NextRequest) {
     }
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json({ ...updated, ...(paymentInfo ? { payment: paymentInfo } : {}) })
 }

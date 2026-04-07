@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
           contractorId: true,
           totalAmount: true,
           escrowAmount: true,
+          paidAmount: true,
           penaltyAmount: true,
           deadline: true,
           category: true,
