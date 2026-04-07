@@ -23,7 +23,7 @@ export interface TokenWallet {
   transactions: TokenTransaction[]
 }
 
-const STORAGE_KEY = 'amanat_tokens'
+const STORAGE_KEY = 'straita_tokens'
 
 const REWARD_TABLE: Record<TokenAction, { amount: number; description: string }> = {
   registration:          { amount: 100, description: 'Регистрация гражданина' },
@@ -75,7 +75,7 @@ export function awardTokens(action: TokenAction): TokenTransaction | null {
   saveWallet(wallet)
 
   // Dispatch custom event so UI components can react
-  window.dispatchEvent(new CustomEvent('amanat-token-award', { detail: tx }))
+  window.dispatchEvent(new CustomEvent('straita-token-award', { detail: tx }))
 
   return tx
 }

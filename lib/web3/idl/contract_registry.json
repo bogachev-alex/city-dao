@@ -4,7 +4,7 @@
     "name": "contract_registry",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Amanat Protocol — Government Contract Registry"
+    "description": "Straita — Government Contract Registry"
   },
   "instructions": [
     {

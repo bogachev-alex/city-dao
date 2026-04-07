@@ -78,7 +78,7 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   ],
 }
 
-const AUTH_KEY = 'amanat_auth'
+const AUTH_KEY = 'straita_auth'
 
 export function saveAuth(user: AuthUser): void {
   if (typeof window === 'undefined') return

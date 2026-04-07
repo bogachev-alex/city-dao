@@ -189,7 +189,7 @@ export default function AlmatyMap() {
             position={position}
             icon={icon}
           >
-            <Popup className="amanat-popup" maxWidth={280}>
+            <Popup className="straita-popup" maxWidth={280}>
               <div style={{
                 background: isDark ? '#111827' : '#ffffff',
                 border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
