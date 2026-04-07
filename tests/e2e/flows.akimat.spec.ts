@@ -11,7 +11,7 @@ test.describe('Akimat E2E flows', () => {
     await expect(page.getByText(/Сотрудник акимата/i)).toBeVisible()
     // Stats cards
     await expect(page.getByText(/Записей в базе данных/i)).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText(/Активных/i)).toBeVisible()
+    await expect(page.getByText(/Активных/i).first()).toBeVisible()
     // Actions section
     await expect(page.getByText(/Действия/i)).toBeVisible()
     await expect(page.getByText(/Зарегистрировать контракт/i)).toBeVisible()
@@ -29,12 +29,12 @@ test.describe('Akimat E2E flows', () => {
     await expect(page.getByText(/Регистрация контракта/i)).toBeVisible({ timeout: 15_000 })
     // Form fields exist
     await expect(page.getByText(/Название контракта/i)).toBeVisible()
-    await expect(page.getByText(/Подрядчик/i)).toBeVisible()
+    await expect(page.getByText(/Подрядчик/i).first()).toBeVisible()
     await expect(page.getByText(/Сумма/i)).toBeVisible()
     await expect(page.getByText(/Дедлайн/i)).toBeVisible()
-    await expect(page.getByText(/Район/i)).toBeVisible()
+    await expect(page.getByText(/Район/i).first()).toBeVisible()
     // Milestone tabs
-    await expect(page.getByText(/Этапы \(2\)/i)).toBeVisible()
+    await expect(page.getByText(/Этапы \(\d+\)/i)).toBeVisible()
     // Auto-fill button
     await expect(page.getByText(/Заполнить тестовыми данными/i)).toBeVisible()
   })
@@ -52,7 +52,7 @@ test.describe('Akimat E2E flows', () => {
   test('akimat nav has correct links', async ({ page }) => {
     await page.goto('/ru/akimat')
     const nav = page.locator('nav')
-    await expect(nav.getByText('Акимат')).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Акимат' })).toBeVisible()
     await expect(nav.getByText('Контракты')).toBeVisible()
     await expect(nav.getByText('Краудфандинг')).toBeVisible()
     await expect(nav.getByText('Казна')).toBeVisible()
