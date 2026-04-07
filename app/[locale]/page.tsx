@@ -32,14 +32,6 @@ function LandingPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-20">
-          {/* Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t('badge')}</span>
-            </div>
-          </div>
-
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-center text-gray-900 dark:text-white leading-[1.1] mb-6">
             {t('headline1')}<br />

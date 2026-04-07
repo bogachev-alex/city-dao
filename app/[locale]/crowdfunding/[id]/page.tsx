@@ -919,8 +919,8 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 <p className="text-sm text-emerald-600 dark:text-emerald-400">
                   Сумма собрана, государственная субсидия перечислена. Проект передан в Straita для исполнения.
                 </p>
-                {campaign.contract_id && (
-                  <Link href={getContractDetailHref(campaign.contract_id)} className="inline-block mt-3 text-sm text-emerald-700 hover:text-emerald-800 underline">
+                {campaign.linkedContract && (
+                  <Link href={getContractDetailHref(campaign.linkedContract.id)} className="inline-block mt-3 text-sm text-emerald-700 hover:text-emerald-800 underline">
                     Смотреть контракт →
                   </Link>
                 )}

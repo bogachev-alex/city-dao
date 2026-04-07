@@ -34,6 +34,7 @@ export interface Campaign {
   photo_url?: string
   donors: CampaignDonor[]
   contract_id?: string        // linked contract after funding
+  linkedContract?: { id: string; title: string; status: string } | null
   onChainPubkey?: string | null
 }
 
@@ -360,6 +361,9 @@ export function normalizeCampaign(c: any): Campaign {
     lat: c.lat,
     lng: c.lng,
     contract_id: c.contractId || c.contract_id,
+    linkedContract: c.contract
+      ? { id: c.contract.id, title: c.contract.title, status: c.contract.status }
+      : null,
     onChainPubkey: c.onChainPubkey || c.on_chain_pubkey || null,
     donors: contributions.map((d: any) => ({
       id: d.id,

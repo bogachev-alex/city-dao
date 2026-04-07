@@ -597,6 +597,7 @@
       "privacy": "Privacy",
       "privacyText": "Your IIN is hashed with SHA-256 in your browser and never leaves the client. Only the hash is recorded on the blockchain, making it impossible to recover the original IIN.",
       "agreeTerms": "I agree to the terms of Straita and confirm that I am a resident of Almaty",
+      "selectWallet": "Connect wallet",
       "registerButton": "Register",
       "signingTx": "Signing transaction...",
       "savingDb": "Saving to database...",
