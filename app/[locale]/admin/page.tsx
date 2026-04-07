@@ -19,16 +19,6 @@ interface MilestoneInput {
   tranche_pct: number
 }
 
-const CATEGORIES = [
-  'Дороги',
-  'Электросети',
-  'Водоснабжение',
-  'Социальные объекты',
-  'Озеленение',
-  'Безопасность',
-  'Образование',
-  'Инфраструктура',
-]
 
 interface ContractorOption {
   id: string
@@ -68,6 +58,18 @@ const INITIAL_FORM: ContractFormData = {
 
 export default function AdminPage() {
   const t = useTranslations('admin')
+  const tExt = useTranslations('adminExt')
+
+  const CATEGORIES = [
+    tExt('categoryRoads'),
+    tExt('categoryElectric'),
+    tExt('categoryWater'),
+    tExt('categorySocial'),
+    tExt('categoryGreening'),
+    tExt('categorySafety'),
+    tExt('categoryEducation'),
+    tExt('categoryInfrastructure'),
+  ]
   const { user, loading, authHeader } = useAuth()
   const router = useRouter()
   const [form, setForm] = useState<ContractFormData>(INITIAL_FORM)
@@ -212,7 +214,7 @@ export default function AdminPage() {
       )
 
       if (!result?.pda) {
-        throw new Error('Не удалось получить on-chain адрес контракта')
+        throw new Error(tExt('errorNoPda'))
       }
       setOnChainTx(result.tx || null)
       setOnChainPda(result.pda)

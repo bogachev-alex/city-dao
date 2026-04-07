@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import AmaniMascot from './AmaniMascot'
 import { useAuth } from './AuthContext'
 
 const STORAGE_KEY = 'onboarding_completed'
 
 interface Step {
-  title: string
-  text: string
+  titleKey: string
+  textKey: string
   mood: 'happy' | 'thinking' | 'waving' | 'surprised'
   icon: string
   target: string // data-tour attribute value
@@ -17,56 +18,56 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    title: 'Привет! Я — Амани',
-    text: 'Добро пожаловать в Straita! Это платформа, где жители Алматы могут видеть, куда уходят бюджетные деньги на строительство — и влиять на это. Давай покажу, что тут есть.',
+    titleKey: 'steps.hello.title',
+    textKey: 'steps.hello.text',
     mood: 'waving',
     icon: '👋',
     target: 'logo',
     position: 'bottom',
   },
   {
-    title: 'Карта',
-    text: 'Здесь все госконтракты Алматы на карте. Цвет маркера показывает статус: зелёный — в срок, жёлтый — риск задержки, красный — просрочка или штраф. Нажми на любой маркер, чтобы увидеть подробности.',
+    titleKey: 'steps.map.title',
+    textKey: 'steps.map.text',
     mood: 'happy',
     icon: '🗺️',
     target: 'map',
     position: 'bottom',
   },
   {
-    title: 'Контракты',
-    text: 'Список всех контрактов в удобном виде. Можно фильтровать по району, статусу или подрядчику. У каждого контракта есть этапы выполнения, суммы и дедлайны.',
+    titleKey: 'steps.contracts.title',
+    textKey: 'steps.contracts.text',
     mood: 'thinking',
     icon: '📋',
     target: 'contracts',
     position: 'bottom',
   },
   {
-    title: 'Краудфандинг',
-    text: 'Жители предлагают проекты для своего района — детскую площадку, ремонт дороги, озеленение. Каждый может внести от 500 ₸. Когда граждане соберут свою долю, государство добавляет субсидию — до 80% бюджета.',
+    titleKey: 'steps.crowdfunding.title',
+    textKey: 'steps.crowdfunding.text',
     mood: 'surprised',
     icon: '💰',
     target: 'crowdfunding',
     position: 'bottom',
   },
   {
-    title: 'Казна района',
-    text: 'Если подрядчик нарушает сроки — он платит штраф. Эти деньги попадают в казну района. Жители сами решают голосованием, на что их потратить. Для каждого предложения ИИ автоматически делает анализ рисков.',
+    titleKey: 'steps.treasury.title',
+    textKey: 'steps.treasury.text',
     mood: 'thinking',
     icon: '🏛️',
     target: 'treasury',
     position: 'bottom',
   },
   {
-    title: 'Панель акимата',
-    text: 'Раздел для госорганов. Здесь акимат добавляет новые контракты в систему — они сразу появляются на карте и в реестре, доступные для мониторинга всеми жителями.',
+    titleKey: 'steps.admin.title',
+    textKey: 'steps.admin.text',
     mood: 'happy',
     icon: '🏗️',
     target: 'admin',
     position: 'bottom',
   },
   {
-    title: 'Регистрация',
-    text: 'Чтобы голосовать и участвовать в краудфандинге, нужно зарегистрироваться. Это быстро: укажи район и ИИН. Твой ИИН никуда не отправляется — он хешируется прямо в браузере, и на сервер уходит только зашифрованный код.',
+    titleKey: 'steps.register.title',
+    textKey: 'steps.register.text',
     mood: 'waving',
     icon: '🛡️',
     target: 'auth',
@@ -75,6 +76,7 @@ const STEPS: Step[] = [
 ]
 
 export default function Onboarding() {
+  const t = useTranslations('onboarding')
   const { user } = useAuth()
   const [visible, setVisible] = useState(false)
   const [step, setStep] = useState(0)
@@ -216,13 +218,13 @@ export default function Onboarding() {
       <button
         onClick={handleReset}
         className="fixed bottom-6 right-6 z-[2000] group"
-        title="Помощь Амани"
+        title={t('helpButton')}
       >
         <div className="w-14 h-14 rounded-full bg-white dark:bg-gray-900 border-2 border-emerald-400 dark:border-emerald-500/50 shadow-lg shadow-emerald-500/20 flex items-center justify-center hover:scale-110 transition-transform">
           <AmaniMascot size={38} mood="happy" />
         </div>
         <div className="absolute -top-8 right-0 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          Помощь Амани
+          {t('helpButton')}
         </div>
       </button>
     )
@@ -262,7 +264,7 @@ export default function Onboarding() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-gray-900 dark:text-white font-bold text-sm">{current.title}</h3>
+              <h3 className="text-gray-900 dark:text-white font-bold text-sm">{t(current.titleKey as any)}</h3>
               <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{step + 1} / {STEPS.length}</div>
             </div>
             <button
@@ -277,7 +279,7 @@ export default function Onboarding() {
 
           {/* Body */}
           <div className="px-4 pb-3">
-            <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">{current.text}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">{t(current.textKey as any)}</p>
           </div>
 
           {/* Footer */}
@@ -306,14 +308,14 @@ export default function Onboarding() {
                   onClick={handlePrev}
                   className="px-2.5 py-1 rounded-md text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
-                  Назад
+                  {t('back')}
                 </button>
               )}
               <button
                 onClick={handleNext}
                 className="px-3 py-1.5 rounded-md text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
               >
-                {isLast ? 'Готово!' : 'Далее'}
+                {isLast ? t('done') : t('next')}
               </button>
             </div>
           </div>

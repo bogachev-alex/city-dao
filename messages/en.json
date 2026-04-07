@@ -804,5 +804,113 @@
     "loading": "Loading...",
     "error": "Error",
     "back": "Back"
+  },
+  "onboarding": {
+    "helpButton": "Amani Help",
+    "back": "Back",
+    "done": "Done!",
+    "next": "Next",
+    "steps": {
+      "hello": {
+        "title": "Hi! I'm Amani",
+        "text": "Welcome to Straita! This is a platform where Almaty residents can see where construction budgets go — and influence them. Let me show you what's here."
+      },
+      "map": {
+        "title": "Map",
+        "text": "All Almaty government contracts on a map. The marker color shows status: green — on time, yellow — delay risk, red — overdue or penalized. Click any marker for details."
+      },
+      "contracts": {
+        "title": "Contracts",
+        "text": "A full list of all contracts in a convenient view. Filter by district, status, or contractor. Each contract has milestones, amounts, and deadlines."
+      },
+      "crowdfunding": {
+        "title": "Crowdfunding",
+        "text": "Residents propose projects for their district — a playground, road repair, landscaping. Anyone can contribute from 500 ₸. When citizens raise their share, the state adds a subsidy — up to 80% of the budget."
+      },
+      "treasury": {
+        "title": "District Treasury",
+        "text": "If a contractor misses deadlines, they pay a penalty. That money goes into the district treasury. Residents vote on how to spend it. For each proposal, AI automatically generates a risk analysis."
+      },
+      "admin": {
+        "title": "Akimat Panel",
+        "text": "A section for government agencies. The akimat registers new contracts here — they instantly appear on the map and registry, available for all residents to monitor."
+      },
+      "register": {
+        "title": "Registration",
+        "text": "To vote and participate in crowdfunding, you need to register. It's quick: enter your district and IIN. Your IIN never leaves your browser — it's hashed locally and only the encrypted code is sent."
+      }
+    }
+  },
+  "campaignCard": {
+    "raisedByCitizens": "Raised by citizens",
+    "expired": "Expired",
+    "remaining": "Remaining",
+    "noGoalRefund": "Goal not met by deadline — contributions refunded",
+    "participants": "participants",
+    "stateSubsidy": "State subsidy {statePercent}% — {amount}",
+    "autoRefund": "Refund — automatically"
+  },
+  "campaignDeadlinePicker": {
+    "weekdays": "Mo,Tu,We,Th,Fr,Sa,Su",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "collectionEndTime": "Collection end time",
+    "systemCalendarDate": "Date (system calendar)",
+    "duplicatesDateHint": "Mirrors the date selection above — use whichever input is more convenient."
+  },
+  "crowdfunding": {
+    "statusAll": "All",
+    "statusActive": "Fundraising",
+    "statusFunded": "Funded",
+    "statusInProgress": "In progress",
+    "statusCompleted": "Completed",
+    "statusExpired": "Expired"
+  },
+  "crowdfundingMy": {
+    "tabDonations": "My contributions",
+    "tabCreated": "My campaigns",
+    "breadcrumbCrowdfunding": "Crowdfunding",
+    "breadcrumbMy": "My participations",
+    "heading": "My participations",
+    "description": "Your contributions, NFT rewards, and created campaigns",
+    "statTotalDonated": "Total contributed",
+    "statProjectsSupported": "Projects supported",
+    "statActiveCampaigns": "Active campaigns",
+    "statNftReceived": "NFTs received",
+    "fundsReturned": "Funds returned to wallet",
+    "deadlineExpiredNoMore": "Deadline passed — new contributions unavailable",
+    "donors": "donors",
+    "totalBudget": "total budget",
+    "createNewCampaign": "Create new campaign"
+  },
+  "contractorPageExt": {
+    "logTypeDaily": "Log",
+    "logTypeMilestone": "Milestone",
+    "logTypeBlocker": "Blocker",
+    "logTypeDelivery": "Delivery"
+  },
+  "adminExt": {
+    "categoryRoads": "Roads",
+    "categoryElectric": "Power grid",
+    "categoryWater": "Water supply",
+    "categorySocial": "Social facilities",
+    "categoryGreening": "Landscaping",
+    "categorySafety": "Safety",
+    "categoryEducation": "Education",
+    "categoryInfrastructure": "Infrastructure",
+    "errorNoPda": "Failed to get on-chain contract address"
+  },
+  "treasuryDashboardExt": {
+    "wallet": "Wallet:",
+    "penaltiesTitle": "Contractor penalties",
+    "penaltiesCount": "{count} penalties",
+    "penaltyTimeOverdue": "Overdue",
+    "penaltyQualityRejected": "Defect",
+    "penaltyAbandoned": "Abandoned site",
+    "hideAllVotes": "Hide all votes",
+    "showAllVotes": "Show all votes ({count})",
+    "noVotesYet": "No votes yet",
+    "voteFor": "For",
+    "voteAgainst": "Against"
   }
 }

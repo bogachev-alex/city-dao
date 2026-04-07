@@ -54,8 +54,11 @@ pub mod contract_registry {
             }
         }).collect();
 
-        // Transfer escrow from authority to escrow PDA
-        let escrow_amount = contract.escrow_amount;
+        // Transfer escrow from authority to escrow PDA.
+        // Ensure at least rent-exempt minimum so the account survives.
+        let rent = Rent::get()?;
+        let rent_min = rent.minimum_balance(0);
+        let escrow_transfer = contract.escrow_amount.max(rent_min);
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -64,7 +67,7 @@ pub mod contract_registry {
                     to: ctx.accounts.escrow.to_account_info(),
                 },
             ),
-            escrow_amount,
+            escrow_transfer,
         )?;
 
         emit!(ContractRegistered {

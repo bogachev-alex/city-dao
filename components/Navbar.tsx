@@ -429,7 +429,7 @@ export default function Navbar() {
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-500 dark:text-red-400"
                 >
-                  Выйти
+                  {t('logout')}
                 </button>
               </>
             ) : (
