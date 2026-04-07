@@ -4,7 +4,7 @@
 #   DEPLOY_KEY, DEPLOY_HOST
 #
 # Optional:
-#   DATABASE_URL — if unset, uses postgresql://postgres:postgres@localhost:5432/straita?schema=public on the server
+#   DATABASE_URL — if unset, uses postgresql://postgres:postgres@localhost:5432/amanat?schema=public on the server
 #
 # Optional on-chain (devnet) — both must be set or neither is used:
 #   GOSZAKUP_SOLANA_KEYPAIR_JSON — full Solana keypair JSON array (akimat authority), same format as ~/.config/solana/id.json
@@ -39,9 +39,9 @@ jobs:
         run: |
           set -e
           HOST="root@${DEPLOY_HOST}"
-          rsync -az prisma/seed-goszakup.ts "${HOST}:/var/www/straita/prisma/"
-          rsync -az lib/goszakupOnChainRegister.ts "${HOST}:/var/www/straita/lib/"
-          rsync -az lib/web3/contractTitleSeed.ts "${HOST}:/var/www/straita/lib/web3/"
+          rsync -az prisma/seed-goszakup.ts "${HOST}:/var/www/amanat/prisma/"
+          rsync -az lib/goszakupOnChainRegister.ts "${HOST}:/var/www/amanat/lib/"
+          rsync -az lib/web3/contractTitleSeed.ts "${HOST}:/var/www/amanat/lib/web3/"
 
       - name: Prepare optional Solana keypair on server
         id: onchain
@@ -59,9 +59,9 @@ jobs:
           HOST="root@${DEPLOY_HOST}"
           mkdir -p .gha-secrets
           printf '%s' "$KP" > .gha-secrets/goszakup-solana.json
-          ssh "$HOST" "mkdir -p /var/www/straita/.secrets"
-          rsync -az .gha-secrets/goszakup-solana.json "${HOST}:/var/www/straita/.secrets/goszakup-solana.json"
-          ssh "$HOST" "chmod 600 /var/www/straita/.secrets/goszakup-solana.json"
+          ssh "$HOST" "mkdir -p /var/www/amanat/.secrets"
+          rsync -az .gha-secrets/goszakup-solana.json "${HOST}:/var/www/amanat/.secrets/goszakup-solana.json"
+          ssh "$HOST" "chmod 600 /var/www/amanat/.secrets/goszakup-solana.json"
           rm -f .gha-secrets/goszakup-solana.json
           rmdir .gha-secrets 2>/dev/null || true
           echo "enabled=true" >> "$GITHUB_OUTPUT"
@@ -76,7 +76,7 @@ jobs:
         run: |
           set -e
           HOST="root@${DEPLOY_HOST}"
-          DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/straita?schema=public}"
+          DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/amanat?schema=public}"
           Q_DB="$(printf '%q' "$DB_URL")"
 
           if [ "${{ steps.onchain.outputs.enabled }}" = "true" ]; then
@@ -85,9 +85,9 @@ jobs:
             if [ -n "$GOSZAKUP_SOLANA_RPC_URL" ]; then
               EXTRA="export SOLANA_RPC_URL=$(printf '%q' "$GOSZAKUP_SOLANA_RPC_URL"); "
             fi
-            ssh "$HOST" bash -lc "set -e; cd /var/www/straita; export DATABASE_URL=$Q_DB; export SEED_GOSZAKUP_ONCHAIN=1; export SOLANA_WALLET=/var/www/straita/.secrets/goszakup-solana.json; export GOSZAKUP_ONCHAIN_CONTRACTOR=$Q_CTR; $EXTRA npx tsx prisma/seed-goszakup.ts"
+            ssh "$HOST" bash -lc "set -e; cd /var/www/amanat; export DATABASE_URL=$Q_DB; export SEED_GOSZAKUP_ONCHAIN=1; export SOLANA_WALLET=/var/www/amanat/.secrets/goszakup-solana.json; export GOSZAKUP_ONCHAIN_CONTRACTOR=$Q_CTR; $EXTRA npx tsx prisma/seed-goszakup.ts"
           else
-            ssh "$HOST" bash -lc "set -e; cd /var/www/straita; export DATABASE_URL=$Q_DB; npx tsx prisma/seed-goszakup.ts"
+            ssh "$HOST" bash -lc "set -e; cd /var/www/amanat; export DATABASE_URL=$Q_DB; npx tsx prisma/seed-goszakup.ts"
           fi
 
           echo "✅ Goszakup seed complete at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
