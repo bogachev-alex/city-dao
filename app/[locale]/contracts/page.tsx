@@ -297,6 +297,17 @@ export default function ContractsPage() {
   }, [loadContracts])
 
   const filtered = contracts.filter((c) => {
+    if (statusFilter !== 'all' && c.status !== statusFilter) return false
+    if (districtFilter !== 'all' && c.district !== districtFilter) return false
+    if (customerFilter.trim()) {
+      const q = customerFilter.trim().toLowerCase()
+      if (!(c.customerName || '').toLowerCase().includes(q)) return false
+    }
+    if (subjectTypeFilter !== 'all' && c.subjectType !== subjectTypeFilter) return false
+    if (amountMinFilter.trim()) {
+      const min = Number(amountMinFilter.replace(/\s/g, ''))
+      if (!Number.isNaN(min) && c.amount_usdc < min) return false
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       const inTitle = c.title.toLowerCase().includes(q)
