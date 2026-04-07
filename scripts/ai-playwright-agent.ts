@@ -96,7 +96,7 @@ const tools: ChatCompletionTool[] = [
     function: {
       name: 'browser_set_local_storage',
       description:
-        'Set a localStorage key on the current origin (e.g. amanat_auth JSON for demo roles).',
+        'Set a localStorage key on the current origin (e.g. straita_auth JSON for demo roles).',
       parameters: {
         type: 'object',
         properties: {
@@ -240,11 +240,11 @@ async function main() {
     if (msg.type() === 'error') appendSession(`[console.error] ${msg.text()}`)
   })
 
-  const system = `You are a QA agent testing the Amanat Protocol web app (Russian UI under /ru).
+  const system = `You are a QA agent testing the Straita web app (Russian UI under /ru).
 Use the browser_* tools to explore. Goals:
 - Open home /ru, confirm map or main content loads.
 - Visit /ru/contracts, /ru/login, /ru/blockchain briefly.
-- Optionally set localStorage key "amanat_auth" to a JSON demo user for CONTRACTOR or AKIMAT and open /ru/contractor or /ru/akimat if time allows.
+- Optionally set localStorage key "straita_auth" to a JSON demo user for CONTRACTOR or AKIMAT and open /ru/contractor or /ru/akimat if time allows.
 When satisfied or after a reasonable path, call session_done with a concise summary and improvement bullets (product + test stability).
 Respond in Russian for user-facing descriptions in the summary.`
 

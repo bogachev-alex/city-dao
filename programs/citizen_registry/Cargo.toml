@@ -1,7 +1,7 @@
 [package]
 name = "citizen-registry"
 version = "0.1.0"
-description = "Amanat Protocol — Citizen Registry (Soulbound Token)"
+description = "Straita — Citizen Registry (Soulbound Token)"
 edition = "2021"
 
 [lib]

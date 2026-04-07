@@ -22,8 +22,8 @@ export default function TokenNotification() {
       }, 4000)
     }
 
-    window.addEventListener('amanat-token-award', handleAward)
-    return () => window.removeEventListener('amanat-token-award', handleAward)
+    window.addEventListener('straita-token-award', handleAward)
+    return () => window.removeEventListener('straita-token-award', handleAward)
   }, [])
 
   if (notifications.length === 0) return null

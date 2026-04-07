@@ -4,7 +4,7 @@
     "name": "jury_mechanism",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Amanat Protocol — Jury Mechanism (Commit-Reveal Voting)"
+    "description": "Straita — Jury Mechanism (Commit-Reveal Voting)"
   },
   "instructions": [
     {

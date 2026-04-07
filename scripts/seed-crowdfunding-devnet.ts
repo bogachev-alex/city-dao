@@ -184,7 +184,7 @@ async function setOnChainPubkey(campaignId: string, onChainPubkey: string): Prom
 // ─── Main ───
 
 async function main() {
-  console.log('🚀 Amanat Protocol — Crowdfunding Devnet Seed')
+  console.log('🚀 Straita — Crowdfunding Devnet Seed')
   console.log(`   RPC: ${RPC_URL}`)
   console.log(`   Wallet: ${WALLET_PATH}`)
   console.log(`   API: ${API_BASE}`)

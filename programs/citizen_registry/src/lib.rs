@@ -45,7 +45,7 @@ pub mod citizen_registry {
 
         // Apply delta
         let new_score = profile.reputation_score.checked_add(delta)
-            .ok_or(AmanatError::Overflow)?;
+            .ok_or(StraitaError::Overflow)?;
         profile.reputation_score = new_score.max(0);
 
         // Update vote counters
@@ -197,7 +197,7 @@ pub struct ReputationUpdated {
 // ─── Errors ───
 
 #[error_code]
-pub enum AmanatError {
+pub enum StraitaError {
     #[msg("Arithmetic overflow")]
     Overflow,
 }

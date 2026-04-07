@@ -92,7 +92,7 @@ const AI_X  = ML+680+440; const AI_W  = R_-(ML+680+440); // 900
 // TITLE
 // ═══════════════════════════════════════════════════════════════
 E.push(T("ttl", ML+200, Y_TITLE, 1600,
-  "AMANAT PROTOCOL — Target Architecture  |  City DAO on Solana  |  Almaty, Kazakhstan",
+  "STRAITA — Target Architecture  |  City DAO on Solana  |  Almaty, Kazakhstan",
   22, "center", "#1c7ed6"));
 
 // ═══════════════════════════════════════════════════════════════

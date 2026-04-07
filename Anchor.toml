@@ -21,4 +21,4 @@ cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "npx tsx tests/amanat.test.ts"
+test = "npx tsx tests/straita.test.ts"
