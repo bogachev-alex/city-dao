@@ -131,42 +131,6 @@ export default function AdminPage() {
   const totalTranche = form.milestones.reduce((sum, m) => sum + (m.tranche_pct || 0), 0)
   const trancheValid = totalTranche === 100
 
-  const ALMATY_BOUNDS = {
-    latMin: 43.18, latMax: 43.35,
-    lngMin: 76.75, lngMax: 77.05,
-  }
-
-  const randomAlmatyCoords = () => {
-    const lat = (ALMATY_BOUNDS.latMin + Math.random() * (ALMATY_BOUNDS.latMax - ALMATY_BOUNDS.latMin)).toFixed(4)
-    const lng = (ALMATY_BOUNDS.lngMin + Math.random() * (ALMATY_BOUNDS.lngMax - ALMATY_BOUNDS.lngMin)).toFixed(4)
-    return { lat, lng }
-  }
-
-  const fillTestData = () => {
-    const now = Date.now()
-    const suffix = String(now).slice(-4)
-    const deadline = new Date(now + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    const defaultContractor = contractors.length > 0 ? contractors[0] : null
-    const coords = randomAlmatyCoords()
-    setForm({
-      title: `Тестовый контракт #${suffix}: ремонт тротуара`,
-      contractor: defaultContractor?.name || 'ТОО ТестПодряд',
-      contractorId: defaultContractor?.id || '',
-      amount_usdc: 120000000,
-      deadline,
-      district: DISTRICTS[Math.floor(Math.random() * DISTRICTS.length)],
-      category: CATEGORIES[0],
-      lat: coords.lat,
-      lng: coords.lng,
-      milestones: [
-        { desc: 'Подготовка участка и демонтаж', deadline_days: 10, tranche_pct: 30 },
-        { desc: 'Основные строительные работы', deadline_days: 25, tranche_pct: 50 },
-        { desc: 'Приемка и финальная уборка', deadline_days: 45, tranche_pct: 20 },
-      ],
-    })
-    setError(null)
-  }
-
   const handleSubmit = async () => {
     if (!wallet.publicKey) {
       setError(t('connectWalletHint'))
@@ -368,13 +332,6 @@ export default function AdminPage() {
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('registerContract')}</h1>
             </div>
-            <button
-              type="button"
-              onClick={fillTestData}
-              className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors"
-            >
-              {t('fillTestData')}
-            </button>
           </div>
           <p className="text-gray-500 dark:text-gray-400 ml-14">{t('addDescription')}</p>
         </div>
