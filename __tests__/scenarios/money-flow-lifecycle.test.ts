@@ -249,9 +249,17 @@ describe('D1: Full Contract Lifecycle', () => {
       id: 'sess-1',
       status: 'COMMIT_PHASE',
       milestoneId: 'm1',
+      contractId: 'contract-100m',
     })
     prismaMock.jurySession.update.mockResolvedValue({ id: 'sess-1', status: 'FINALIZED' })
-    prismaMock.milestone.update.mockResolvedValue({ id: 'm1', status: 'ACCEPTED' })
+    prismaMock.milestone.update.mockResolvedValue({ id: 'm1', status: 'ACCEPTED', tranchePct: 30 })
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'contract-100m', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+      milestones: [{ id: 'm1', status: 'ACCEPTED' }, { id: 'm2', status: 'PENDING' }],
+    })
+    prismaMock.contract.update.mockResolvedValue({
+      id: 'contract-100m', escrowAmount: BigInt(20_000_000 - 30_000_000), paidAmount: BigInt(30_000_000),
+    })
 
     const revealReq = new NextRequest('http://localhost/api/jury', {
       method: 'PATCH',
@@ -279,6 +287,18 @@ describe('D1: Full Contract Lifecycle', () => {
         data: { status: 'ACCEPTED' },
       }),
     )
+    // Verify contractor payment was processed
+    expect(prismaMock.contract.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          paidAmount: { increment: BigInt(30_000_000) },
+          escrowAmount: { decrement: BigInt(30_000_000) },
+        }),
+      }),
+    )
+    const revealData = await revealRes.json()
+    expect(revealData.payment).toBeDefined()
+    expect(revealData.payment.amount).toBe('30000000')
   })
 
   // Step 4 -------------------------------------------------------
@@ -334,6 +354,7 @@ describe('D1: Full Contract Lifecycle', () => {
       id: 'sess-2',
       status: 'COMMIT_PHASE',
       milestoneId: 'm2',
+      contractId: 'contract-100m',
     })
     prismaMock.jurySession.update.mockResolvedValue({ id: 'sess-2', status: 'FINALIZED' })
     prismaMock.milestone.update.mockResolvedValue({ id: 'm2', status: 'REJECTED' })

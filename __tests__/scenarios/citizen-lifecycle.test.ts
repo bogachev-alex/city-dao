@@ -318,9 +318,15 @@ describe('C2. Jury Commit-Reveal Full Cycle', () => {
       prismaMock.jurySession.findUnique.mockResolvedValue({
         status: 'COMMIT_PHASE',
         milestoneId: 'm1',
+        contractId: 'contract1',
       })
       prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
-      prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+      prismaMock.milestone.update.mockResolvedValue({ id: 'm1', tranchePct: 30 })
+      prismaMock.contract.findUnique.mockResolvedValue({
+        id: 'contract1', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+        milestones: [{ id: 'm1', status: 'ACCEPTED' }],
+      })
+      prismaMock.contract.update.mockResolvedValue({ id: 'contract1', escrowAmount: BigInt(0), paidAmount: BigInt(30_000_000) })
 
       const res = await JuryPATCH(
         new NextRequest('http://localhost/api/jury', {
@@ -414,9 +420,15 @@ describe('C2. Jury Commit-Reveal Full Cycle', () => {
       prismaMock.jurySession.findUnique.mockResolvedValue({
         status: 'REVEAL_PHASE',
         milestoneId: 'm1',
+        contractId: 'contract1',
       })
       prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
-      prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+      prismaMock.milestone.update.mockResolvedValue({ id: 'm1', tranchePct: 30 })
+      prismaMock.contract.findUnique.mockResolvedValue({
+        id: 'contract1', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+        milestones: [{ id: 'm1', status: 'ACCEPTED' }],
+      })
+      prismaMock.contract.update.mockResolvedValue({ id: 'contract1', escrowAmount: BigInt(0), paidAmount: BigInt(30_000_000) })
 
       const res = await JuryPATCH(
         new NextRequest('http://localhost/api/jury', {
@@ -462,9 +474,15 @@ describe('C2. Jury Commit-Reveal Full Cycle', () => {
       prismaMock.jurySession.findUnique.mockResolvedValue({
         status: 'COMMIT_PHASE',
         milestoneId: 'm1',
+        contractId: 'contract1',
       })
       prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
-      prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+      prismaMock.milestone.update.mockResolvedValue({ id: 'm1', tranchePct: 30 })
+      prismaMock.contract.findUnique.mockResolvedValue({
+        id: 'contract1', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+        milestones: [{ id: 'm1', status: 'ACCEPTED' }],
+      })
+      prismaMock.contract.update.mockResolvedValue({ id: 'contract1', escrowAmount: BigInt(0), paidAmount: BigInt(30_000_000) })
 
       const res = await JuryPATCH(
         new NextRequest('http://localhost/api/jury', {
@@ -504,9 +522,15 @@ describe('C2. Jury Commit-Reveal Full Cycle', () => {
       prismaMock.jurySession.findUnique.mockResolvedValue({
         status: 'REVEAL_PHASE',
         milestoneId: 'm1',
+        contractId: 'contract1',
       })
       prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
-      prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+      prismaMock.milestone.update.mockResolvedValue({ id: 'm1', tranchePct: 30 })
+      prismaMock.contract.findUnique.mockResolvedValue({
+        id: 'contract1', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+        milestones: [{ id: 'm1', status: 'ACCEPTED' }],
+      })
+      prismaMock.contract.update.mockResolvedValue({ id: 'contract1', escrowAmount: BigInt(0), paidAmount: BigInt(30_000_000) })
 
       const res = await JuryPATCH(
         new NextRequest('http://localhost/api/jury', {
@@ -572,9 +596,15 @@ describe('C2. Jury Commit-Reveal Full Cycle', () => {
       prismaMock.jurySession.findUnique.mockResolvedValue({
         status: 'COMMIT_PHASE',
         milestoneId: 'm1',
+        contractId: 'contract1',
       })
       prismaMock.jurySession.update.mockResolvedValue({ id: 's1' })
-      prismaMock.milestone.update.mockResolvedValue({ id: 'm1' })
+      prismaMock.milestone.update.mockResolvedValue({ id: 'm1', tranchePct: 30 })
+      prismaMock.contract.findUnique.mockResolvedValue({
+        id: 'contract1', totalAmount: BigInt(100_000_000), escrowAmount: BigInt(20_000_000), paidAmount: BigInt(0),
+        milestones: [{ id: 'm1', status: 'ACCEPTED' }],
+      })
+      prismaMock.contract.update.mockResolvedValue({ id: 'contract1', escrowAmount: BigInt(0), paidAmount: BigInt(30_000_000) })
 
       const revealRes = await JuryPATCH(
         new NextRequest('http://localhost/api/jury', {
