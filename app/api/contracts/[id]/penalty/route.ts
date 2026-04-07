@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyTransaction } from '@/lib/web3/verifyTransaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,16 @@ export async function POST(
 
   if (!type || !['TIME_OVERDUE', 'QUALITY_REJECTED', 'GHOST_SITE'].includes(type)) {
     return NextResponse.json({ error: 'Invalid penalty type' }, { status: 400 })
+  }
+
+  if (txSignature) {
+    const verification = await verifyTransaction(txSignature)
+    if (!verification.valid) {
+      return NextResponse.json(
+        { error: `Invalid on-chain transaction: ${verification.error}` },
+        { status: 400 }
+      )
+    }
   }
 
   const contract = await prisma.contract.findUnique({

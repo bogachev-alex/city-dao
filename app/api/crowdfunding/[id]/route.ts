@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { DEMO_CAMPAIGNS } from '@/lib/crowdfunding'
 import { promoteCrowdfundingToContract } from '@/lib/crowdfundingPromoteToContract'
+import { verifyTransaction } from '@/lib/web3/verifyTransaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,16 @@ export async function POST(
 
   if (!citizenId || !amount) {
     return NextResponse.json({ error: 'Missing citizenId or amount' }, { status: 400 })
+  }
+
+  if (txSignature) {
+    const verification = await verifyTransaction(txSignature)
+    if (!verification.valid) {
+      return NextResponse.json(
+        { error: `Invalid on-chain transaction: ${verification.error}` },
+        { status: 400 }
+      )
+    }
   }
 
   const amountBig = BigInt(amount)
