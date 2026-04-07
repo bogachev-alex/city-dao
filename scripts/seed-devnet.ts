@@ -168,7 +168,7 @@ async function accountExists(connection: Connection, pubkey: PublicKey): Promise
 // ─── Main ───
 
 async function main() {
-  console.log('🚀 Amanat Protocol — Devnet Seed Script')
+  console.log('🚀 Straita — Devnet Seed Script')
   console.log(`   RPC: ${RPC_URL}`)
   console.log(`   Wallet: ${WALLET_PATH}`)
   console.log()

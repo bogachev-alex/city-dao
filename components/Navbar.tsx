@@ -143,8 +143,8 @@ export default function Navbar() {
   useEffect(() => {
     setTokenBalance(getWallet().balance)
     function refresh() { setTokenBalance(getWallet().balance) }
-    window.addEventListener('amanat-token-award', refresh)
-    return () => window.removeEventListener('amanat-token-award', refresh)
+    window.addEventListener('straita-token-award', refresh)
+    return () => window.removeEventListener('straita-token-award', refresh)
   }, [])
 
   const DEFAULT_NAV: { href: string; labelKey: string }[] = [
@@ -182,7 +182,7 @@ export default function Navbar() {
               </svg>
             </div>
             <span className="font-bold text-lg tracking-wider text-gray-900 dark:text-white">
-              AMANAT <span className="text-emerald-600 dark:text-emerald-400">PROTOCOL</span>
+              STRAITA
             </span>
             <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40">
               DEVNET MODE

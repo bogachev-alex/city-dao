@@ -38,7 +38,7 @@ describe('AuthContext initial state', () => {
   })
 
   it('restores user from localStorage on mount', async () => {
-    localStorage.setItem('amanat_auth', JSON.stringify(CITIZEN))
+    localStorage.setItem('straita_auth', JSON.stringify(CITIZEN))
     const { result } = renderHook(() => useAuth(), { wrapper })
     await act(async () => {})
     expect(result.current.user).toEqual(CITIZEN)
@@ -59,7 +59,7 @@ describe('login', () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await act(async () => {})
     act(() => result.current.login(CITIZEN))
-    const stored = JSON.parse(localStorage.getItem('amanat_auth') ?? 'null')
+    const stored = JSON.parse(localStorage.getItem('straita_auth') ?? 'null')
     expect(stored).toEqual(CITIZEN)
   })
 })
@@ -78,7 +78,7 @@ describe('logout', () => {
     await act(async () => {})
     act(() => result.current.login(CITIZEN))
     act(() => result.current.logout())
-    expect(localStorage.getItem('amanat_auth')).toBeNull()
+    expect(localStorage.getItem('straita_auth')).toBeNull()
   })
 })
 

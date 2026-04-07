@@ -142,7 +142,7 @@ export default function LoginPage() {
         </div>
         <div>
           <div className="font-bold text-xl text-gray-900 dark:text-white tracking-wider">
-            AMANAT <span className="text-emerald-600 dark:text-emerald-400">PROTOCOL</span>
+            STRAITA
           </div>
           <div className="text-xs text-gray-500">Прозрачный мониторинг Алматы</div>
         </div>
@@ -180,7 +180,7 @@ export default function LoginPage() {
                 Аккаунт не найден
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400/80 mb-3">
-                Этот кошелёк ещё не зарегистрирован в системе Amanat Protocol.
+                Этот кошелёк ещё не зарегистрирован в системе Straita.
               </p>
               <Link
                 href="/register"
