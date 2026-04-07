@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("2Gjs7gsyaBayR38AACScCPz3ZgRf3JZvAoW63A5jKCd3");
+declare_id!("Ckghe1MiBJEX9DLHHMqtXaczXQyCNHrimq9GixjFiyE6");
 
 #[program]
 pub mod citizen_registry {

@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("HVZcSwtwNA2eJwEgimoDFTXe74pmGpvv1CDUXaEntzTd");
+declare_id!("F2wfSrALyt3qqUrV7pP2XqCm6mLN8rPLQ5UDTXz3C68w");
 
 #[program]
 pub mod jury_mechanism {

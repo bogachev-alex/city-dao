@@ -1,5 +1,5 @@
 {
-  "address": "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4",
+  "address": "GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU",
   "metadata": {
     "name": "contract_registry",
     "version": "0.1.0",
@@ -353,14 +353,14 @@
         "Called by penalty_engine via CPI."
       ],
       "discriminator": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+        101,
+        145,
+        239,
+        143,
+        87,
+        135,
+        113,
+        48
       ],
       "accounts": [
         {
@@ -530,14 +530,14 @@
     {
       "name": "PenaltyWithdrawn",
       "discriminator": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+        93,
+        143,
+        82,
+        124,
+        204,
+        72,
+        129,
+        222
       ]
     }
   ],
@@ -920,6 +920,23 @@
       }
     },
     {
+      "name": "PenaltyType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TimeOverdue"
+          },
+          {
+            "name": "QualityRejected"
+          },
+          {
+            "name": "GhostSite"
+          }
+        ]
+      }
+    },
+    {
       "name": "PenaltyWithdrawn",
       "type": {
         "kind": "struct",
@@ -935,23 +952,6 @@
           {
             "name": "treasury",
             "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "PenaltyType",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "TimeOverdue"
-          },
-          {
-            "name": "QualityRejected"
-          },
-          {
-            "name": "GhostSite"
           }
         ]
       }
