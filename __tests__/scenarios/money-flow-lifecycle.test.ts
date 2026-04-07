@@ -4,6 +4,9 @@ import { NextRequest } from 'next/server'
 import { prismaMock, resetPrismaMock } from '../mocks/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
+vi.mock('@/lib/web3/verifyTransaction', () => ({
+  verifyTransaction: vi.fn().mockResolvedValue({ valid: true }),
+}))
 vi.mock('@/lib/ownsContract', () => ({ ownsContract: vi.fn().mockReturnValue(true) }))
 vi.mock('@/lib/adl-token', () => ({
   mintAdlTo: vi.fn().mockResolvedValue('mock-sig'),

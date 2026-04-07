@@ -5,6 +5,10 @@ import { prismaMock, resetPrismaMock } from '../mocks/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
+vi.mock('@/lib/web3/verifyTransaction', () => ({
+  verifyTransaction: vi.fn().mockResolvedValue({ valid: true }),
+}))
+
 vi.mock('@/lib/web3/fetchDistrictTreasuryBalance', () => ({
   fetchDistrictTreasuryBalanceOnChain: vi.fn().mockResolvedValue(null),
   getReadOnlySolanaConnection: vi.fn(),

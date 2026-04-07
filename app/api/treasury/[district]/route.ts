@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { verifyTransaction } from '@/lib/web3/verifyTransaction'
 import {
   fetchDistrictTreasuryBalanceOnChain,
   getReadOnlySolanaConnection,
@@ -132,6 +133,14 @@ export async function PATCH(
   const { proposalId, citizenId, inFavor, txSignature } = body
   if (!txSignature || typeof txSignature !== 'string') {
     return NextResponse.json({ error: 'On-chain confirmation is required' }, { status: 400 })
+  }
+
+  const verification = await verifyTransaction(txSignature)
+  if (!verification.valid) {
+    return NextResponse.json(
+      { error: `Invalid on-chain transaction: ${verification.error}` },
+      { status: 400 }
+    )
   }
 
   // Check for duplicate vote

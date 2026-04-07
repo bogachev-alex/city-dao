@@ -4,6 +4,10 @@ import { prismaMock, resetPrismaMock } from '../mocks/prisma'
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
+vi.mock('@/lib/web3/verifyTransaction', () => ({
+  verifyTransaction: vi.fn().mockResolvedValue({ valid: true }),
+}))
+
 // Treasury route depends on web3 modules that need Solana — stub them out
 vi.mock('@/lib/web3/fetchDistrictTreasuryBalance', () => ({
   fetchDistrictTreasuryBalanceOnChain: vi.fn().mockResolvedValue(null),
