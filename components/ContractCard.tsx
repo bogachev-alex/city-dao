@@ -134,7 +134,7 @@ export default function ContractCard({ contract }: ContractCardProps) {
           <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                contract.status === 'penalized' ? 'bg-red-500' : 'bg-emerald-500'
+                effectiveStatus === 'penalized' ? 'bg-red-500' : 'bg-emerald-500'
               }`}
               style={{ width: `${progressPct}%` }}
             />
