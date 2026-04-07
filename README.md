@@ -5,13 +5,13 @@
   <img src="https://img.shields.io/badge/License-Hackathon_Prototype-orange" alt="License" />
 </p>
 
-<h1 align="center"><a href="https://74-208-191-110.nip.io:4443/" target"_blank">Amanat Protocol</a></h1>
+<h1 align="center"><a href="https://straita.app/" target"_blank">Amanat Protocol</a></h1>
 
 <p align="center">
   <b>City DAO для прозрачного мониторинга государственных строительных контрактов Алматы</b>
 </p>
 
-Dev server: https://74-208-191-110.nip.io:4443/
+https://straita.app
 ---
 
 ## Проблема
