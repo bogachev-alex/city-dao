@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ");
+declare_id!("44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy");
 
 #[program]
 pub mod district_treasury {
@@ -126,14 +126,15 @@ pub mod district_treasury {
         require!(total_votes >= 5, TreasuryError::QuorumNotMet);
         require!(proposal.votes_for > proposal.votes_against, TreasuryError::MajorityNotReached);
 
-        let treasury = &mut ctx.accounts.district_treasury;
-        require!(treasury.balance >= proposal.amount, TreasuryError::InsufficientFunds);
+        require!(ctx.accounts.district_treasury.balance >= proposal.amount, TreasuryError::InsufficientFunds);
 
         let amount = proposal.amount;
+        let district_bytes = ctx.accounts.district_treasury.district.clone();
+        let bump = ctx.accounts.district_treasury.bump;
         let treasury_seeds = &[
-            b"treasury",
-            treasury.district.as_bytes(),
-            &[treasury.bump],
+            b"treasury" as &[u8],
+            district_bytes.as_bytes(),
+            &[bump],
         ];
         let signer_seeds = &[&treasury_seeds[..]];
 
@@ -149,6 +150,7 @@ pub mod district_treasury {
             amount,
         )?;
 
+        let treasury = &mut ctx.accounts.district_treasury;
         treasury.balance -= amount;
         proposal.status = ProposalStatus::Executed;
 

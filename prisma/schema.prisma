@@ -30,37 +30,38 @@ enum MilestoneStatus {
 }
 
 model Contract {
-  id            String         @id @default(cuid())
-  title         String
-  description   String?
-  district      String
-  lat           Float
-  lng           Float
-  contractorId  String
-  contractor    Contractor     @relation(fields: [contractorId], references: [id])
-  totalAmount   BigInt         // in tenge
-  escrowAmount  BigInt         // 20% of totalAmount
-  penaltyAmount BigInt         @default(0)
-  startDate     DateTime       @default(now())
-  deadline      DateTime
-  status        ContractStatus @default(ACTIVE)
-  category      String?
+  id             String         @id @default(cuid())
+  title          String
+  description    String?
+  district       String
+  lat            Float
+  lng            Float
+  contractorId   String
+  contractor     Contractor     @relation(fields: [contractorId], references: [id])
+  totalAmount    BigInt // in tenge
+  escrowAmount   BigInt // 20% of totalAmount
+  paidAmount     BigInt         @default(0) // cumulative payments to contractor
+  penaltyAmount  BigInt         @default(0)
+  startDate      DateTime       @default(now())
+  deadline       DateTime
+  status         ContractStatus @default(ACTIVE)
+  category       String?
   /// Goszakup.gov.kz registry number (ЕГЗ), e.g. 24953097
-  registryNumber String?       @unique
+  registryNumber String?        @unique
   /// Customer / заказчик (full name as on the portal)
   customerName   String?
   /// Subject type: Работа (ref_subject_type=2), Товар, Услуга, etc.
   subjectType    String?
-  onChainPubkey String?        @unique // Solana account address
+  onChainPubkey  String?        @unique // Solana account address
 
-  milestones    Milestone[]
-  jurySessions  JurySession[]
-  penalties     Penalty[]
-  workLogs      WorkLog[]
-  crowdfunding  CrowdfundingCampaign?
+  milestones   Milestone[]
+  jurySessions JurySession[]
+  penalties    Penalty[]
+  workLogs     WorkLog[]
+  crowdfunding CrowdfundingCampaign?
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Milestone {
@@ -68,16 +69,16 @@ model Milestone {
   contractId   String
   contract     Contract        @relation(fields: [contractId], references: [id])
   description  String
-  deadlineDays Int             // days from contract start
-  tranchePct   Int             // % of total payment
+  deadlineDays Int // days from contract start
+  tranchePct   Int // % of total payment
   status       MilestoneStatus @default(PENDING)
   sortOrder    Int             @default(0)
 
   jurySessions JurySession[]
   workLogs     WorkLog[]
 
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────
@@ -85,24 +86,24 @@ model Milestone {
 // ─────────────────────────────────────────────
 
 enum CitizenTier {
-  NEW        // 0-49
-  ACTIVE     // 50-149
-  TRUSTED    // 150-299
-  GUARDIAN   // 300+
+  NEW // 0-49
+  ACTIVE // 50-149
+  TRUSTED // 150-299
+  GUARDIAN // 300+
 }
 
 model Citizen {
-  id              String      @id @default(cuid())
-  walletAddress   String      @unique
-  district        String
-  iinHash         String      @unique // SHA-256(IIN + salt), never raw IIN
-  reputationScore Int         @default(100)
-  tier            CitizenTier @default(NEW)
-  isEligible      Boolean     @default(true)
-  banUntil        DateTime?
-  votesCast       Int         @default(0)
-  votesWithMajority Int       @default(0)
-  missedJuryCount Int         @default(0)
+  id                String      @id @default(cuid())
+  walletAddress     String      @unique
+  district          String
+  iinHash           String      @unique // SHA-256(IIN + salt), never raw IIN
+  reputationScore   Int         @default(100)
+  tier              CitizenTier @default(NEW)
+  isEligible        Boolean     @default(true)
+  banUntil          DateTime?
+  votesCast         Int         @default(0)
+  votesWithMajority Int         @default(0)
+  missedJuryCount   Int         @default(0)
 
   juryVotes       JuryVote[]
   suggestions     CitizenSuggestion[]
@@ -110,10 +111,10 @@ model Citizen {
   suggestionVotes SuggestionVote[]
   nfts            CitizenNft[]
   contributions   CampaignContribution[]
-  campaigns       CrowdfundingCampaign[]  // campaigns created by this citizen
+  campaigns       CrowdfundingCampaign[] // campaigns created by this citizen
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────
@@ -121,11 +122,11 @@ model Citizen {
 // ─────────────────────────────────────────────
 
 enum JurySessionStatus {
-  SELECTING     // VRF selection in progress
-  COMMIT_PHASE  // 48h commit window
-  REVEAL_PHASE  // 24h reveal window
-  FINALIZED     // votes tallied
-  ESCALATED     // tie → 5-person jury
+  SELECTING // VRF selection in progress
+  COMMIT_PHASE // 48h commit window
+  REVEAL_PHASE // 24h reveal window
+  FINALIZED // votes tallied
+  ESCALATED // tie → 5-person jury
 }
 
 enum VoteValue {
@@ -140,33 +141,33 @@ model JurySession {
   milestoneId    String
   milestone      Milestone         @relation(fields: [milestoneId], references: [id])
   status         JurySessionStatus @default(SELECTING)
-  vrfResult      String?           // hex-encoded VRF proof
+  vrfResult      String? // hex-encoded VRF proof
   commitDeadline DateTime?
   revealDeadline DateTime?
-  result         VoteValue?        // final outcome after finalization
+  result         VoteValue? // final outcome after finalization
   weightedAccept Int               @default(0)
   weightedReject Int               @default(0)
 
-  votes          JuryVote[]
+  votes JuryVote[]
 
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model JuryVote {
-  id           String       @id @default(cuid())
+  id           String      @id @default(cuid())
   sessionId    String
-  session      JurySession  @relation(fields: [sessionId], references: [id])
+  session      JurySession @relation(fields: [sessionId], references: [id])
   citizenId    String
-  citizen      Citizen      @relation(fields: [citizenId], references: [id])
-  isExpert     Boolean      @default(false) // expert vote weight = 2
-  commitHash   String?      // SHA-256(vote + salt)
+  citizen      Citizen     @relation(fields: [citizenId], references: [id])
+  isExpert     Boolean     @default(false) // expert vote weight = 2
+  commitHash   String? // SHA-256(vote + salt)
   revealedVote VoteValue?
   revealedSalt String?
-  weight       Int          @default(1) // 1 for citizen, 2 for expert
-  rewardTenge  Int?         // 500-1000 citizen, 2000-5000 expert
+  weight       Int         @default(1) // 1 for citizen, 2 for expert
+  rewardTenge  Int? // 500-1000 citizen, 2000-5000 expert
 
-  createdAt    DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([sessionId, citizenId])
 }
@@ -176,24 +177,24 @@ model JuryVote {
 // ─────────────────────────────────────────────
 
 enum PenaltyType {
-  TIME_OVERDUE     // 1% per day
+  TIME_OVERDUE // 1% per day
   QUALITY_REJECTED // 10% per rejection
-  GHOST_SITE       // 5% per ghost-site report
+  GHOST_SITE // 5% per ghost-site report
 }
 
 model Penalty {
-  id                  String           @id @default(cuid())
-  contractId          String
-  contract            Contract         @relation(fields: [contractId], references: [id])
-  type                PenaltyType
-  amountTenge         BigInt
-  daysOverdue         Int?
-  triggeredBy         String?          // wallet address of citizen who called check_deadline
-  txSignature         String?          // Solana tx signature
-  districtTreasuryId  String?
-  districtTreasury    DistrictTreasury? @relation(fields: [districtTreasuryId], references: [id])
+  id                 String            @id @default(cuid())
+  contractId         String
+  contract           Contract          @relation(fields: [contractId], references: [id])
+  type               PenaltyType
+  amountTenge        BigInt
+  daysOverdue        Int?
+  triggeredBy        String? // wallet address of citizen who called check_deadline
+  txSignature        String? // Solana tx signature
+  districtTreasuryId String?
+  districtTreasury   DistrictTreasury? @relation(fields: [districtTreasuryId], references: [id])
 
-  createdAt           DateTime         @default(now())
+  createdAt DateTime @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -216,8 +217,8 @@ model DistrictTreasury {
   proposals     SpendingProposal[]
   penalties     Penalty[]
 
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SpendingProposal {
@@ -234,11 +235,11 @@ model SpendingProposal {
   votesAgainst Int              @default(0)
   quorumMet    Boolean          @default(false)
 
-  aiResearch   AiResearchReport?
-  votes        ProposalVote[]
+  aiResearch AiResearchReport?
+  votes      ProposalVote[]
 
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProposalVote {
@@ -249,7 +250,7 @@ model ProposalVote {
   citizen    Citizen          @relation(fields: [citizenId], references: [id])
   inFavor    Boolean
 
-  createdAt  DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([proposalId, citizenId])
 }
@@ -265,21 +266,21 @@ enum RiskLevel {
 }
 
 model AiResearchReport {
-  id          String           @id @default(cuid())
-  proposalId  String           @unique
-  proposal    SpendingProposal @relation(fields: [proposalId], references: [id])
-  swot        Json             // { strengths, weaknesses, opportunities, threats }
-  costAnalysis Json            // { proposed, market_average, deviation_pct, verdict }
-  similarProjects Json         // [{ city, country, year, budget_usd, outcome, lessons }]
-  riskScore   Int              // 0-100
-  riskLevel   RiskLevel
-  keyConcerns Json             // string[]
-  keyPositives Json            // string[]
-  sourcesUsed Json             // string[]
+  id              String           @id @default(cuid())
+  proposalId      String           @unique
+  proposal        SpendingProposal @relation(fields: [proposalId], references: [id])
+  swot            Json // { strengths, weaknesses, opportunities, threats }
+  costAnalysis    Json // { proposed, market_average, deviation_pct, verdict }
+  similarProjects Json // [{ city, country, year, budget_usd, outcome, lessons }]
+  riskScore       Int // 0-100
+  riskLevel       RiskLevel
+  keyConcerns     Json // string[]
+  keyPositives    Json // string[]
+  sourcesUsed     Json // string[]
 
-  suggestion  CitizenSuggestion?
+  suggestion CitizenSuggestion?
 
-  createdAt   DateTime         @default(now())
+  createdAt DateTime @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -294,11 +295,11 @@ enum WorkLogType {
 }
 
 enum ContractorRating {
-  AAA        // 90-100
-  AA         // 75-89
-  A          // 60-74
-  B          // 40-59
-  C          // 20-39
+  AAA // 90-100
+  AA // 75-89
+  A // 60-74
+  B // 40-59
+  C // 20-39
   BLACKLISTED // <20 or 3 strikes
 }
 
@@ -308,17 +309,17 @@ model Contractor {
   walletAddress   String?          @unique
   rating          ContractorRating @default(AA)
   reputationScore Int              @default(75)
-  onTimeRate      Float            @default(1.0)   // 0-1
-  acceptanceRate  Float            @default(1.0)   // jury first-attempt acceptance
-  updateFrequency Float            @default(1.0)   // 0-1, higher = more frequent
-  gpsAccuracy     Float            @default(1.0)   // 0-1
-  blockerSpeed    Float            @default(1.0)   // 0-1
+  onTimeRate      Float            @default(1.0) // 0-1
+  acceptanceRate  Float            @default(1.0) // jury first-attempt acceptance
+  updateFrequency Float            @default(1.0) // 0-1, higher = more frequent
+  gpsAccuracy     Float            @default(1.0) // 0-1
+  blockerSpeed    Float            @default(1.0) // 0-1
 
-  contracts       Contract[]
-  workLogs        WorkLog[]
+  contracts Contract[]
+  workLogs  WorkLog[]
 
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model WorkLog {
@@ -330,17 +331,17 @@ model WorkLog {
   type           WorkLogType
   title          String
   description    String?
-  completionPct  Int?        // 0-100
+  completionPct  Int? // 0-100
   workersOnSite  Int?
   equipmentCount Int?
-  photoHashes    Json?       // IPFS/Arweave hashes, string[]
+  photoHashes    Json? // IPFS/Arweave hashes, string[]
   gpsLat         Float?
   gpsLng         Float?
   gpsValid       Boolean     @default(false) // within 500m of contract
   milestoneId    String?
   milestone      Milestone?  @relation(fields: [milestoneId], references: [id])
 
-  createdAt      DateTime    @default(now())
+  createdAt DateTime @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -377,17 +378,17 @@ model CitizenSuggestion {
   budgetMin       BigInt?
   budgetMax       BigInt?
   affectedCount   Int?
-  photoHashes     Json?            // IPFS hashes, string[]
+  photoHashes     Json? // IPFS hashes, string[]
   status          SuggestionStatus @default(PENDING_UPVOTES)
-  upvotesNeeded   Int              // 10 for Bronze, 5 for Silver, 0 for Gold
+  upvotesNeeded   Int // 10 for Bronze, 5 for Silver, 0 for Gold
   upvotesReceived Int              @default(0)
 
-  votes           SuggestionVote[]
-  aiReport        AiResearchReport? @relation(fields: [aiReportId], references: [id])
-  aiReportId      String?          @unique
+  votes      SuggestionVote[]
+  aiReport   AiResearchReport? @relation(fields: [aiReportId], references: [id])
+  aiReportId String?           @unique
 
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SuggestionVote {
@@ -398,7 +399,7 @@ model SuggestionVote {
   citizen      Citizen           @relation(fields: [citizenId], references: [id])
   isUpvote     Boolean
 
-  createdAt    DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([suggestionId, citizenId])
 }
@@ -408,28 +409,28 @@ model SuggestionVote {
 // ─────────────────────────────────────────────
 
 enum NftType {
-  ACTIVE_CITIZEN    // rep >= 50
-  TRUSTED_CITIZEN   // rep >= 150
-  GUARDIAN_CITIZEN   // rep >= 300
-  CITY_BUILDER      // funded suggestion
-  FAIR_JUDGE        // 10 jury votes + accuracy
-  WHISTLEBLOWER     // flagged cheating contractor
+  ACTIVE_CITIZEN // rep >= 50
+  TRUSTED_CITIZEN // rep >= 150
+  GUARDIAN_CITIZEN // rep >= 300
+  CITY_BUILDER // funded suggestion
+  FAIR_JUDGE // 10 jury votes + accuracy
+  WHISTLEBLOWER // flagged cheating contractor
   DISTRICT_CHAMPION // most active citizen of month
   DONOR_PARTICIPANT // crowdfunding 500-4999 ₸
-  DONOR_PATRON      // crowdfunding 5000-49999 ₸
-  DONOR_FOUNDER     // crowdfunding 50000+ ₸
-  DONOR_CORPORATE   // corporate crowdfunding donor
+  DONOR_PATRON // crowdfunding 5000-49999 ₸
+  DONOR_FOUNDER // crowdfunding 50000+ ₸
+  DONOR_CORPORATE // corporate crowdfunding donor
 }
 
 model CitizenNft {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   citizenId   String
-  citizen     Citizen  @relation(fields: [citizenId], references: [id])
+  citizen     Citizen @relation(fields: [citizenId], references: [id])
   type        NftType
-  metadata    Json?    // project metadata, achievement details
-  mintAddress String?  // Solana NFT mint address
+  metadata    Json? // project metadata, achievement details
+  mintAddress String? // Solana NFT mint address
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([citizenId, type])
 }
@@ -439,62 +440,62 @@ model CitizenNft {
 // ─────────────────────────────────────────────
 
 enum CrowdfundingStatus {
-  ACTIVE         // accepting contributions
-  FUNDED         // citizen target reached, waiting for state match
-  MATCHED        // state deposited their share
-  IN_PROGRESS    // linked to a contract, work started
-  COMPLETED      // project delivered
-  EXPIRED        // deadline passed without reaching target → auto-refund
+  ACTIVE // accepting contributions
+  FUNDED // citizen target reached, waiting for state match
+  MATCHED // state deposited their share
+  IN_PROGRESS // linked to a contract, work started
+  COMPLETED // project delivered
+  EXPIRED // deadline passed without reaching target → auto-refund
 }
 
 enum CrowdfundingCategory {
-  PLAYGROUND     // 90% state
-  SCHOOL         // 90% state
-  ROADS          // 70% state
-  LANDSCAPING    // 50% state
-  COMMERCIAL     // 0% state
+  PLAYGROUND // 90% state
+  SCHOOL // 90% state
+  ROADS // 70% state
+  LANDSCAPING // 50% state
+  COMMERCIAL // 0% state
 }
 
 model CrowdfundingCampaign {
-  id              String              @id @default(cuid())
-  title           String
-  description     String
-  district        String
-  lat             Float
-  lng             Float
-  category        CrowdfundingCategory
-  status          CrowdfundingStatus  @default(ACTIVE)
-  targetAmount    BigInt              // total project cost (tenge)
-  citizenTarget   BigInt              // citizen share (auto-calculated from category)
-  stateMatch      BigInt              // state subsidy (auto-calculated from category)
-  citizenRaised   BigInt              @default(0)
-  stateDeposited  Boolean             @default(false)
-  donorCount      Int                 @default(0)
-  deadline        DateTime
-  creatorId       String
-  creator         Citizen             @relation(fields: [creatorId], references: [id])
-  contractId      String?             @unique // linked contract after funding
-  contract        Contract?           @relation(fields: [contractId], references: [id])
-  onChainPubkey   String?             @unique // Solana campaign account address
+  id             String               @id @default(cuid())
+  title          String
+  description    String
+  district       String
+  lat            Float
+  lng            Float
+  category       CrowdfundingCategory
+  status         CrowdfundingStatus   @default(ACTIVE)
+  targetAmount   BigInt // total project cost (tenge)
+  citizenTarget  BigInt // citizen share (auto-calculated from category)
+  stateMatch     BigInt // state subsidy (auto-calculated from category)
+  citizenRaised  BigInt               @default(0)
+  stateDeposited Boolean              @default(false)
+  donorCount     Int                  @default(0)
+  deadline       DateTime
+  creatorId      String
+  creator        Citizen              @relation(fields: [creatorId], references: [id])
+  contractId     String?              @unique // linked contract after funding
+  contract       Contract?            @relation(fields: [contractId], references: [id])
+  onChainPubkey  String?              @unique // Solana campaign account address
 
-  contributions   CampaignContribution[]
+  contributions CampaignContribution[]
 
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CampaignContribution {
-  id          String              @id @default(cuid())
+  id          String               @id @default(cuid())
   campaignId  String
   campaign    CrowdfundingCampaign @relation(fields: [campaignId], references: [id])
   citizenId   String
-  citizen     Citizen             @relation(fields: [citizenId], references: [id])
-  amount      BigInt              // in tenge
-  anonymous   Boolean             @default(false)
-  txSignature String?             // Solana tx signature
-  nftMint     String?             // NFT mint address for donor reward
+  citizen     Citizen              @relation(fields: [citizenId], references: [id])
+  amount      BigInt // in tenge
+  anonymous   Boolean              @default(false)
+  txSignature String? // Solana tx signature
+  nftMint     String? // NFT mint address for donor reward
 
-  createdAt   DateTime            @default(now())
+  createdAt DateTime @default(now())
 
   @@index([campaignId])
   @@index([citizenId])

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4");
+declare_id!("GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU");
 
 #[program]
 pub mod contract_registry {

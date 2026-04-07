@@ -1,5 +1,5 @@
 {
-  "address": "3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY",
+  "address": "G11sZPjAuksZ417dWH2zysKwr1p6XjNAaonUtqveDPSd",
   "metadata": {
     "name": "crowdfunding",
     "version": "0.1.0",
@@ -466,7 +466,8 @@
       "name": "refund_one",
       "docs": [
         "After deadline (and if target not reached): return a single donor's `lamports` from escrow PDA.",
-        "Permissionless — anyone can execute it — and it pays a small fee from `refund_exec_vault`."
+        "This is permissionless — anyone can execute it — and it pays a small fee from `refund_exec_vault`",
+        "to incentivize automation (keepers)."
       ],
       "discriminator": [
         51,
@@ -691,6 +692,19 @@
       ]
     },
     {
+      "name": "RefundOneExecuted",
+      "discriminator": [
+        12,
+        174,
+        234,
+        44,
+        104,
+        228,
+        33,
+        60
+      ]
+    },
+    {
       "name": "StateMatched",
       "discriminator": [
         165,
@@ -779,6 +793,16 @@
       "code": 6014,
       "name": "RefundExecDepositTooLow",
       "msg": "Refund executor deposit below minimum (creator must fund relayer reimbursement)"
+    },
+    {
+      "code": 6015,
+      "name": "AlreadyRefunded",
+      "msg": "Donor already refunded"
+    },
+    {
+      "code": 6016,
+      "name": "FeeVaultTooLow",
+      "msg": "Refund executor vault too low to pay caller fee"
     }
   ],
   "types": [
@@ -1089,6 +1113,34 @@
           {
             "name": "donor_count",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RefundOneExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "donor",
+            "type": "pubkey"
+          },
+          {
+            "name": "refunded_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "fee_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "caller",
+            "type": "pubkey"
           }
         ]
       }

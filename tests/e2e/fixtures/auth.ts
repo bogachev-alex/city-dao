@@ -23,5 +23,6 @@ export async function seedLocalStorageAuth(page: Page, json: string) {
   await page.goto('/ru/login')
   await page.evaluate((payload) => {
     localStorage.setItem('amanat_auth', payload)
+    localStorage.setItem('onboarding_completed', 'true')
   }, json)
 }

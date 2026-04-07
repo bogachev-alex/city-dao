@@ -17,7 +17,7 @@ test.describe('Role switching E2E', () => {
     await page.goto('/ru/login')
     await page.getByRole('button', { name: /Подрядчик/i }).click()
     await page.waitForURL(/\/contractor/)
-    await expect(page.getByText(/СтройАлматы/i)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/СтройАлматы/i).first()).toBeVisible({ timeout: 15_000 })
   })
 
   test('demo login as akimat works', async ({ page }) => {
@@ -34,11 +34,11 @@ test.describe('Role switching E2E', () => {
     const userButton = page.locator('nav').locator('button').filter({ hasText: /Алибек|Демо/i })
     await expect(userButton).toBeVisible()
     await userButton.click()
-    // Dropdown should show all 3 roles
-    await expect(page.getByText('Гражданин').last()).toBeVisible()
-    await expect(page.getByText('Подрядчик').last()).toBeVisible()
-    await expect(page.getByText('Представитель акимата')).toBeVisible()
-    await expect(page.getByText('Выйти')).toBeVisible()
+    // Dropdown should show all 3 demo role names
+    await expect(page.getByText(/Алибек/i).last()).toBeVisible()
+    await expect(page.getByText(/СтройАлматы/i).last()).toBeVisible()
+    await expect(page.getByText(/Сотрудник акимата/i).last()).toBeVisible()
+    await expect(page.getByText(/Выйти/i)).toBeVisible()
   })
 
   test('logout redirects to login page', async ({ page }) => {

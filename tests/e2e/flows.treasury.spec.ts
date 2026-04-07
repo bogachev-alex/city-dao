@@ -7,7 +7,7 @@ test.describe('Treasury E2E flows', () => {
     // Balance card
     await expect(page.getByText(/Баланс казны района/i)).toBeVisible({ timeout: 15_000 })
     // Penalties section
-    await expect(page.getByText(/Штрафы подрядчиков/i)).toBeVisible()
+    await expect(page.getByText(/Штрафы подрядчиков/i).first()).toBeVisible()
     // Proposals section
     await expect(page.getByText(/Предложения по расходам/i)).toBeVisible()
   })
@@ -25,7 +25,7 @@ test.describe('Treasury E2E flows', () => {
   test('penalty list shows fine details', async ({ page }) => {
     await page.goto('/ru/treasury/' + encodeURIComponent('Ауэзовский'))
     // Wait for penalty data to load
-    const penaltySection = page.getByText(/Штрафы подрядчиков/i)
+    const penaltySection = page.getByText(/Штрафы подрядчиков/i).first()
     await expect(penaltySection).toBeVisible({ timeout: 15_000 })
 
     // Check for penalty type labels (from demo data)

@@ -1,5 +1,5 @@
 {
-  "address": "9xYTKtPkMDJdVqm56f5ttx5XUgQU5S4nBLT3WHoSZxeT",
+  "address": "DBMPFjrt7aaiCh4s56wrsge2uMcu8zn9Wb7o6LE28E7z",
   "metadata": {
     "name": "penalty_engine",
     "version": "0.1.0",
@@ -9,16 +9,6 @@
   "instructions": [
     {
       "name": "execute_penalty",
-      "docs": [
-        "Execute penalty and transfer funds from escrow to district treasury.",
-        "Anyone can call — fully decentralized enforcement.",
-        "",
-        "Formula:",
-        "time_penalty    = total_amount × days_overdue / 100   (1% per day)",
-        "quality_penalty = total_amount × rejection_count × 10 / 100  (10% per rejection)",
-        "ghost_penalty   = total_amount × ghost_count × 5 / 100  (5% per ghost site)",
-        "total capped at 30% of total_amount"
-      ],
       "discriminator": [
         25,
         147,
@@ -31,11 +21,7 @@
       ],
       "accounts": [
         {
-          "name": "contract_data",
-          "docs": [
-            "The contract being penalized — read-only reference.",
-            "In production, this would be a CPI to contract_registry."
-          ]
+          "name": "contract_data"
         },
         {
           "name": "government_contract",
@@ -79,11 +65,11 @@
         },
         {
           "name": "district_treasury_program",
-          "address": "HtBdghVoWexYkmmpUaCc2NrpU2YQTSytyhvtSL4QCQdJ"
+          "address": "44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy"
         },
         {
           "name": "contract_registry_program",
-          "address": "6E9SJu8QPEAoyuZRh9SBhVMtkYypFmgYsHFbJb792pz4"
+          "address": "GGtDAGtHMRd6BxDGyoSXXVfevDDjhj8XnTnAYftnGmBU"
         },
         {
           "name": "caller",
@@ -138,6 +124,19 @@
       ]
     },
     {
+      "name": "GovernmentContract",
+      "discriminator": [
+        156,
+        20,
+        92,
+        179,
+        239,
+        77,
+        158,
+        133
+      ]
+    },
+    {
       "name": "PenaltyRecord",
       "discriminator": [
         139,
@@ -189,10 +188,6 @@
   "types": [
     {
       "name": "ContractRef",
-      "docs": [
-        "Minimal reference to contract data needed for penalty calculation.",
-        "In production, this is read via CPI from contract_registry."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -207,6 +202,173 @@
           {
             "name": "district",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Penalized"
+          },
+          {
+            "name": "Completed"
+          },
+          {
+            "name": "Terminated"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GovernmentContract",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "contractor",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "district",
+            "type": "string"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          },
+          {
+            "name": "penalty_amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ContractStatus"
+              }
+            }
+          },
+          {
+            "name": "lat",
+            "type": "f64"
+          },
+          {
+            "name": "lng",
+            "type": "f64"
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "milestones_accepted",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "milestones",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Milestone"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Milestone",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "deadline_days",
+            "type": "u16"
+          },
+          {
+            "name": "tranche_pct",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MilestoneStatus"
+              }
+            }
+          },
+          {
+            "name": "sort_order",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MilestoneStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Submitted"
+          },
+          {
+            "name": "UnderReview"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Rejected"
+          },
+          {
+            "name": "Overdue"
           }
         ]
       }

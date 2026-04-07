@@ -67,6 +67,7 @@
     "pino-pretty": "^13.0.0",
     "postcss": "^8.4.39",
     "prisma": "^6.19.2",
+    "solana-bankrun": "^0.4.0",
     "tailwindcss": "^3.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.5.3",

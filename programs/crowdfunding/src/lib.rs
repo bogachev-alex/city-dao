@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("3Mvy26WHuEW2X1Nwt9Ve6b4n5yEEwRPrLi7ie3tCo2MY");
+declare_id!("G11sZPjAuksZ417dWH2zysKwr1p6XjNAaonUtqveDPSd");
 
 /// Minimum SOL the creator must lock for automated `refund_all` execution (pays relayer after refunds).
 pub const MIN_REFUND_EXEC_DEPOSIT_LAMPORTS: u64 = 1_000_000; // 0.001 SOL
@@ -177,13 +177,10 @@ pub mod crowdfunding {
     }
 
     pub fn match_funds(ctx: Context<MatchFunds>) -> Result<()> {
-        let campaign = &mut ctx.accounts.campaign;
-        let escrow = &mut ctx.accounts.escrow;
+        require!(ctx.accounts.campaign.status == CampaignStatus::Funded, CrowdfundingError::TargetNotReached);
+        require!(!ctx.accounts.campaign.state_deposited, CrowdfundingError::AlreadyMatched);
 
-        require!(campaign.status == CampaignStatus::Funded, CrowdfundingError::TargetNotReached);
-        require!(!campaign.state_deposited, CrowdfundingError::AlreadyMatched);
-
-        let match_amount = campaign.state_match;
+        let match_amount = ctx.accounts.campaign.state_match;
 
         anchor_lang::system_program::transfer(
             CpiContext::new(
@@ -196,8 +193,10 @@ pub mod crowdfunding {
             match_amount,
         )?;
 
+        let campaign = &mut ctx.accounts.campaign;
         campaign.state_deposited = true;
         campaign.status = CampaignStatus::Matched;
+        let escrow = &mut ctx.accounts.escrow;
         escrow.total_deposited = escrow
             .total_deposited
             .checked_add(match_amount)
