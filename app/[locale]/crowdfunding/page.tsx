@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   DEMO_CAMPAIGNS,
@@ -19,15 +20,6 @@ import { DISTRICTS } from '@/lib/contracts'
 import CampaignCard from '@/components/CampaignCard'
 import { useRedirectContractorFromCitizenEconomyPages } from '@/lib/contractorCitizenRoutes'
 
-const STATUS_FILTERS: { value: CampaignStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'active', label: 'Сбор средств' },
-  { value: 'funded', label: 'Собрано' },
-  { value: 'in_progress', label: 'В работе' },
-  { value: 'completed', label: 'Завершённые' },
-  { value: 'expired', label: 'Истёкшие' },
-]
-
 const CATEGORY_FILTERS: { value: CampaignCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'Все категории' },
   ...Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => ({
@@ -37,7 +29,17 @@ const CATEGORY_FILTERS: { value: CampaignCategory | 'all'; label: string }[] = [
 ]
 
 export default function CrowdfundingPage() {
+  const t = useTranslations('crowdfunding')
   const { holdUi } = useRedirectContractorFromCitizenEconomyPages()
+
+  const STATUS_FILTERS: { value: CampaignStatus | 'all'; label: string }[] = [
+    { value: 'all', label: t('statusAll') },
+    { value: 'active', label: t('statusActive') },
+    { value: 'funded', label: t('statusFunded') },
+    { value: 'in_progress', label: t('statusInProgress') },
+    { value: 'completed', label: t('statusCompleted') },
+    { value: 'expired', label: t('statusExpired') },
+  ]
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | 'all'>('all')

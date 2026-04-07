@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   DEMO_CAMPAIGNS,
@@ -52,9 +53,11 @@ export default function MyCrowdfundingPage() {
   })
   const nftCount = MY_DONATIONS.length
 
+  const t = useTranslations('crowdfundingMy')
+
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'donations', label: 'Мои взносы' },
-    { id: 'created', label: 'Мои кампании' },
+    { id: 'donations', label: t('tabDonations') },
+    { id: 'created', label: t('tabCreated') },
   ]
 
   if (holdUi) {
@@ -72,13 +75,13 @@ export default function MyCrowdfundingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
             <Link href="/crowdfunding" className="hover:text-emerald-600 transition-colors">
-              Краудфандинг
+              {t('breadcrumbCrowdfunding')}
             </Link>
             <span>/</span>
-            <span className="text-gray-600 dark:text-gray-300">Мои участия</span>
+            <span className="text-gray-600 dark:text-gray-300">{t('breadcrumbMy')}</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Мои участия</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Ваши взносы, NFT-награды и созданные кампании</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('heading')}</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">{t('description')}</p>
         </div>
       </div>
 
@@ -86,19 +89,19 @@ export default function MyCrowdfundingPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-500/10 dark:to-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-5">
-            <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Всего внесено</div>
+            <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">{t('statTotalDonated')}</div>
             <CryptoTooltip amount={totalDonated}><span className="text-2xl font-bold text-gray-900 dark:text-white">{formatTenge(totalDonated)}</span></CryptoTooltip>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Проектов поддержано</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('statProjectsSupported')}</div>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{MY_DONATIONS.length}</div>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Активных кампаний</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('statActiveCampaigns')}</div>
             <div className="text-2xl font-bold text-blue-600">{activeDonations.length}</div>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">NFT получено</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('statNftReceived')}</div>
             <div className="text-2xl font-bold text-amber-600">{nftCount}</div>
           </div>
         </div>
@@ -185,8 +188,8 @@ export default function MyCrowdfundingPage() {
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {campaign.status === 'expired'
-                          ? 'Средства возвращены на кошелёк'
-                          : 'Срок сбора истёк — новые взносы недоступны'}
+                          ? t('fundsReturned')
+                          : t('deadlineExpiredNoMore')}
                       </div>
                     )}
                   </div>
@@ -217,11 +220,11 @@ export default function MyCrowdfundingPage() {
                           <span className="text-xs text-gray-400">{category.icon} {category.label}</span>
                         </div>
                         <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{campaign.title}</h3>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{campaign.district} · {campaign.donor_count} доноров</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{campaign.district} · {campaign.donor_count} {t('donors')}</div>
                       </div>
                       <div className="text-right shrink-0">
                         <CryptoTooltip amount={campaign.target_amount}><span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTenge(campaign.target_amount)}</span></CryptoTooltip>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">общий бюджет</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{t('totalBudget')}</div>
                       </div>
                     </div>
 
@@ -247,7 +250,7 @@ export default function MyCrowdfundingPage() {
                 <svg width="24" height="24" fill="none" stroke="#9ca3af" strokeWidth="1.5" viewBox="0 0 24 24" className="mx-auto mb-2">
                   <path d="M12 4v16m8-8H4" />
                 </svg>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Создать новую кампанию</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t('createNewCampaign')}</div>
               </div>
             </Link>
           </div>

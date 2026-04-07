@@ -60,6 +60,7 @@ interface TreasuryDashboardProps {
 
 export default function TreasuryDashboard({ district }: TreasuryDashboardProps) {
   const t = useTranslations('components.treasuryDashboard')
+  const tExt = useTranslations('treasuryDashboardExt')
   const { publicKey, connected: walletConnected } = useWallet()
   const { voteOnProposal: voteOnChain, loading: solanaLoading } = useDistrictTreasury()
   const [treasury, setTreasury] = useState<TreasuryData | null>(null)
@@ -232,7 +233,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           <div className="text-sm text-gray-500 dark:text-gray-400">{district}</div>
           {treasury?.walletAddress && (
             <div className="mt-2 flex items-center gap-1.5">
-              <span className="text-xs text-gray-400 dark:text-gray-500">Кошелёк:</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{tExt('wallet')}</span>
               <code className="text-xs font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded select-all">
                 {treasury.walletAddress}
               </code>
@@ -272,13 +273,13 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
           </div>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Штрафы подрядчиков</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{tExt('penaltiesTitle')}</div>
           <div className="text-2xl font-bold text-orange-500 dark:text-orange-400">
             <CryptoTooltip amount={Number(treasury?.totalPenaltyIncome || 0)}>
               <span>{treasury?.totalPenaltyIncome ? formatTenge(treasury.totalPenaltyIncome) : '0 ₸'}</span>
             </CryptoTooltip>
           </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{treasury?.penalties?.length || 0} штрафов</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{tExt('penaltiesCount', { count: treasury?.penalties?.length || 0 })}</div>
         </div>
       </div>
 
@@ -302,14 +303,14 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
             <svg width="16" height="16" fill="none" stroke="#f97316" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            Штрафы подрядчиков
+            {tExt('penaltiesTitle')}
           </h3>
           <div className="space-y-2">
             {treasury.penalties.map((p) => (
               <div key={p.id} className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-lg p-3 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                    {p.type === 'TIME_OVERDUE' ? 'Просрочка' : p.type === 'QUALITY_REJECTED' ? 'Брак' : 'Брошенный объект'}
+                    {p.type === 'TIME_OVERDUE' ? tExt('penaltyTimeOverdue') : p.type === 'QUALITY_REJECTED' ? tExt('penaltyQualityRejected') : tExt('penaltyAbandoned')}
                     {p.daysOverdue ? ` (${p.daysOverdue} дн.)` : ''}
                   </div>
                   {p.contract && (
@@ -427,12 +428,12 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                       }
                       className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
                     >
-                      {showVotes ? 'Скрыть все голоса' : `Показать все голоса (${allVotes.length})`}
+                      {showVotes ? tExt('hideAllVotes') : tExt('showAllVotes', { count: allVotes.length })}
                     </button>
                     {showVotes && (
                       <div className="mt-2 space-y-1.5">
                         {allVotes.length === 0 ? (
-                          <div className="text-xs text-gray-400 dark:text-gray-500">Голосов пока нет</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">{tExt('noVotesYet')}</div>
                         ) : (
                           allVotes.map((v) => (
                             <div
@@ -440,7 +441,7 @@ export default function TreasuryDashboard({ district }: TreasuryDashboardProps) 
                               className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 rounded px-2 py-1.5"
                             >
                               <span className={v.inFavor ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                                {v.inFavor ? 'За' : 'Против'}
+                                {v.inFavor ? tExt('voteFor') : tExt('voteAgainst')}
                               </span>
                               <span className="font-mono text-gray-500 dark:text-gray-400">{shortAddress(v.citizen?.walletAddress)}</span>
                               <span className="text-gray-400 dark:text-gray-500">{v.createdAt ? new Date(v.createdAt).toLocaleString('ru-RU') : '-'}</span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
@@ -11,7 +11,6 @@ import { DEMO_CONTRACTS } from '@/lib/contracts'
 import { useAuth } from '@/components/AuthContext'
 
 const AlmatyMap = dynamic(() => import('@/components/AlmatyMap'), { ssr: false })
-const Onboarding = dynamic(() => import('@/components/Onboarding'), { ssr: false })
 
 function formatBigAmount(val: number): string {
   if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)} млрд ₸`
@@ -19,47 +18,12 @@ function formatBigAmount(val: number): string {
   return `${val.toLocaleString('ru-KZ')} ₸`
 }
 
-/* ─── Animated counter ─── */
-function useCountUp(target: number, duration = 2000) {
-  const [value, setValue] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-  const started = useRef(false)
-
-  useEffect(() => {
-    if (!target || started.current) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true
-          const start = performance.now()
-          const step = (now: number) => {
-            const progress = Math.min((now - start) / duration, 1)
-            const eased = 1 - Math.pow(1 - progress, 3)
-            setValue(Math.floor(eased * target))
-            if (progress < 1) requestAnimationFrame(step)
-          }
-          requestAnimationFrame(step)
-        }
-      },
-      { threshold: 0.3 }
-    )
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [target, duration])
-
-  return { value, ref }
-}
-
 /* ─── Landing page (unauthenticated) ─── */
-function LandingPage({ stats, formatAmount }: { stats: { contracts: number; totalAmount: number; penalized: number; citizens: number }; formatAmount: (n: number) => string }) {
+function LandingPage() {
   const t = useTranslations('landing')
-  const contractsCounter = useCountUp(stats.contracts)
-  const amountCounter = useCountUp(stats.totalAmount)
-  const citizensCounter = useCountUp(stats.citizens)
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950 pt-16">
-      <Onboarding />
 
       {/* ════════ HERO ════════ */}
       <section className="relative overflow-hidden">
@@ -89,7 +53,7 @@ function LandingPage({ stats, formatAmount }: { stats: { contracts: number; tota
           </p>
 
           {/* CTA buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/register"
               className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-base font-semibold transition-all shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 text-center"
@@ -102,28 +66,6 @@ function LandingPage({ stats, formatAmount }: { stats: { contracts: number; tota
             >
               {t('ctaSecondary')}
             </Link>
-          </div>
-
-          {/* Live counters */}
-          <div ref={contractsCounter.ref} className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
-                {contractsCounter.value}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('counterContracts')}</div>
-            </div>
-            <div ref={amountCounter.ref} className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
-                {formatAmount(amountCounter.value)}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('counterAmount')}</div>
-            </div>
-            <div ref={citizensCounter.ref} className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
-                {citizensCounter.value}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('counterCitizens')}</div>
-            </div>
           </div>
         </div>
       </section>
@@ -352,7 +294,6 @@ function DashboardPage({ stats, formatAmount, t }: {
 
   return (
     <main className="h-screen flex flex-col pt-16 bg-gray-50 dark:bg-gray-950">
-      <Onboarding />
       {/* Stats banner */}
       <div className="bg-white dark:bg-gray-950/95 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
@@ -485,7 +426,7 @@ export default function HomePage() {
   }, [dataSource])
 
   if (!user) {
-    return <LandingPage stats={stats} formatAmount={formatBigAmount} />
+    return <LandingPage />
   }
 
   return <DashboardPage stats={stats} formatAmount={formatBigAmount} t={t} />

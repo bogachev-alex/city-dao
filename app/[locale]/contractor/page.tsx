@@ -81,12 +81,6 @@ function effectiveStatus(c: ApiContract): string {
   return c.status
 }
 
-const LOG_TYPE_LABEL: Record<string, string> = {
-  DAILY_LOG: 'Дневник',
-  MILESTONE_CLAIM: 'Этап',
-  BLOCKER: 'Блокер',
-  MATERIAL_DELIVERY: 'Поставка',
-}
 const MIN_SOL_WARN = 0.02
 
 function formatPhaseLeft(ms: number): string {
@@ -97,6 +91,14 @@ function formatPhaseLeft(ms: number): string {
 export default function ContractorCabinetPage() {
   const t = useTranslations('contractorPage')
   const tNav = useTranslations('nav')
+  const tExt = useTranslations('contractorPageExt')
+
+  const LOG_TYPE_LABEL: Record<string, string> = {
+    DAILY_LOG: tExt('logTypeDaily'),
+    MILESTONE_CLAIM: tExt('logTypeMilestone'),
+    BLOCKER: tExt('logTypeBlocker'),
+    MATERIAL_DELIVERY: tExt('logTypeDelivery'),
+  }
   const locale = useLocale()
   const { user, loading: authLoading, authHeader } = useAuth()
   const { connection } = useConnection()

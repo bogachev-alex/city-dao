@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import {
   Campaign,
@@ -19,6 +20,7 @@ interface CampaignCardProps {
 }
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
+  const t = useTranslations('campaignCard')
   const progress = getCampaignProgress(campaign)
   const effectiveStatus = getEffectiveCrowdfundingStatus(campaign)
   const daysLeft = getDaysLeft(campaign.deadline)
@@ -58,7 +60,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         {/* Amounts */}
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Собрано гражданами</div>
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{t('raisedByCitizens')}</div>
             <CryptoTooltip amount={campaign.citizen_raised}>
               <span className="text-gray-900 dark:text-white font-semibold">
                 {formatTenge(campaign.citizen_raised)}
@@ -70,7 +72,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           </div>
           <div className="text-right min-w-0 max-w-[11rem]">
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-              {daysLeft < 0 ? 'Истёк' : 'Осталось'}
+              {daysLeft < 0 ? t('expired') : t('remaining')}
             </div>
             <div
               className={`font-medium text-sm leading-snug ${daysLeft < 0 ? 'text-red-500' : daysLeft < 7 ? 'text-yellow-600' : 'text-gray-500 dark:text-gray-400'}`}
@@ -79,7 +81,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             </div>
             {effectiveStatus === 'active' && progress < 100 && (
               <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 leading-tight">
-                Без цели к дедлайну — возврат взносов
+                {t('noGoalRefund')}
               </div>
             )}
           </div>
@@ -88,7 +90,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         {/* Progress bar */}
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
-            <span>{campaign.donor_count} участников</span>
+            <span>{campaign.donor_count} {t('participants')}</span>
             <span>{progress}%</span>
           </div>
           <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -109,7 +111,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             </svg>
             <CryptoTooltip amount={campaign.state_match}>
               <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                Гос. субсидия {statePercent}% — {formatTenge(campaign.state_match)}
+                {t('stateSubsidy', { statePercent, amount: formatTenge(campaign.state_match) })}
               </span>
             </CryptoTooltip>
           </div>
@@ -122,7 +124,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
               <path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
             <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-              Возврат средств — автоматически
+              {t('autoRefund')}
             </span>
           </div>
         )}
