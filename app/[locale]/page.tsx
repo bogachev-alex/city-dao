@@ -314,7 +314,7 @@ function LandingPage({ stats, formatAmount }: { stats: { contracts: number; tota
       <footer className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400 dark:text-gray-500">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-700 dark:text-gray-300">AMANAT PROTOCOL</span>
+            <span className="font-bold text-gray-700 dark:text-gray-300">STRAITA</span>
             <span>&middot;</span>
             <span>{t('footer')}</span>
           </div>

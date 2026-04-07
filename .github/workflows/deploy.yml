@@ -63,7 +63,7 @@ jobs:
             --exclude='.next/cache' \
             --exclude='target' \
             --exclude='programs' \
-            . root@${{ secrets.DEPLOY_HOST }}:/var/www/amanat/
+            . root@${{ secrets.DEPLOY_HOST }}:/var/www/straita/
 
       - name: Restart app
         env:
@@ -72,12 +72,12 @@ jobs:
         run: |
           ssh root@${{ secrets.DEPLOY_HOST }} bash << ENDSSH
             set -e
-            cd /var/www/amanat
-            printf 'OPENAI_API_KEY=%s\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public\nPINATA_JWT=%s\n' "${OPENAI_API_KEY}" "${PINATA_JWT}" > .env.local
+            cd /var/www/straita
+            printf 'OPENAI_API_KEY=%s\nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/straita?schema=public\nPINATA_JWT=%s\n' "${OPENAI_API_KEY}" "${PINATA_JWT}" > .env.local
             npm install --production=false --legacy-peer-deps --silent
             npx prisma generate
-            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amanat?schema=public npx prisma migrate deploy
-            pm2 restart amanat --update-env
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/straita?schema=public npx prisma migrate deploy
+            pm2 restart straita --update-env
             pm2 save
             echo "✅ Deployed at $(date)"
           ENDSSH

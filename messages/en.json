@@ -3,7 +3,7 @@
     "badge": "Live on Solana Devnet",
     "headline1": "Government contracts —",
     "headline2": "under citizens' control",
-    "subheadline": "Amanat Protocol makes Almaty's public procurement transparent. Every contract — on blockchain. Every milestone — verifiable. Every citizen — empowered.",
+    "subheadline": "Straita makes Almaty's public procurement transparent. Every contract — on blockchain. Every milestone — verifiable. Every citizen — empowered.",
     "ctaPrimary": "Get started free",
     "ctaSecondary": "View contracts",
     "counterContracts": "contracts monitored",
@@ -16,7 +16,7 @@
     "problem1": "Contracts are registered in closed systems. Citizens can't see deadlines, amounts, or execution status — until it's too late.",
     "problem2": "Contractors miss deadlines without consequences. Penalty mechanisms exist on paper but aren't enforced automatically.",
     "problem3": "Budget funds don't reach their goals. There's no tool linking taxpayer money to concrete results.",
-    "solutionBadge": "Amanat Solution",
+    "solutionBadge": "Straita Solution",
     "solutionTitle": "Transparency backed by blockchain and smart contracts",
     "solution1": "Every contract and milestone is recorded on the Solana blockchain. Data cannot be forged or retroactively deleted.",
     "solution2": "Escrow mechanism: 20% of contract value is frozen in a smart contract. Automatic penalties for delays — no human factor.",
@@ -102,7 +102,7 @@
     "becomeJuror": "Become a juror",
     "clickMarker": "Click on a marker",
     "markerDescription": "Each marker is an active government contract. Click to view details.",
-    "heroTitle": "Amanat Protocol",
+    "heroTitle": "Straita",
     "heroSubtitle": "Transparent monitoring of Almaty government contracts on blockchain",
     "heroDescription": "Track budget spending, participate in voting, and influence the development of your city",
     "forCitizens": "For Citizens",
@@ -272,7 +272,7 @@
   },
   "register": {
     "title": "Become a citizen of",
-    "titleAccent": "Amanat",
+    "titleAccent": "Straita",
     "subtitle": "Register as a citizen juror and participate in overseeing government contracts in your district",
     "votingTitle": "Voting",
     "votingDesc": "Evaluate work quality",
@@ -579,7 +579,7 @@
     },
     "citizenRegistration": {
       "registrationDone": "Registration complete!",
-      "registeredAs": "You are registered as a citizen of Amanat Protocol",
+      "registeredAs": "You are registered as a citizen of Straita",
       "district": "District",
       "iinHash": "IIN hash (SHA-256)",
       "wallet": "Wallet",
@@ -596,7 +596,7 @@
       "connected": "Connected",
       "privacy": "Privacy",
       "privacyText": "Your IIN is hashed with SHA-256 in your browser and never leaves the client. Only the hash is recorded on the blockchain, making it impossible to recover the original IIN.",
-      "agreeTerms": "I agree to the terms of Amanat Protocol and confirm that I am a resident of Almaty",
+      "agreeTerms": "I agree to the terms of Straita and confirm that I am a resident of Almaty",
       "registerButton": "Register",
       "signingTx": "Signing transaction...",
       "savingDb": "Saving to database...",
@@ -797,7 +797,7 @@
     }
   },
   "metadata": {
-    "title": "Amanat Protocol — DAO monitoring of Almaty government contracts",
+    "title": "Straita — DAO monitoring of Almaty government contracts",
     "description": "Transparent monitoring of construction contracts through decentralized governance by citizens of Almaty"
   },
   "common": {

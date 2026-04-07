@@ -56,8 +56,8 @@ export default function ProfilePage() {
   useEffect(() => {
     setTokenWallet(getWallet())
     function refresh() { setTokenWallet(getWallet()) }
-    window.addEventListener('amanat-token-award', refresh)
-    return () => window.removeEventListener('amanat-token-award', refresh)
+    window.addEventListener('straita-token-award', refresh)
+    return () => window.removeEventListener('straita-token-award', refresh)
   }, [])
 
   // For real wallet users: fetch on-chain ADL balance
@@ -77,8 +77,8 @@ export default function ProfilePage() {
           .catch(() => {})
       }, 3000) // wait for chain confirmation
     }
-    window.addEventListener('amanat-token-award', refreshOnChain)
-    return () => window.removeEventListener('amanat-token-award', refreshOnChain)
+    window.addEventListener('straita-token-award', refreshOnChain)
+    return () => window.removeEventListener('straita-token-award', refreshOnChain)
   }, [user])
 
   useEffect(() => {
@@ -280,7 +280,7 @@ export default function ProfilePage() {
               </svg>
               {onChainBalance !== null
                 ? 'Реальный SPL-токен на Solana devnet. Начисляется за активность в протоколе.'
-                : 'Токен Amanat Protocol. Начисляется за активность: голосования, регистрация, краудфандинг.'}
+                : 'Токен Straita. Начисляется за активность: голосования, регистрация, краудфандинг.'}
             </div>
           </div>
 

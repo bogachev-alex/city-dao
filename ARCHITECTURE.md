@@ -1,8 +1,8 @@
-# Amanat Protocol — Solution Architecture
+# Straita — Solution Architecture
 
 ## Overview
 
-Amanat Protocol is a City DAO built on Solana that enables transparent, citizen-driven monitoring of government construction contracts in Almaty, Kazakhstan. It replaces manual akimat oversight with automated smart contract enforcement, provably random jury selection, and AI-powered due diligence before any vote goes live.
+Straita is a City DAO built on Solana that enables transparent, citizen-driven monitoring of government construction contracts in Almaty, Kazakhstan. It replaces manual akimat oversight with automated smart contract enforcement, provably random jury selection, and AI-powered due diligence before any vote goes live.
 
 **Problem:** 26 of 147 Almaty city projects had delays or quality violations in 2025. Over 244 billion tenge allocated for infrastructure annually — contractors take new contracts without finishing existing ones, penalties (0.01% of contract) are not enforced effectively.
 
@@ -298,17 +298,17 @@ Internet ──── :80 ────▶ │   nginx    │
                         ┌────────────┐
                         │    PM2     │  (process manager, auto-restart)
                         │            │
-                        │  amanat    │ ── :3000 ── Next.js 14
+                        │  straita    │ ── :3000 ── Next.js 14
                         └────────────┘
 
 Environment:
-  OPENAI_API_KEY  set in /var/www/amanat/.env.local
+  OPENAI_API_KEY  set in /var/www/straita/.env.local
   Node.js 20, npm 10
 
 Deploy flow (local → server):
   npm run build  →  rsync (excludes node_modules, .next)
   →  npm install on server  →  npm run build on server
-  →  pm2 restart amanat --update-env
+  →  pm2 restart straita --update-env
 ```
 
 ---

@@ -1,5 +1,5 @@
 /**
- * Fetch real Solana transactions for all Amanat programs.
+ * Fetch real Solana transactions for all Straita programs.
  *
  * Reads transaction signatures from Solana RPC, parses instruction names,
  * and returns them in the same shape as DEMO_TRANSACTIONS for the feed.
@@ -77,7 +77,7 @@ const INSTRUCTION_LABELS: Record<string, { type: TxType; label: string }> = {
 }
 
 /**
- * Fetch recent transactions across all Amanat programs.
+ * Fetch recent transactions across all Straita programs.
  * Returns combined, time-sorted results.
  */
 export async function fetchOnChainTransactions(

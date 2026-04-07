@@ -765,7 +765,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-emerald-500 mt-0.5">✓</span>
-                  <span>После сбора проект контролируется жюри из жителей района через Amanat Protocol</span>
+                  <span>После сбора проект контролируется жюри из жителей района через Straita</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-emerald-500 mt-0.5">✓</span>
@@ -917,7 +917,7 @@ export default function CampaignDetailPage({ params }: PageProps) {
                   <span className="font-semibold text-emerald-700 dark:text-emerald-400">Кампания профинансирована!</span>
                 </div>
                 <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                  Сумма собрана, государственная субсидия перечислена. Проект передан в Amanat Protocol для исполнения.
+                  Сумма собрана, государственная субсидия перечислена. Проект передан в Straita для исполнения.
                 </p>
                 {campaign.contract_id && (
                   <Link href={getContractDetailHref(campaign.contract_id)} className="inline-block mt-3 text-sm text-emerald-700 hover:text-emerald-800 underline">

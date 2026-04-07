@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Amanat Protocol — a City DAO for transparent monitoring of Almaty government construction contracts. The frontend is an MVP demo with mock/demo data (no live Solana integration yet). The UI language is Russian.
+Straita — a City DAO for transparent monitoring of Almaty government construction contracts. The frontend is an MVP demo with mock/demo data (no live Solana integration yet). The UI language is Russian.
 
 ## Commands
 

@@ -1,7 +1,7 @@
 # Backend & Web3 Implementation Progress
 
 **Branch:** `feature/backend`
-**PRD:** `AMANAT_PRD.md` (8 модулей, дедлайн 7 апреля 2026)
+**PRD:** `STRAITA_PRD.md` (8 модулей, дедлайн 7 апреля 2026)
 
 ---
 
@@ -121,7 +121,7 @@ district_treasury: 44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy
 ## 5. БД подключена + Голосование через API
 
 ### [x] PostgreSQL подключена
-- БД `amanat` на localhost, миграция применена
+- БД `straita` на localhost, миграция применена
 - Seed: 4 подрядчика, 4 контракта, 8 казначейств, 3 гражданина, jury session, penalties, work logs, AI report
 - `prisma-client-js` с `@prisma/adapter-pg` (driver adapter)
 - `normalizeContract()` — правильный маппинг UPPER_CASE enum → lowercase frontend types
@@ -147,4 +147,4 @@ district_treasury: 44SAVcK4BVrKQvX1WAgHPCcov1vBnNpMWhFbVJCziGwy
 - [ ] `anchor deploy` на devnet (нужен airdrop SOL: faucet.solana.com)
 - [ ] On-chain voting: wallet подпись → Solana tx + БД sync
 - [ ] Интеграция AI Research Agent на Claude (Anthropic SDK)
-- [ ] Anchor тесты (`tests/amanat.test.ts`)
+- [ ] Anchor тесты (`tests/straita.test.ts`)

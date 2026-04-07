@@ -1,7 +1,7 @@
 [package]
 name = "jury-mechanism"
 version = "0.1.0"
-description = "Amanat Protocol — Jury Mechanism (Commit-Reveal Voting)"
+description = "Straita — Jury Mechanism (Commit-Reveal Voting)"
 edition = "2021"
 
 [lib]

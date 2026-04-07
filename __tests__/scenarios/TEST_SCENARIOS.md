@@ -1,4 +1,4 @@
-# Test Scenarios — Amanat Protocol
+# Test Scenarios — Straita
 
 ## User Types
 1. **Akimat** (Government Officer) — registers contracts, triggers penalties, manages treasury

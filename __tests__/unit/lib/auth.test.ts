@@ -47,7 +47,7 @@ describe('saveAuth + loadAuth', () => {
   })
 
   it('loadAuth returns null for malformed JSON', () => {
-    store['amanat_auth'] = '{not valid json'
+    store['straita_auth'] = '{not valid json'
     expect(loadAuth()).toBeNull()
   })
 

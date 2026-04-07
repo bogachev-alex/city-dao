@@ -3,7 +3,7 @@ import { test, expect } from './fixtures'
 test.describe('Public routes (ru)', () => {
   test('home loads with map container', async ({ page }) => {
     await page.goto('/ru')
-    await expect(page).toHaveTitle(/Amanat Protocol/i)
+    await expect(page).toHaveTitle(/Straita/i)
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 25_000 })
   })
 

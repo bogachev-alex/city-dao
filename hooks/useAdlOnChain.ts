@@ -5,7 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import type { TokenTransaction } from '@/lib/tokens'
 
 /**
- * Listens for amanat-token-award events and mirrors each award
+ * Listens for straita-token-award events and mirrors each award
  * as a real on-chain SPL mint to the connected wallet.
  *
  * Mount once at the layout level — no changes needed in individual components.
@@ -32,7 +32,7 @@ export function useAdlOnChain() {
       }
     }
 
-    window.addEventListener('amanat-token-award', handleAward)
-    return () => window.removeEventListener('amanat-token-award', handleAward)
+    window.addEventListener('straita-token-award', handleAward)
+    return () => window.removeEventListener('straita-token-award', handleAward)
   }, [publicKey])
 }

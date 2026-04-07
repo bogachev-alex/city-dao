@@ -1,4 +1,4 @@
-# Amanat Protocol — Test Report
+# Straita — Test Report
 
 **Дата:** 2026-03-29
 **Ветка:** `test/e2e-coverage`

@@ -136,7 +136,7 @@ export default function CrowdfundingPage() {
             </div>
             <div className="flex gap-2">
               <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">4</span>
-              <div><span className="font-medium text-gray-900 dark:text-white">Проект запускается</span> — через Amanat Protocol с жюри</div>
+              <div><span className="font-medium text-gray-900 dark:text-white">Проект запускается</span> — через Straita с жюри</div>
             </div>
           </div>
           <p className="mt-4 text-xs text-gray-600 dark:text-gray-400 border-t border-emerald-200/60 dark:border-emerald-500/20 pt-3">

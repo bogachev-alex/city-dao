@@ -76,7 +76,7 @@ export async function verifyTransaction(
     if (requireProgram && matchedPrograms.length === 0) {
       return {
         valid: false,
-        error: 'Transaction does not involve any Amanat Protocol programs',
+        error: 'Transaction does not involve any Straita programs',
         programs: programIds,
       }
     }
