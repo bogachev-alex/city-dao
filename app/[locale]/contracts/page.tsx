@@ -46,6 +46,13 @@ function overlapScore(a: Set<string>, b: Set<string>): number {
   return inter / Math.max(a.size, b.size)
 }
 
+function mergeStatus(db: ContractStatus, chain: ContractStatus | undefined): ContractStatus {
+  if (!chain) return db
+  const terminal: ContractStatus[] = ['completed', 'disputed']
+  if (terminal.includes(db)) return db
+  return chain
+}
+
 /** Merge DB-normalized contracts with live Solana registry state (module scope — stable for any hook order). */
 async function mergeContractsWithOnChainState(baseContracts: Contract[]): Promise<Contract[]> {
   try {
@@ -67,7 +74,7 @@ async function mergeContractsWithOnChainState(baseContracts: Contract[]): Promis
           contractor: c.contractor,
           amount_usdc: c.amount_usdc,
           deadline: live.deadline || c.deadline,
-          status: live.status || c.status,
+          status: mergeStatus(c.status, live.status),
           lat: live.lat ?? c.lat,
           lng: live.lng ?? c.lng,
           escrow_amount: live.escrow_amount ?? c.escrow_amount,
@@ -146,7 +153,7 @@ async function mergeContractsWithOnChainState(baseContracts: Contract[]): Promis
         contractor: c.contractor,
         amount_usdc: c.amount_usdc,
         deadline: live.deadline || c.deadline,
-        status: live.status || c.status,
+        status: mergeStatus(c.status, live.status),
         lat: live.lat ?? c.lat,
         lng: live.lng ?? c.lng,
         escrow_amount: live.escrow_amount ?? c.escrow_amount,
@@ -196,9 +203,17 @@ async function mergeContractsWithOnChainState(baseContracts: Contract[]): Promis
   }
 }
 
+function effectiveStatus(c: Contract): ContractStatus {
+  if (c.status === 'active') {
+    const allAccepted = c.milestones.length > 0 && c.milestones.every((m) => m.status === 'accepted')
+    if (allAccepted) return 'completed'
+  }
+  return c.status
+}
+
 export default function ContractsPage() {
   const t = useTranslations('contracts')
-  const { user } = useAuth()
+  const { user, authHeader } = useAuth()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ContractStatus | 'all'>('all')
@@ -209,14 +224,28 @@ export default function ContractsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [contractorScope, setContractorScope] = useState<'mine' | 'all'>('mine')
   const [sortBy, setSortBy] = useState<string>('createdAtDesc')
+  const [resolvedContractorId, setResolvedContractorId] = useState<string | null>(null)
 
   const dataSource = useDataSource()
   const isContractor = user?.role === 'CONTRACTOR'
   const contractorNameNorm = user?.name?.trim().toLowerCase() ?? ''
 
   useEffect(() => {
-    if (user?.role !== 'CONTRACTOR') setContractorScope('mine')
-  }, [user?.role])
+    if (user?.role !== 'CONTRACTOR') {
+      setContractorScope('mine')
+      setResolvedContractorId(null)
+      return
+    }
+    if (!user) return
+    let cancelled = false
+    fetch(`/api/contractors?id=${encodeURIComponent(user.id)}`, { headers: { ...authHeader() } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data?.id) setResolvedContractorId(data.id)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user, authHeader])
 
   const STATUS_FILTERS: { value: ContractStatus | 'all'; label: string }[] = [
     { value: 'all', label: t('all') },
@@ -297,7 +326,8 @@ export default function ContractsPage() {
   }, [loadContracts])
 
   const filtered = contracts.filter((c) => {
-    if (statusFilter !== 'all' && c.status !== statusFilter) return false
+    const displayStatus = effectiveStatus(c)
+    if (statusFilter !== 'all' && displayStatus !== statusFilter) return false
     if (districtFilter !== 'all' && c.district !== districtFilter) return false
     if (customerFilter.trim()) {
       const q = customerFilter.trim().toLowerCase()
@@ -319,10 +349,17 @@ export default function ContractsPage() {
     return true
   })
 
+  const isOwnContract = useCallback((c: Contract) => {
+    if (resolvedContractorId && c.contractorId === resolvedContractorId) return true
+    if (c.contractorWalletAddress && user?.id && c.contractorWalletAddress === user.id) return true
+    if (c.contractor.trim().toLowerCase() === contractorNameNorm) return true
+    return false
+  }, [resolvedContractorId, contractorNameNorm, user?.id])
+
   const filteredForDisplay = useMemo(() => {
     if (!isContractor || contractorScope === 'all') return filtered
-    return filtered.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
-  }, [filtered, isContractor, contractorScope, contractorNameNorm])
+    return filtered.filter(isOwnContract)
+  }, [filtered, isContractor, contractorScope, isOwnContract])
 
   const sorted = useMemo(() => {
     const arr = [...filteredForDisplay]
@@ -356,16 +393,16 @@ export default function ContractsPage() {
 
   const contractsForStats = useMemo(() => {
     if (isContractor && contractorScope === 'mine') {
-      return contracts.filter((c) => c.contractor.trim().toLowerCase() === contractorNameNorm)
+      return contracts.filter(isOwnContract)
     }
     return contracts
-  }, [contracts, isContractor, contractorScope, contractorNameNorm])
+  }, [contracts, isContractor, contractorScope, isOwnContract])
 
   const counts = {
-    active: contractsForStats.filter((c) => c.status === 'active').length,
-    penalized: contractsForStats.filter((c) => c.status === 'penalized').length,
-    completed: contractsForStats.filter((c) => c.status === 'completed').length,
-    disputed: contractsForStats.filter((c) => c.status === 'disputed').length,
+    active: contractsForStats.filter((c) => effectiveStatus(c) === 'active').length,
+    penalized: contractsForStats.filter((c) => effectiveStatus(c) === 'penalized').length,
+    completed: contractsForStats.filter((c) => effectiveStatus(c) === 'completed').length,
+    disputed: contractsForStats.filter((c) => effectiveStatus(c) === 'disputed').length,
   }
 
   return (

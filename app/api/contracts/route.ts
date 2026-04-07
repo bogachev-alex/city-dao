@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
             }),
           },
           include: {
-            contractor: { select: { id: true, name: true, rating: true } },
+            contractor: { select: { id: true, name: true, rating: true, walletAddress: true } },
             milestones: { orderBy: { sortOrder: 'asc' } },
           },
           orderBy: { createdAt: 'desc' },
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       const contractors = contractorIds.length
         ? await prisma.contractor.findMany({
             where: { id: { in: contractorIds } },
-            select: { id: true, name: true },
+            select: { id: true, name: true, walletAddress: true },
           })
         : []
       const contractorById = new Map(contractors.map((c) => [c.id, c]))
