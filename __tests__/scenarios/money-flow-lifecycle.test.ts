@@ -201,8 +201,26 @@ describe('D1: Full Contract Lifecycle', () => {
     const salt = 'jury-salt-step3'
     const commitHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
 
+    const sess1Row = {
+      id: 'sess-1',
+      status: 'COMMIT_PHASE' as const,
+      commitDeadline: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      revealDeadline: new Date(Date.now() + 72 * 60 * 60 * 1000),
+      contractId: 'contract-100m',
+      milestoneId: 'm1',
+      contract: { id: 'contract-100m', title: 'T', district: 'D', onChainPubkey: null as string | null },
+      milestone: { id: 'm1', description: 'Этап 1' },
+      votes: [] as unknown[],
+    }
+
     // --- COMMIT phase ---
-    prismaMock.citizen.findUnique.mockResolvedValue({ id: 'juror-1' })
+    // citizen.findUnique handles both wallet auth and eligibility lookups
+    prismaMock.citizen.findUnique.mockImplementation((args: any) => {
+      if (args?.where?.walletAddress) return Promise.resolve({ id: 'juror-1' })
+      if (args?.where?.id) return Promise.resolve({ id: 'juror-1', isEligible: true, banUntil: null })
+      return Promise.resolve(null)
+    })
+    prismaMock.jurySession.findUnique.mockResolvedValue(sess1Row)
     prismaMock.juryVote.findFirst.mockResolvedValue({
       id: 'v1',
       sessionId: 'sess-1',
@@ -241,16 +259,18 @@ describe('D1: Full Contract Lifecycle', () => {
     })
     prismaMock.juryVote.findUnique.mockResolvedValue({ id: 'v1', revealedVote: 'ACCEPT' })
 
-    // After reveal, tally: 1 ACCEPT vote (weight 1) → earlyAccept since weightedAccept >= 1
+    // After reveal, tally: 1 ACCEPT vote (weight 1) → weightedAccept(1) > weightedReject(0) → ACCEPT
     prismaMock.juryVote.findMany.mockResolvedValue([
       { revealedVote: 'ACCEPT', weight: 1 },
     ])
-    prismaMock.jurySession.findUnique.mockResolvedValue({
-      id: 'sess-1',
-      status: 'COMMIT_PHASE',
-      milestoneId: 'm1',
-      contractId: 'contract-100m',
-    })
+    // First call: resolveSessionForMutation; second call: sessionMeta
+    prismaMock.jurySession.findUnique
+      .mockResolvedValueOnce(sess1Row)
+      .mockResolvedValueOnce({
+        status: 'COMMIT_PHASE',
+        milestoneId: 'm1',
+        contractId: 'contract-100m',
+      })
     prismaMock.jurySession.update.mockResolvedValue({ id: 'sess-1', status: 'FINALIZED' })
     prismaMock.milestone.update.mockResolvedValue({ id: 'm1', status: 'ACCEPTED', tranchePct: 30 })
     prismaMock.contract.findUnique.mockResolvedValue({
@@ -307,8 +327,25 @@ describe('D1: Full Contract Lifecycle', () => {
     const salt = 'jury-salt-step4'
     const commitHash = createHash('sha256').update(`${vote}:${salt}`).digest('hex')
 
+    const sess2Row = {
+      id: 'sess-2',
+      status: 'COMMIT_PHASE' as const,
+      commitDeadline: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      revealDeadline: new Date(Date.now() + 72 * 60 * 60 * 1000),
+      contractId: 'contract-100m',
+      milestoneId: 'm2',
+      contract: { id: 'contract-100m', title: 'T', district: 'D', onChainPubkey: null as string | null },
+      milestone: { id: 'm2', description: 'Этап 2' },
+      votes: [] as unknown[],
+    }
+
     // --- COMMIT ---
-    prismaMock.citizen.findUnique.mockResolvedValue({ id: 'juror-1' })
+    prismaMock.citizen.findUnique.mockImplementation((args: any) => {
+      if (args?.where?.walletAddress) return Promise.resolve({ id: 'juror-1' })
+      if (args?.where?.id) return Promise.resolve({ id: 'juror-1', isEligible: true, banUntil: null })
+      return Promise.resolve(null)
+    })
+    prismaMock.jurySession.findUnique.mockResolvedValue(sess2Row)
     prismaMock.juryVote.findFirst.mockResolvedValue({
       id: 'v4',
       sessionId: 'sess-2',
@@ -343,19 +380,21 @@ describe('D1: Full Contract Lifecycle', () => {
     })
     prismaMock.juryVote.findUnique.mockResolvedValue({ id: 'v4', revealedVote: 'REJECT' })
 
-    // All 3 jurors rejected — allRevealed = true, weightedAccept = 0
+    // All 3 jurors rejected — weightedAccept = 0, weightedReject = 4 → REJECT
     prismaMock.juryVote.findMany.mockResolvedValue([
       { revealedVote: 'REJECT', weight: 2 },
       { revealedVote: 'REJECT', weight: 1 },
       { revealedVote: 'REJECT', weight: 1 },
     ])
 
-    prismaMock.jurySession.findUnique.mockResolvedValue({
-      id: 'sess-2',
-      status: 'COMMIT_PHASE',
-      milestoneId: 'm2',
-      contractId: 'contract-100m',
-    })
+    // First call: resolveSessionForMutation; second call: sessionMeta
+    prismaMock.jurySession.findUnique
+      .mockResolvedValueOnce(sess2Row)
+      .mockResolvedValueOnce({
+        status: 'COMMIT_PHASE',
+        milestoneId: 'm2',
+        contractId: 'contract-100m',
+      })
     prismaMock.jurySession.update.mockResolvedValue({ id: 'sess-2', status: 'FINALIZED' })
     prismaMock.milestone.update.mockResolvedValue({ id: 'm2', status: 'REJECTED' })
 

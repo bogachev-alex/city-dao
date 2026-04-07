@@ -439,23 +439,19 @@ describe('B2. Milestone Submission (POST /api/contracts/[id]/milestones/[milesto
     expect(res.status).toBe(201)
   })
 
-  it('returns 503 if not enough citizens for jury (fewer than 3)', async () => {
+  it('creates open jury session even with fewer than 3 registered citizens (no pre-selection)', async () => {
     prismaMock.contract.findUnique.mockResolvedValue(defaultContract())
     prismaMock.jurySession.findMany.mockResolvedValue([])
-
-    // pickJurors calls citizen.findMany twice: first for local district, then fallback.
-    // Return 2 local + 0 fallback = only 2 total (need 3)
-    prismaMock.citizen.findMany
-      .mockResolvedValueOnce([{ id: 'citizen-1' }, { id: 'citizen-2' }])
-      .mockResolvedValueOnce([])
+    seedSubmitTransaction()
 
     const res = await SubmitPOST(submitRequest(), {
       params: Promise.resolve({ id: 'c1', milestoneId: 'm1' }),
     })
 
-    expect(res.status).toBe(503)
+    // Route now creates an open jury session without pre-selecting jurors
+    expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body.error).toMatch(/Not enough citizens/)
+    expect(body.session.status).toBe('COMMIT_PHASE')
   })
 
   it('creates work log with photo hashes and evidence note', async () => {
