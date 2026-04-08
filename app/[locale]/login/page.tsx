@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/routing'
 import { Link } from '@/i18n/routing'
 import { useAuth } from '@/components/AuthContext'
@@ -22,6 +23,7 @@ const ROLES: UserRole[] = ['CITIZEN', 'CONTRACTOR', 'AKIMAT']
 const REDIRECT_AFTER_LOGIN = HOME_PATH_BY_ROLE
 
 export default function LoginPage() {
+  const t = useTranslations('login')
   const { user, login } = useAuth()
   const router = useRouter()
   const { publicKey, connected, select, connect, disconnect, wallets, wallet, connecting } = useWallet()
@@ -44,9 +46,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (pendingConnectRef.current && wallet && !connected && !connecting) {
       pendingConnectRef.current = false
-      connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
+      connect().catch((e) => setWalletError(e?.message ?? t('connectionError')))
     }
-  }, [wallet?.adapter.name, connected, connecting, connect])
+  }, [wallet?.adapter.name, connected, connecting, connect, t])
 
   // If connecting takes >5s — show hint; >15s — auto-reset
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function LoginPage() {
     const resetTimer = setTimeout(() => {
       pendingConnectRef.current = false
       disconnect().catch(() => {})
-      setWalletError('Время ожидания истекло. Попробуйте снова.')
+      setWalletError(t('timeoutError'))
     }, 15000)
     return () => { clearTimeout(hintTimer); clearTimeout(resetTimer) }
   }, [connecting, disconnect])
@@ -69,11 +71,11 @@ export default function LoginPage() {
     const anyUsable = wallets.find((w) => isUsable(w.readyState))
     const target = phantom || anyUsable
     if (!target) {
-      setWalletError('Phantom кошелёк не установлен. Установите расширение на phantom.app')
+      setWalletError(t('phantomNotInstalled'))
       return
     }
     if (wallet?.adapter.name === target.adapter.name) {
-      connect().catch((e) => setWalletError(e?.message ?? 'Ошибка подключения'))
+      connect().catch((e) => setWalletError(e?.message ?? t('connectionError')))
       return
     }
     pendingConnectRef.current = true
@@ -144,7 +146,7 @@ export default function LoginPage() {
           <div className="font-bold text-xl text-gray-900 dark:text-white tracking-wider">
             STRAITA
           </div>
-          <div className="text-xs text-gray-500">Прозрачный мониторинг Алматы</div>
+          <div className="text-xs text-gray-500">{t('tagline')}</div>
         </div>
       </div>
 
@@ -152,9 +154,9 @@ export default function LoginPage() {
         {/* Wallet login */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 space-y-4 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Вход в систему</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('title')}</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Подключите Solana кошелёк для входа
+              {t('subtitle')}
             </p>
           </div>
 
@@ -168,7 +170,7 @@ export default function LoginPage() {
                   rel="noopener noreferrer"
                   className="mt-1 inline-block font-semibold underline hover:text-red-600 dark:hover:text-red-300"
                 >
-                  Установить Phantom →
+                  {t('installPhantom')}
                 </a>
               )}
             </div>
@@ -177,16 +179,16 @@ export default function LoginPage() {
           {notFound && (
             <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4">
               <p className="text-sm text-amber-700 dark:text-amber-400 font-semibold mb-1">
-                Аккаунт не найден
+                {t('accountNotFoundTitle')}
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400/80 mb-3">
-                Этот кошелёк ещё не зарегистрирован в системе Straita.
+                {t('accountNotFoundText')}
               </p>
               <Link
                 href="/register"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
               >
-                Зарегистрироваться
+                {t('register')}
                 <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
@@ -200,7 +202,7 @@ export default function LoginPage() {
                 <WalletMultiButton />
               </div>
               <p className="text-xs text-center text-gray-400 dark:text-gray-500">
-                Phantom, Solflare, Backpack, Coinbase и другие
+                {t('walletProviders')}
               </p>
             </div>
           ) : (
@@ -210,7 +212,7 @@ export default function LoginPage() {
                 <span className="font-mono text-xs text-purple-700 dark:text-purple-300 truncate">
                   {publicKey?.toBase58().slice(0, 10)}...{publicKey?.toBase58().slice(-8)}
                 </span>
-                <span className="ml-auto text-xs text-gray-400">подключён</span>
+                <span className="ml-auto text-xs text-gray-400">{t('connected')}</span>
               </div>
               <button
                 onClick={handleWalletLogin}
@@ -220,14 +222,14 @@ export default function LoginPage() {
                 {checking ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Проверка...
+                    {t('checking')}
                   </>
                 ) : (
                   <>
                     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3" />
                     </svg>
-                    Войти
+                    {t('signIn')}
                   </>
                 )}
               </button>
@@ -235,17 +237,17 @@ export default function LoginPage() {
           )}
 
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-            Ещё нет аккаунта?{' '}
+            {t('noAccount')}{' '}
             <Link href="/register" className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
-              Гражданин
+              {t('citizen')}
             </Link>
             {' · '}
             <Link href="/register-contractor" className="text-amber-600 dark:text-amber-400 font-medium hover:underline">
-              Подрядчик
+              {t('contractor')}
             </Link>
             {' · '}
             <Link href="/register-akimat" className="text-purple-600 dark:text-purple-400 font-medium hover:underline">
-              Акимат
+              {t('akimat')}
             </Link>
           </p>
         </div>
@@ -253,7 +255,7 @@ export default function LoginPage() {
         {/* Demo test access */}
         <div className="bg-white dark:bg-gray-900 border border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4">
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-3 uppercase tracking-widest font-medium">
-            Тестовый доступ
+            {t('testAccess')}
           </p>
           <div className="grid grid-cols-3 gap-2">
             {ROLES.map((role) => (

@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+import { useTranslations, useLocale } from 'next-intl'
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -45,6 +44,14 @@ export function CampaignDeadlinePicker({
   onTimeChange,
   minDateStr,
 }: Props) {
+  const t = useTranslations('components.campaignDeadlinePicker')
+  const locale = useLocale()
+  const WEEKDAYS = useMemo(() => {
+    // 2024-01-01 was a Monday; iterate Mon–Sun
+    return Array.from({ length: 7 }, (_, i) =>
+      new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)
+    )
+  }, [locale])
   const [viewYear, setViewYear] = useState(() => {
     const d = date ? new Date(`${date}T12:00:00`) : new Date()
     return Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear()
@@ -73,7 +80,7 @@ export function CampaignDeadlinePicker({
     return items
   }, [viewYear, viewMonth])
 
-  const monthTitle = new Date(viewYear, viewMonth, 1).toLocaleDateString('ru-RU', {
+  const monthTitle = new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, {
     month: 'long',
     year: 'numeric',
   })
@@ -107,7 +114,7 @@ export function CampaignDeadlinePicker({
             type="button"
             onClick={goPrev}
             className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Предыдущий месяц"
+            aria-label={t('prevMonth')}
           >
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M15 18l-6-6 6-6" />
@@ -118,7 +125,7 @@ export function CampaignDeadlinePicker({
             type="button"
             onClick={goNext}
             className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Следующий месяц"
+            aria-label={t('nextMonth')}
           >
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M9 18l6-6-6-6" />
@@ -163,7 +170,7 @@ export function CampaignDeadlinePicker({
 
       <div>
         <label htmlFor="cf-deadline-time" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-          Время окончания сбора
+          {t('collectionEndTime')}
         </label>
         <input
           id="cf-deadline-time"
@@ -177,7 +184,7 @@ export function CampaignDeadlinePicker({
 
       <div>
         <label htmlFor="cf-deadline-native" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-          Дата (системный календарь)
+          {t('systemCalendarDate')}
         </label>
         <input
           id="cf-deadline-native"
@@ -188,7 +195,7 @@ export function CampaignDeadlinePicker({
           className="w-full max-w-xs bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500/50 text-sm [color-scheme:light] dark:[color-scheme:dark]"
         />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          Дублирует выбор даты: удобно, если удобнее нативный виджет ОС.
+          {t('nativeDateHint')}
         </p>
       </div>
     </div>
